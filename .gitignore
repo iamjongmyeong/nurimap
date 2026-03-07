@@ -3,3 +3,15 @@
 !.env.example
 
 .DS_Store
+node_modules/
+
+.codex/*
+!.codex/config.toml
+!.codex/prompts/
+!.codex/prompts/**
+
+.omx/logs/
+.omx/metrics.json
+.omx/notepad.md
+.omx/project-memory.json
+.omx/state/
