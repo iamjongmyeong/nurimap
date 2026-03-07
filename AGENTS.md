@@ -26,6 +26,8 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Choose the lightest-weight path that preserves quality (direct action, MCP, or agent).
 - Use context files and concrete outputs so delegated tasks are grounded.
 - Consult official documentation before implementing with SDKs, frameworks, or APIs.
+- For React or frontend implementation and review work, you MUST use the `vercel-react-best-practices` skill before proceeding.
+- When a relevant spec exists under `docs/specs/`, treat it as implementation source of truth and follow TDD: write or update failing tests first, then implement, then verify.
 </operating_principles>
 
 ---
