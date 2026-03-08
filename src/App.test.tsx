@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
-import { resetAppShellStore } from './app-shell/appShellStore'
+import { resetAppShellStore, useAppShellStore } from './app-shell/appShellStore'
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
@@ -15,7 +15,7 @@ const setViewport = (width: number) => {
   })
 }
 
-describe('Plan 01 app shell and layout', () => {
+describe('Nurimap app shell', () => {
   beforeEach(() => {
     resetAppShellStore()
   })
@@ -61,7 +61,6 @@ describe('Plan 01 app shell and layout', () => {
     expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
   })
 
-
   it('does not render mobile floating actions on desktop', () => {
     setViewport(1280)
     render(<App />)
@@ -79,10 +78,11 @@ describe('Plan 01 app shell and layout', () => {
     })
   })
 
-  it('renders the empty state without place data', () => {
+  it('renders the empty state when the list state is empty', () => {
     setViewport(1280)
+    useAppShellStore.setState({ placeListLoad: 'empty' })
     render(<App />)
 
-    expect(screen.getAllByText('아직 등록된 장소가 없어요').length).toBeGreaterThan(0)
+    expect(screen.getByText('아직 등록된 장소가 없어요')).toBeInTheDocument()
   })
 })

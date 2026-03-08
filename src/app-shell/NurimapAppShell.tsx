@@ -1,7 +1,22 @@
-import { useAppShellStore } from './appShellStore'
+import { MOCK_PLACES } from './mockPlaces'
+import { MapPane } from './MapPane'
+import {
+  useAppShellStore,
+  type PlaceListLoadState,
+} from './appShellStore'
+import type { PlaceSummary } from './types'
 import { useViewportMode } from './useViewportMode'
 
-const layoutInsetStyle = {
+
+type PlaceWithCoordinates = PlaceSummary & {
+  latitude: number
+  longitude: number
+}
+
+const hasCoordinates = (place: PlaceSummary): place is PlaceWithCoordinates =>
+  place.latitude !== undefined && place.longitude !== undefined
+
+const detailPanelStyle = {
   top: '24px',
   bottom: '24px',
   width: '390px',
@@ -13,47 +28,175 @@ const addButtonSizeStyle = {
   height: '48px',
 } as const
 
+const badgeHeightStyle = {
+  height: '24px',
+} as const
+
 const EmptyState = () => (
   <div className="rounded-2xl border border-dashed border-base-300 bg-base-100 p-6 text-left shadow-sm">
     <p className="text-sm font-semibold text-base-content">아직 등록된 장소가 없어요</p>
-    <p className="mt-2 text-sm text-base-content/70">
-      Plan 01에서는 앱 셸과 빈 상태 구조를 먼저 검증합니다.
-    </p>
+    <p className="mt-2 text-sm text-base-content/70">현재 조건에 맞는 장소가 비어 있습니다.</p>
   </div>
 )
 
-const MockMapCanvas = () => (
-  <div
-    aria-label="지도 캔버스"
-    className="relative h-full min-h-screen overflow-hidden rounded-none bg-slate-900"
-    data-testid="map-canvas"
-  >
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,197,94,0.25),_transparent_25%),linear-gradient(135deg,_rgba(15,23,42,1)_0%,_rgba(30,41,59,1)_45%,_rgba(59,130,246,0.35)_100%)]" />
-    <div className="absolute inset-x-6 top-6 rounded-2xl bg-base-100/10 p-4 text-white backdrop-blur">
-      <p className="text-xs uppercase tracking-[0.24em] text-emerald-200">Nurimap</p>
-      <h1 className="mt-2 text-2xl font-semibold">내부 장소 지도를 위한 앱 셸</h1>
-      <p className="mt-2 max-w-xl text-sm text-slate-200/90">
-        Plan 01에서는 지도, 사이드바, 상세 패널, 모바일 floating button의 구조를 먼저 고정합니다.
-      </p>
+const LoadingState = () => (
+  <div className="flex items-center gap-3 rounded-2xl bg-base-100 p-6 shadow-sm" data-testid="place-list-loading">
+    <span className="loading loading-spinner loading-md text-primary" />
+    <div>
+      <p className="text-sm font-semibold text-base-content">장소 목록을 불러오는 중이에요</p>
+      <p className="text-sm text-base-content/70">Plan 02 목록 탐색 기본 상태를 검증합니다.</p>
     </div>
   </div>
 )
 
-const DesktopSidebar = () => {
-  const openPlaceAdd = useAppShellStore((state) => state.openPlaceAdd)
+const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
+  <div className="rounded-2xl bg-base-100 p-6 shadow-sm" data-testid="place-list-error">
+    <p className="text-sm font-semibold text-error">장소 목록을 불러오지 못했어요</p>
+    <p className="mt-2 text-sm text-base-content/70">현재 목록 영역에서 재시도 액션을 제공합니다.</p>
+    <button className="btn btn-outline btn-sm mt-4" onClick={onRetry} type="button">
+      다시 시도
+    </button>
+  </div>
+)
+
+const ZeroPayBadge = () => (
+  <span
+    className="inline-flex items-center rounded-full bg-emerald-600 px-2.5 text-xs font-bold text-white"
+    data-testid="zeropay-badge"
+    style={badgeHeightStyle}
+  >
+    제로페이
+  </span>
+)
+
+const RatingBadge = ({ averageRating, reviewCount }: { averageRating: number; reviewCount: number }) => (
+  <span className="inline-flex items-center rounded-full bg-base-200 px-2.5 text-xs font-semibold text-base-content" style={badgeHeightStyle}>
+    ★ {averageRating.toFixed(1)} · 리뷰 {reviewCount}
+  </span>
+)
+
+const PlaceListItem = ({
+  onSelect,
+  place,
+  selected,
+}: {
+  onSelect: (placeId: string) => void
+  place: PlaceSummary
+  selected: boolean
+}) => (
+  <button
+    className={`w-full rounded-2xl border p-4 text-left shadow-sm transition ${
+      selected ? 'border-primary bg-primary/5' : 'border-base-300 bg-base-100'
+    }`}
+    data-testid={`place-list-item-${place.id}`}
+    onClick={() => onSelect(place.id)}
+    type="button"
+  >
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <p className="text-base font-semibold text-base-content">{place.name}</p>
+        <p className="mt-1 text-sm text-base-content/70">{place.road_address}</p>
+      </div>
+      <span className="badge badge-outline badge-sm">{place.place_type === 'restaurant' ? '식당' : '카페'}</span>
+    </div>
+    <div className="mt-4 flex flex-wrap items-center gap-2">
+      <RatingBadge averageRating={place.average_rating} reviewCount={place.review_count} />
+      {place.zeropay_status === 'available' ? <ZeroPayBadge /> : null}
+    </div>
+  </button>
+)
+
+const PlaceListPanel = ({
+  places,
+  selectedPlaceId,
+  status,
+  onRetry,
+  onSelect,
+}: {
+  places: PlaceSummary[]
+  selectedPlaceId: string | null
+  status: PlaceListLoadState
+  onRetry: () => void
+  onSelect: (placeId: string) => void
+}) => {
+  if (status === 'loading') {
+    return <LoadingState />
+  }
+
+  if (status === 'error') {
+    return <ErrorState onRetry={onRetry} />
+  }
+
+  if (status === 'empty' || places.length === 0) {
+    return <EmptyState />
+  }
 
   return (
-    <aside
-      className="flex h-screen w-[390px] flex-col border-r border-base-300 bg-base-200 px-6 py-6"
-      data-testid="desktop-sidebar"
-    >
+    <div className="space-y-3" data-testid="place-list-ready">
+      {places.map((place) => (
+        <PlaceListItem
+          key={place.id}
+          onSelect={onSelect}
+          place={place}
+          selected={selectedPlaceId === place.id}
+        />
+      ))}
+    </div>
+  )
+}
+
+const DetailContent = ({ place }: { place: PlaceSummary | undefined }) => {
+  if (!place) {
+    return (
+      <div className="mt-6 flex-1 rounded-2xl border border-dashed border-base-300 bg-base-200/70 p-5">
+        <p className="text-sm font-medium text-base-content">선택된 장소가 아직 없어요</p>
+        <p className="mt-2 text-sm leading-6 text-base-content/70">목록이나 지도 마커를 선택하면 상세 흐름이 이 패널에 연결됩니다.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-6 flex-1 overflow-auto rounded-2xl border border-base-300 bg-base-200/70 p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">Selected Place</p>
+          <h3 className="mt-2 text-xl font-bold text-base-content">{place.name}</h3>
+        </div>
+        <span className="badge badge-outline">{place.place_type === 'restaurant' ? '식당' : '카페'}</span>
+      </div>
+      <p className="mt-4 text-sm text-base-content/70">{place.road_address}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <RatingBadge averageRating={place.average_rating} reviewCount={place.review_count} />
+        {place.zeropay_status === 'available' ? <ZeroPayBadge /> : null}
+      </div>
+      <p className="mt-6 rounded-2xl bg-base-100 p-4 text-sm leading-6 text-base-content/70">
+        Plan 02에서는 목록/지도 선택이 상세 흐름으로 연결되는 구조를 검증합니다. 실제 상세 정보 구성은 Plan 03에서 확장됩니다.
+      </p>
+    </div>
+  )
+}
+
+const DesktopSidebar = ({
+  places,
+  selectedPlaceId,
+}: {
+  places: PlaceSummary[]
+  selectedPlaceId: string | null
+}) => {
+  const openPlaceAdd = useAppShellStore((state) => state.openPlaceAdd)
+  const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
+  const placeListLoad = useAppShellStore((state) => state.placeListLoad)
+  const retryPlaceList = useAppShellStore((state) => state.retryPlaceList)
+
+  return (
+    <aside className="flex h-screen w-[390px] flex-col border-r border-base-300 bg-base-200 px-6 py-6" data-testid="desktop-sidebar">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-primary">Nurimap</p>
           <h2 className="mt-1 text-2xl font-bold text-base-content">장소 탐색</h2>
-          <p className="mt-2 text-sm text-base-content/70">로그인 전에도 앱 구조를 검증할 수 있는 기본 셸입니다.</p>
+          <p className="mt-2 text-sm text-base-content/70">목록과 지도에서 같은 장소를 비교하며 탐색할 수 있습니다.</p>
         </div>
-        <button aria-label="사이드바 접기 또는 펼치기" className="btn btn-ghost btn-square btn-sm">
+        <button aria-label="사이드바 접기 또는 펼치기" className="btn btn-ghost btn-square btn-sm" type="button">
           ☰
         </button>
       </div>
@@ -68,23 +211,21 @@ const DesktopSidebar = () => {
         장소 추가
       </button>
 
-      <div className="mt-6 flex-1 space-y-4 overflow-auto">
-        <div className="rounded-2xl bg-base-100 p-4 shadow-sm">
-          <p className="text-sm font-medium text-base-content">기본 빈 상태</p>
-          <p className="mt-2 text-sm text-base-content/70">향후 Plan 02에서 목록/지도 데이터가 여기에 연결됩니다.</p>
-        </div>
-        <EmptyState />
+      <div className="mt-6 flex-1 overflow-auto">
+        <PlaceListPanel
+          onRetry={retryPlaceList}
+          onSelect={openPlaceDetail}
+          places={placeListLoad === 'ready' ? places : []}
+          selectedPlaceId={selectedPlaceId}
+          status={placeListLoad}
+        />
       </div>
     </aside>
   )
 }
 
-const DesktopDetailPanel = () => (
-  <section
-    className="absolute left-6 rounded-[28px] border border-base-300 bg-base-100/95 p-6 shadow-2xl backdrop-blur"
-    data-testid="desktop-detail-panel"
-    style={layoutInsetStyle}
-  >
+const DesktopDetailPanel = ({ place }: { place: PlaceSummary | undefined }) => (
+  <section className="absolute left-6 rounded-[28px] border border-base-300 bg-base-100/95 p-6 shadow-2xl backdrop-blur" data-testid="desktop-detail-panel" style={detailPanelStyle}>
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -95,13 +236,7 @@ const DesktopDetailPanel = () => (
           ✕
         </button>
       </div>
-
-      <div className="mt-6 flex-1 rounded-2xl border border-dashed border-base-300 bg-base-200/70 p-5">
-        <p className="text-sm font-medium text-base-content">Plan 01 mock detail state</p>
-        <p className="mt-2 text-sm leading-6 text-base-content/70">
-          실제 상세 데이터 연동은 Plan 03에서 연결됩니다. 지금은 데스크톱 floating panel의 위치, 크기, 지도 뒤 노출 구조를 검증합니다.
-        </p>
-      </div>
+      <DetailContent place={place} />
     </div>
   </section>
 )
@@ -122,7 +257,16 @@ const MobileFloatingActions = () => {
   )
 }
 
-const MobileListPage = () => {
+const MobileListPage = ({
+  places,
+  selectedPlaceId,
+}: {
+  places: PlaceSummary[]
+  selectedPlaceId: string | null
+}) => {
+  const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
+  const placeListLoad = useAppShellStore((state) => state.placeListLoad)
+  const retryPlaceList = useAppShellStore((state) => state.retryPlaceList)
   const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
 
   return (
@@ -136,38 +280,111 @@ const MobileListPage = () => {
           지도 보기
         </button>
       </div>
-
-      <div className="flex-1 px-4 py-6">
-        <EmptyState />
+      <div className="flex-1 overflow-auto px-4 py-6">
+        <PlaceListPanel
+          onRetry={retryPlaceList}
+          onSelect={openPlaceDetail}
+          places={placeListLoad === 'ready' ? places : []}
+          selectedPlaceId={selectedPlaceId}
+          status={placeListLoad}
+        />
       </div>
     </section>
   )
 }
 
-const MobileAppShell = () => {
-  const navigationState = useAppShellStore((state) => state.navigationState)
+const MobileDetailPage = ({ place }: { place: PlaceSummary | undefined }) => {
+  const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-base-100 md:hidden" data-testid="mobile-shell">
-      <MockMapCanvas />
-      <MobileFloatingActions />
-      {navigationState === 'mobile_place_list_open' ? <MobileListPage /> : null}
+    <section className="absolute inset-0 z-30 flex min-h-screen flex-col bg-base-100" data-testid="mobile-detail-page">
+      <div className="flex items-center gap-3 border-b border-base-300 px-4 py-4">
+        <button className="btn btn-ghost btn-sm" onClick={returnToMapBrowse} type="button">
+          ← 뒤로
+        </button>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">Place Detail</p>
+          <h2 className="text-lg font-bold text-base-content">전체 화면 상세</h2>
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto px-4 py-6">
+        <div className="rounded-[28px] border border-base-300 bg-base-100 p-6 shadow-sm">
+          <DetailContent place={place} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+const DesktopAppShell = ({
+  mapPlaces,
+  selectedPlace,
+}: {
+  mapPlaces: PlaceSummary[]
+  selectedPlace: PlaceSummary | undefined
+}) => {
+  const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
+  const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
+  const mapLevel = useAppShellStore((state) => state.mapLevel)
+  const setMapLevel = useAppShellStore((state) => state.setMapLevel)
+
+  return (
+    <main className="hidden md:flex" data-testid="desktop-shell">
+      <DesktopSidebar places={mapPlaces} selectedPlaceId={selectedPlaceId} />
+      <section className="relative flex-1 min-h-screen">
+        <MapPane
+          mapLevel={mapLevel}
+          onMapLevelChange={setMapLevel}
+          onMarkerSelect={openPlaceDetail}
+          places={mapPlaces}
+          selectedPlaceId={selectedPlaceId}
+        />
+        <DesktopDetailPanel place={selectedPlace} />
+      </section>
     </main>
   )
 }
 
-const DesktopAppShell = () => (
-  <main className="hidden md:flex" data-testid="desktop-shell">
-    <DesktopSidebar />
-    <section className="relative flex-1 min-h-screen">
-      <MockMapCanvas />
-      <DesktopDetailPanel />
-    </section>
-  </main>
-)
+const MobileAppShell = ({
+  mapPlaces,
+  selectedPlace,
+}: {
+  mapPlaces: PlaceSummary[]
+  selectedPlace: PlaceSummary | undefined
+}) => {
+  const navigationState = useAppShellStore((state) => state.navigationState)
+  const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
+  const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
+  const mapLevel = useAppShellStore((state) => state.mapLevel)
+  const setMapLevel = useAppShellStore((state) => state.setMapLevel)
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-base-100 md:hidden" data-testid="mobile-shell">
+      <MapPane
+        mapLevel={mapLevel}
+        onMapLevelChange={setMapLevel}
+        onMarkerSelect={openPlaceDetail}
+        places={mapPlaces}
+        selectedPlaceId={selectedPlaceId}
+      />
+      {navigationState === 'mobile_place_list_open' ? (
+        <MobileListPage places={mapPlaces} selectedPlaceId={selectedPlaceId} />
+      ) : null}
+      {navigationState === 'place_detail_open' ? <MobileDetailPage place={selectedPlace} /> : null}
+      {navigationState !== 'place_detail_open' ? <MobileFloatingActions /> : null}
+    </main>
+  )
+}
 
 export const NurimapAppShell = () => {
   const { isDesktop } = useViewportMode()
+  const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
+  const mapPlaces = MOCK_PLACES.filter(hasCoordinates)
+  const selectedPlace = mapPlaces.find((place) => place.id === selectedPlaceId)
 
-  return isDesktop ? <DesktopAppShell /> : <MobileAppShell />
+  return isDesktop ? (
+    <DesktopAppShell mapPlaces={mapPlaces} selectedPlace={selectedPlace} />
+  ) : (
+    <MobileAppShell mapPlaces={mapPlaces} selectedPlace={selectedPlace} />
+  )
 }
