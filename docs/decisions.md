@@ -31,7 +31,7 @@
 - Revisit trigger:
 - Related docs:
   - docs/...
-- Related commit: TBD
+- Related commit: 12b73ef
 ```
 
 ## Usage Rules
