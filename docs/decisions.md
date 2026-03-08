@@ -56,7 +56,7 @@
   - docs/specs/00-app-shell-and-layout.md
   - docs/architecture/ui-design.md
   - docs/definition-of-done.md
-- Related commit: dd37df8
+- Related commit: 30b00cc
 
 
 ## 2026-03-08 Plan 01 - App shell state skeleton
@@ -72,5 +72,5 @@
   - docs/specs/00-app-shell-and-layout.md
   - docs/architecture/ui-design.md
   - docs/architecture/user-flow.md
-- Related commit: dd37df8
+- Related commit: 30b00cc
 
