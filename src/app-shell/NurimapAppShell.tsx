@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { MOCK_PLACES } from './mockPlaces'
 import { MapPane } from './MapPane'
 import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
 import {
@@ -58,6 +57,13 @@ const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
     <button className="btn btn-outline btn-sm mt-4" onClick={onRetry} type="button">
       다시 시도
     </button>
+  </div>
+)
+
+
+const RegistrationNotice = ({ message }: { message: string }) => (
+  <div className="mb-4 rounded-2xl border border-success/30 bg-success/10 px-4 py-3 text-sm font-medium text-success" data-testid="registration-message">
+    {message}
   </div>
 )
 
@@ -330,10 +336,12 @@ const DesktopSidebar = ({
 const DesktopDetailPanel = ({
   onClose,
   place,
+  registrationMessage,
   status,
 }: {
   onClose: () => void
   place: PlaceSummary | undefined
+  registrationMessage: string | null
   status: PlaceDetailLoadState
 }) => (
   <section className="absolute left-6 rounded-[28px] border border-base-300 bg-base-100/95 p-6 shadow-2xl backdrop-blur" data-testid="desktop-detail-panel" style={detailPanelStyle}>
@@ -347,6 +355,7 @@ const DesktopDetailPanel = ({
           ✕
         </button>
       </div>
+      {registrationMessage ? <RegistrationNotice message={registrationMessage} /> : null}
       <DetailBody onRetry={useAppShellStore.getState().retryPlaceDetail} place={place} status={status} />
     </div>
   </section>
@@ -407,10 +416,12 @@ const MobileListPage = ({
 const MobileDetailPage = ({
   onBack,
   place,
+  registrationMessage,
   status,
 }: {
   onBack: () => void
   place: PlaceSummary | undefined
+  registrationMessage: string | null
   status: PlaceDetailLoadState
 }) => (
   <section className="absolute inset-0 z-30 flex min-h-screen flex-col bg-base-100" data-testid="mobile-detail-page">
@@ -425,7 +436,8 @@ const MobileDetailPage = ({
     </div>
     <div className="flex-1 overflow-auto px-4 py-6">
       <div className="rounded-[28px] border border-base-300 bg-base-100 p-6 shadow-sm">
-        <DetailBody onRetry={useAppShellStore.getState().retryPlaceDetail} place={place} status={status} />
+        {registrationMessage ? <RegistrationNotice message={registrationMessage} /> : null}
+      <DetailBody onRetry={useAppShellStore.getState().retryPlaceDetail} place={place} status={status} />
       </div>
     </div>
   </section>
@@ -444,6 +456,7 @@ const DesktopAppShell = ({
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
   const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
+  const registrationMessage = useAppShellStore((state) => state.registrationMessage)
   const mapLevel = useAppShellStore((state) => state.mapLevel)
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
 
@@ -459,7 +472,7 @@ const DesktopAppShell = ({
           selectedPlaceId={selectedPlaceId}
         />
         {navigationState === 'place_detail_open' ? (
-          <DesktopDetailPanel onClose={closePlaceDetail} place={selectedPlace} status={placeDetailLoad} />
+          <DesktopDetailPanel onClose={closePlaceDetail} place={selectedPlace} registrationMessage={registrationMessage} status={placeDetailLoad} />
         ) : null}
         {navigationState === 'place_add_open' ? <DesktopPlaceAddPanel onClose={closePlaceAdd} /> : null}
       </section>
@@ -480,6 +493,7 @@ const MobileAppShell = ({
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
   const closePlaceDetail = useAppShellStore((state) => state.closePlaceDetail)
   const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
+  const registrationMessage = useAppShellStore((state) => state.registrationMessage)
   const mapLevel = useAppShellStore((state) => state.mapLevel)
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
 
@@ -505,7 +519,7 @@ const MobileAppShell = ({
         <MobileListPage places={mapPlaces} selectedPlaceId={selectedPlaceId} />
       ) : null}
       {navigationState === 'place_detail_open' ? (
-        <MobileDetailPage onBack={handleBack} place={selectedPlace} status={placeDetailLoad} />
+        <MobileDetailPage onBack={handleBack} place={selectedPlace} registrationMessage={registrationMessage} status={placeDetailLoad} />
       ) : null}
       {navigationState === 'place_add_open' ? <MobilePlaceAddPage onClose={closePlaceAdd} /> : null}
       {navigationState !== 'place_detail_open' ? <MobileFloatingActions /> : null}
@@ -517,8 +531,9 @@ export const NurimapAppShell = () => {
   const { isDesktop } = useViewportMode()
   const navigationState = useAppShellStore((state) => state.navigationState)
   const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
+  const places = useAppShellStore((state) => state.places)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
-  const mapPlaces = MOCK_PLACES.filter(hasCoordinates)
+  const mapPlaces = places.filter(hasCoordinates)
   const selectedPlace = mapPlaces.find((place) => place.id === selectedPlaceId)
 
   useEffect(() => {

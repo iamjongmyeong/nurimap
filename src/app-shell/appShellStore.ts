@@ -1,5 +1,7 @@
 import { create } from 'zustand'
+import { createInitialPlaces, type PlaceRegistrationResult } from './placeRepository'
 import { DEFAULT_SELECTED_PLACE_ID } from './mockPlaces'
+import type { PlaceSummary } from './types'
 
 export type NavigationState =
   | 'map_browse'
@@ -16,6 +18,8 @@ type AppShellState = {
   placeDetailLoad: PlaceDetailLoadState
   selectedPlaceId: string | null
   mapLevel: number
+  places: PlaceSummary[]
+  registrationMessage: string | null
   openMobilePlaceList: () => void
   openPlaceAdd: () => void
   closePlaceAdd: () => void
@@ -25,23 +29,28 @@ type AppShellState = {
   setPlaceListLoad: (status: PlaceListLoadState) => void
   setPlaceDetailLoad: (status: PlaceDetailLoadState) => void
   setMapLevel: (level: number) => void
+  setPlaces: (places: PlaceSummary[]) => void
+  setRegistrationMessage: (message: string | null) => void
+  applyRegistrationResult: (result: PlaceRegistrationResult) => void
   retryPlaceList: () => void
   retryPlaceDetail: () => void
   reset: () => void
 }
 
-const initialState = {
+const buildInitialState = () => ({
   navigationState: 'map_browse' as NavigationState,
   placeListLoad: 'ready' as PlaceListLoadState,
   placeDetailLoad: 'ready' as PlaceDetailLoadState,
   selectedPlaceId: DEFAULT_SELECTED_PLACE_ID,
   mapLevel: 5,
-}
+  places: createInitialPlaces(),
+  registrationMessage: null,
+})
 
 export const useAppShellStore = create<AppShellState>((set) => ({
-  ...initialState,
+  ...buildInitialState(),
   openMobilePlaceList: () => set({ navigationState: 'mobile_place_list_open' }),
-  openPlaceAdd: () => set({ navigationState: 'place_add_open' }),
+  openPlaceAdd: () => set({ navigationState: 'place_add_open', registrationMessage: null }),
   closePlaceAdd: () => set({ navigationState: 'map_browse' }),
   openPlaceDetail: (placeId) =>
     set({
@@ -54,9 +63,19 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   setPlaceListLoad: (placeListLoad) => set({ placeListLoad }),
   setPlaceDetailLoad: (placeDetailLoad) => set({ placeDetailLoad }),
   setMapLevel: (mapLevel) => set({ mapLevel }),
+  setPlaces: (places) => set({ places }),
+  setRegistrationMessage: (registrationMessage) => set({ registrationMessage }),
+  applyRegistrationResult: (result) =>
+    set({
+      places: result.places,
+      selectedPlaceId: result.place.id,
+      navigationState: 'place_detail_open',
+      placeDetailLoad: 'ready',
+      registrationMessage: result.message,
+    }),
   retryPlaceList: () => set({ placeListLoad: 'ready' }),
   retryPlaceDetail: () => set({ placeDetailLoad: 'ready' }),
-  reset: () => set(initialState),
+  reset: () => set(buildInitialState()),
 }))
 
 export const resetAppShellStore = () => {

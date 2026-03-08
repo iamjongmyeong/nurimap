@@ -171,3 +171,19 @@
   - docs/definition-of-done.md
 - Related commit: a7d759e
 
+
+## 2026-03-08 Plan 06 - Use client-side in-memory place repository before auth/storage
+- Context: docs/plans.md는 인증과 접근 제어를 Plan 08에 두고, 그 전까지 place 추가/탐색을 로컬에서 먼저 검증하도록 정의한다. Plan 06은 등록과 병합 규칙 자체를 먼저 검증해야 하므로, 아직 Supabase persistence를 강제하지 않는 것이 전체 순서와 맞다.
+- Options considered:
+  - Option A: Plan 06부터 실제 DB 저장을 먼저 붙인다.
+  - Option B: client-side in-memory repository로 등록/병합 규칙을 구현하고, later Plan에서 persistence adapter를 붙인다.
+- Decision: Option B를 선택한다.
+- Rationale: 현재 릴리즈 순서상 인증/접근 제어와 DB persistence보다 UX/도메인 규칙 검증이 먼저다. in-memory repository로도 신규 등록, 중복 병합, 리뷰 uniqueness, 상태 갱신 규칙을 충분히 검증할 수 있다.
+- Impact: Plan 06의 저장/병합은 Zustand store 기반 repository가 담당한다. 이후 auth/persistence 단계에서 같은 규칙을 server adapter로 옮길 수 있게 helper 함수로 분리한다.
+- Revisit trigger: Plan 08 또는 release-hardening 단계에서 실제 persistence 경계가 필요해지면 repository 구현을 Supabase-backed adapter로 교체한다.
+- Related docs:
+  - docs/specs/04-place-registration.md
+  - docs/specs/05-place-merge.md
+  - docs/plans.md
+- Related commit: TBD
+
