@@ -298,4 +298,4 @@
   - docs/specs/13-release-hardening.md
   - docs/architecture/security-and-ops.md
   - docs/architecture/integrations.md
-- Related commit: TBD
+- Related commit: 31f1ac2
