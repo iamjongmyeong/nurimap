@@ -51,9 +51,10 @@ https://map.naver.com/p/entry/place/{placeId}
    - 1순위: 네이버 응답의 위도/경도 사용
    - 2순위: `road_address`를 Kakao geocoding으로 변환
    - 3순위: `land_lot_address`를 Kakao geocoding으로 변환
-5. 최종 좌표를 확보하면 place 생성 또는 병합을 진행한다.
-6. 네이버 응답 자체가 실패하면 실패 modal을 표시하고 place 추가 UI에 머문다.
-7. 최종 좌표 확보에 실패하면 실패 modal을 표시하고 place 추가 UI에 머문다.
+5. 최종 좌표를 확보하면 같은 place 추가 UI 안의 다음 단계에서 조회된 장소명과 대표 주소를 읽기 전용으로 보여준다.
+6. 사용자는 읽기 전용 place 요약 아래에서 등록 입력을 이어간다.
+7. 네이버 응답 자체가 실패하면 실패 modal을 표시하고 place 추가 UI에 머문다.
+8. 최종 좌표 확보에 실패하면 실패 modal을 표시하고 place 추가 UI에 머문다.
 
 ### Current Technical Observation
 현 시점 탐색으로는 HTML 직접 파싱보다 `placeId -> place summary JSON` 경로가 더 현실적이다. 내부 API 형태는 확인되었지만 공식 공개 API가 아니므로 구현 단계에서 안정성, 약관, fallback 정책을 다시 검증해야 한다.
@@ -65,6 +66,8 @@ https://map.naver.com/p/entry/place/{placeId}
 - Kakao 지도 표시는 최종 좌표를 가진 place만 허용한다.
 - 네이버 좌표가 없으면 Kakao 주소 검색으로 좌표를 보강한다.
 - 도로명 주소 geocoding 실패 시 지번 주소 geocoding을 한 번 더 시도한다.
+- 조회 성공 후 place 추가 UI에 표시하는 대표 주소는 `road_address`를 우선 사용하고, 없으면 `land_lot_address`를 사용한다.
+- 조회 성공 후 place 추가 UI에 표시하는 장소명과 대표 주소는 읽기 전용이다.
 - 네이버 응답 자체가 실패하면 저장하지 않고 사용자에게 실패 modal을 제공한다.
 - 좌표 확보에 최종 실패하면 저장하지 않고 사용자에게 실패 modal을 제공한다.
 
