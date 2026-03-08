@@ -123,3 +123,19 @@
   - docs/architecture/user-flow.md
 - Related commit: 89bb3dd
 
+
+## 2026-03-08 Plan 04 - Place add URL step uses the existing `place_add_open` surface
+- Context: Plan 04는 Naver URL 정규화만 다루지만, 이후 Plan 05~06에서는 같은 진입점에서 조회 성공 후 2단계 place 등록 UI로 확장되어야 한다. 현재 앱에는 이미 `place_add_open` navigation state와 `장소 추가` 버튼이 존재한다.
+- Options considered:
+  - Option A: Plan 04에서는 별도 임시 페이지나 전용 route를 만들고, 이후 Plan 06에서 다시 2단계 place add UI로 교체한다.
+  - Option B: 현재 `place_add_open` state를 그대로 활용해 데스크톱은 floating panel, 모바일은 full-screen page에서 URL 입력 1단계를 먼저 구현하고 이후 같은 surface를 2단계로 확장한다.
+- Decision: Option B를 선택한다.
+- Rationale: ui-design과 user-flow 문서가 place add를 같은 화면 안의 progressive disclosure로 정의하고 있어, 지금부터 동일 surface를 쓰는 편이 later refactor를 줄인다.
+- Impact: Plan 04의 URL 입력 UI는 이후 Plan 05/06에서 동일한 state와 surface 위에 place 요약/등록 입력 단계가 추가될 예정이다.
+- Revisit trigger: Plan 06 구현 시 2단계 등록 UI가 현재 panel/page 구조로는 자연스럽게 확장되지 않는다고 판단되면 재조정한다.
+- Related docs:
+  - docs/specs/02-naver-url-normalization.md
+  - docs/architecture/ui-design.md
+  - docs/architecture/user-flow.md
+- Related commit: TBD
+

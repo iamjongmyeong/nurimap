@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { MOCK_PLACES } from './mockPlaces'
 import { MapPane } from './MapPane'
+import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
 import {
   useAppShellStore,
   type PlaceDetailLoadState,
@@ -437,6 +438,7 @@ const DesktopAppShell = ({
   mapPlaces: PlaceSummary[]
   selectedPlace: PlaceSummary | undefined
 }) => {
+  const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
   const closePlaceDetail = useAppShellStore((state) => state.closePlaceDetail)
   const navigationState = useAppShellStore((state) => state.navigationState)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
@@ -459,6 +461,7 @@ const DesktopAppShell = ({
         {navigationState === 'place_detail_open' ? (
           <DesktopDetailPanel onClose={closePlaceDetail} place={selectedPlace} status={placeDetailLoad} />
         ) : null}
+        {navigationState === 'place_add_open' ? <DesktopPlaceAddPanel onClose={closePlaceAdd} /> : null}
       </section>
     </main>
   )
@@ -471,6 +474,7 @@ const MobileAppShell = ({
   mapPlaces: PlaceSummary[]
   selectedPlace: PlaceSummary | undefined
 }) => {
+  const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
   const navigationState = useAppShellStore((state) => state.navigationState)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
@@ -503,6 +507,7 @@ const MobileAppShell = ({
       {navigationState === 'place_detail_open' ? (
         <MobileDetailPage onBack={handleBack} place={selectedPlace} status={placeDetailLoad} />
       ) : null}
+      {navigationState === 'place_add_open' ? <MobilePlaceAddPage onClose={closePlaceAdd} /> : null}
       {navigationState !== 'place_detail_open' ? <MobileFloatingActions /> : null}
     </main>
   )

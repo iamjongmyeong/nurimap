@@ -18,6 +18,7 @@ type AppShellState = {
   mapLevel: number
   openMobilePlaceList: () => void
   openPlaceAdd: () => void
+  closePlaceAdd: () => void
   openPlaceDetail: (placeId: string) => void
   closePlaceDetail: () => void
   returnToMapBrowse: () => void
@@ -41,6 +42,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   ...initialState,
   openMobilePlaceList: () => set({ navigationState: 'mobile_place_list_open' }),
   openPlaceAdd: () => set({ navigationState: 'place_add_open' }),
+  closePlaceAdd: () => set({ navigationState: 'map_browse' }),
   openPlaceDetail: (placeId) =>
     set({
       navigationState: 'place_detail_open',
