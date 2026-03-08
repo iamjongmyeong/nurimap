@@ -8,6 +8,7 @@ import {
   isAllowedEmailDomain,
   type LoginLinkState,
 } from './_authPolicy.js'
+import { logAuthRequestFailure } from './_opsLogger.js'
 import { createSupabaseAdminClient, createSupabaseBrowserlessClient } from './_supabaseAdmin.js'
 
 type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'daily_limit' | 'delivery_failed'
@@ -89,6 +90,7 @@ export const requestLoginLink = async (email: string) => {
   const normalizedEmail = email.trim().toLowerCase()
 
   if (!isAllowedEmailDomain(normalizedEmail, allowedDomain)) {
+    logAuthRequestFailure({ code: 'invalid_domain', email: normalizedEmail })
     return {
       status: 'error' as const,
       code: 'invalid_domain' as AuthRequestErrorCode,
@@ -103,6 +105,7 @@ export const requestLoginLink = async (email: string) => {
 
   if (!requestPolicy.allowed) {
     if (requestPolicy.reason === 'cooldown') {
+      logAuthRequestFailure({ code: 'cooldown', email: normalizedEmail })
       return {
         status: 'error' as const,
         code: 'cooldown' as AuthRequestErrorCode,
@@ -110,6 +113,7 @@ export const requestLoginLink = async (email: string) => {
       }
     }
 
+    logAuthRequestFailure({ code: 'daily_limit', email: normalizedEmail })
     return {
       status: 'error' as const,
       code: 'daily_limit' as AuthRequestErrorCode,
@@ -127,6 +131,7 @@ export const requestLoginLink = async (email: string) => {
   })
 
   if (error || !data.user || !data.properties.hashed_token) {
+    logAuthRequestFailure({ code: 'delivery_failed', email: normalizedEmail })
     return {
       status: 'error' as const,
       code: 'delivery_failed' as AuthRequestErrorCode,
@@ -153,6 +158,7 @@ export const requestLoginLink = async (email: string) => {
   try {
     await sendLoginEmail({ email: normalizedEmail, loginUrl })
   } catch {
+    logAuthRequestFailure({ code: 'delivery_failed', email: normalizedEmail })
     return {
       status: 'error' as const,
       code: 'delivery_failed' as AuthRequestErrorCode,

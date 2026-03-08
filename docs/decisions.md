@@ -282,4 +282,20 @@
   - docs/specs/11-recommendation.md
   - docs/architecture/domain-model.md
   - docs/architecture/ui-design.md
+- Related commit: 12b73ef
+
+
+## 2026-03-09 Plan 11 - Use repo-level static config plus service-layer logging for release hardening
+- Context: Plan 11은 검색 엔진 차단과 실패 운영 로그를 모두 요구한다. 현재 앱은 Vite 정적 엔트리와 Vercel API route가 분리되어 있어, HTML/meta/robots와 server failure logging을 서로 다른 층에서 적용해야 한다.
+- Options considered:
+  - Option A: 모든 hardening을 런타임 코드만으로 처리한다.
+  - Option B: 검색 차단은 `index.html`, `public/robots.txt`, `vercel.json` 같은 정적/배포 설정에서 처리하고, 실패 로그와 캐시는 service layer에서 처리한다.
+- Decision: Option B를 선택한다.
+- Rationale: noindex/robots/X-Robots-Tag는 정적/배포 설정이 가장 명확하고, 실패 로그와 lookup cache는 service layer가 인증/조회 경계에 가장 가깝다.
+- Impact: 검색 차단은 `index.html` meta, `public/robots.txt`, `vercel.json` header로 적용한다. 로그인 링크 요청 실패와 place lookup 실패는 server logger를 통해 구조화 로그를 남긴다. lookup cache는 canonical URL 단위 in-memory cache로 유지한다.
+- Revisit trigger: 추후 CDN 또는 shared cache 계층이 도입되면 lookup cache를 process-local Map에서 공통 cache 계층으로 옮길 수 있다.
+- Related docs:
+  - docs/specs/13-release-hardening.md
+  - docs/architecture/security-and-ops.md
+  - docs/architecture/integrations.md
 - Related commit: TBD

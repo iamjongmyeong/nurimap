@@ -1,11 +1,12 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { lookupPlaceFromRawUrl } from './placeLookupService'
+import { __resetPlaceLookupCaches, lookupPlaceFromRawUrl } from './placeLookupService'
 
 const originalFetch = globalThis.fetch
 
 describe('Plan 05 place lookup service', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    __resetPlaceLookupCaches()
   })
 
   afterEach(() => {
@@ -82,5 +83,23 @@ describe('Plan 05 place lookup service', () => {
         message: '좌표를 확인하지 못했어요. 다시 시도해 주세요.',
       },
     })
+  })
+
+  it('reuses cached lookup results for the same canonical URL', async () => {
+    const fetchSpy = vi.fn(async () =>
+      new Response(JSON.stringify({ documents: [{ x: '126.925301', y: '37.557812' }] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    ) as typeof fetch
+    globalThis.fetch = fetchSpy
+    process.env.KAKAO_REST_API_KEY = 'test-rest-key'
+
+    const first = await lookupPlaceFromRawUrl('https://map.naver.com/p/entry/place/567890123')
+    const second = await lookupPlaceFromRawUrl('https://map.naver.com/p/entry/place/567890123')
+
+    expect(first.status).toBe('success')
+    expect(second.status).toBe('success')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 })
