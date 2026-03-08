@@ -250,7 +250,7 @@
   - docs/specs/01-auth-email-login-link.md
   - docs/qa/plan-08-auth-email-login-link.md
   - docs/architecture/user-flow.md
-- Related commit: TBD
+- Related commit: aeed182
 
 
 ## 2026-03-08 Plan 09 - Update rating aggregates from canonical summary fields, not visible review slice
@@ -266,4 +266,4 @@
   - docs/specs/10-review.md
   - docs/specs/04-place-registration.md
   - docs/architecture/domain-model.md
-- Related commit: TBD
+- Related commit: aeed182
