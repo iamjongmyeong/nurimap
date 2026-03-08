@@ -185,5 +185,5 @@
   - docs/specs/04-place-registration.md
   - docs/specs/05-place-merge.md
   - docs/plans.md
-- Related commit: TBD
+- Related commit: 2cfd248
 
