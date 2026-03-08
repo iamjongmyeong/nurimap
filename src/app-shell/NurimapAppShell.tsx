@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { MapPane } from './MapPane'
 import { useAuth } from '../auth/authContext'
 import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
+import { createInitialReviewDraft, validateReviewDraft, type ReviewDraft } from './placeRepository'
 import {
   useAppShellStore,
   type PlaceDetailLoadState,
@@ -174,9 +175,104 @@ const DetailErrorState = ({ onRetry }: { onRetry: () => void }) => (
   </div>
 )
 
+export const DetailReviewComposer = ({
+  onSubmit,
+  placeId,
+}: {
+  onSubmit: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
+  placeId: string
+}) => {
+  const [draft, setDraft] = useState(createInitialReviewDraft)
+  const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const handleSave = async () => {
+    const validationError = validateReviewDraft(draft)
+    if (validationError) {
+      setSubmitState('error')
+      setErrorMessage(validationError)
+      return
+    }
+
+    setSubmitState('submitting')
+    setErrorMessage(null)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    const result = onSubmit(placeId, draft)
+    if (result.status !== 'saved') {
+      setSubmitState('error')
+      setErrorMessage(result.message ?? '리뷰를 저장하지 못했어요. 다시 시도해 주세요.')
+      return
+    }
+
+    setSubmitState('idle')
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-dashed border-base-300 bg-base-100 p-4" data-testid="detail-review-compose">
+      <h4 className="text-sm font-semibold text-base-content">리뷰 작성</h4>
+      <p className="mt-2 text-sm text-base-content/70">별점과 리뷰를 함께 남길 수 있습니다.</p>
+
+      <div className="mt-4 space-y-2" data-testid="detail-review-rating-field">
+        <p className="text-sm font-semibold text-base-content">별점</p>
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              aria-label={`상세 별점 ${value}점`}
+              className={`btn btn-circle btn-sm ${value <= draft.rating_score ? 'btn-warning' : 'btn-ghost'}`}
+              data-testid={`detail-review-rating-star-${value}`}
+              disabled={submitState === 'submitting'}
+              key={value}
+              onClick={() => setDraft((current) => ({ ...current, rating_score: value }))}
+              type="button"
+            >
+              ★
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <label className="form-control mt-4 w-full gap-2">
+        <span className="label-text font-semibold text-base-content">리뷰</span>
+        <textarea
+          className="textarea textarea-bordered min-h-28"
+          data-testid="detail-review-content-input"
+          disabled={submitState === 'submitting'}
+          onChange={(event) => setDraft((current) => ({ ...current, review_content: event.target.value }))}
+          value={draft.review_content}
+        />
+        <span className="label-text-alt text-base-content/60">{draft.review_content.length} / 500</span>
+      </label>
+
+      {errorMessage ? <p className="mt-3 text-sm text-error">{errorMessage}</p> : null}
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button
+          className="btn btn-primary rounded-2xl"
+          data-testid="detail-review-submit-button"
+          disabled={submitState === 'submitting'}
+          onClick={() => {
+            void handleSave()
+          }}
+          type="button"
+        >
+          {submitState === 'submitting' ? '저장 중...' : '리뷰 저장'}
+        </button>
+      </div>
+
+      {submitState === 'submitting' ? (
+        <div className="mt-4 rounded-2xl bg-base-200 p-4 text-sm text-base-content/80" data-testid="detail-review-submit-loading">
+          리뷰를 저장하는 중입니다.
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 const DetailCard = ({ place }: { place: PlaceSummary }) => {
   const hasMyReview = place.my_review !== null
   const myReview = hasMyReview ? place.my_review : null
+  const submitPlaceReview = useAppShellStore((state) => state.submitPlaceReview)
 
   return (
     <div data-testid="place-detail-ready">
@@ -248,10 +344,7 @@ const DetailCard = ({ place }: { place: PlaceSummary }) => {
           <p className="mt-2 text-sm text-base-content/70">{myReview?.content}</p>
         </div>
       ) : (
-        <div className="mt-6 rounded-2xl border border-dashed border-base-300 bg-base-100 p-4" data-testid="detail-review-compose">
-          <h4 className="text-sm font-semibold text-base-content">리뷰 작성 UI</h4>
-          <p className="mt-2 text-sm text-base-content/70">현재 사용자가 아직 review를 작성하지 않았기 때문에 리뷰 작성 UI가 노출됩니다.</p>
-        </div>
+        <DetailReviewComposer key={place.id} onSubmit={submitPlaceReview} placeId={place.id} />
       )}
     </div>
   )

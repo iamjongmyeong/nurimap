@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { createInitialPlaces, registerOrMergePlace, validateRegistrationDraft } from './placeRepository'
+import {
+  createInitialPlaces,
+  registerOrMergePlace,
+  submitReviewForPlace,
+  validateRegistrationDraft,
+  validateReviewDraft,
+} from './placeRepository'
 
 const baseLookupData = {
   naver_place_id: '123456789',
@@ -157,6 +163,57 @@ describe('Plan 06 place repository', () => {
     })
 
     expect(result.status).toBe('existing_review')
+    if (result.status !== 'existing_review') {
+      throw new Error('expected existing_review result')
+    }
     expect(result.message).toBe('이미 리뷰를 남긴 장소예요')
+  })
+
+  it('submits a review for a place without my review and updates aggregate summary fields', () => {
+    const result = submitReviewForPlace({
+      placeId: 'place-cafe-1',
+      places: createInitialPlaces(),
+      draft: {
+        rating_score: 5,
+        review_content: '새 리뷰 작성 테스트',
+      },
+    })
+
+    expect(result.status).toBe('saved')
+    if (result.status !== 'saved') {
+      throw new Error('expected saved result')
+    }
+
+    expect(result.place.my_review?.content).toBe('새 리뷰 작성 테스트')
+    expect(result.place.my_review?.author_name).toBe('테스트 사용자')
+    expect(result.place.review_count).toBe(9)
+    expect(result.place.average_rating).toBe(4.4)
+    expect(result.place.reviews[0]?.content).toBe('새 리뷰 작성 테스트')
+  })
+
+  it('rejects a second review submission for the same place', () => {
+    const result = submitReviewForPlace({
+      placeId: 'place-restaurant-1',
+      places: createInitialPlaces(),
+      draft: {
+        rating_score: 4,
+        review_content: '이미 리뷰가 있는 장소',
+      },
+    })
+
+    expect(result.status).toBe('existing_review')
+    if (result.status !== 'existing_review') {
+      throw new Error('expected existing_review result')
+    }
+    expect(result.message).toBe('이미 리뷰를 남긴 장소예요')
+  })
+
+  it('fails review validation when rating is outside 1 to 5', () => {
+    expect(
+      validateReviewDraft({
+        rating_score: 0,
+        review_content: 'bad rating',
+      }),
+    ).toBe('별점은 1점에서 5점 사이여야 해요.')
   })
 })

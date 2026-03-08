@@ -1,6 +1,7 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
+import { DetailReviewComposer } from './NurimapAppShell'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
 
 const setViewport = (width: number) => {
@@ -67,6 +68,70 @@ describe('Plan 03 place detail', () => {
 
     expect(screen.getByTestId('detail-review-compose')).toBeInTheDocument()
     expect(screen.queryByTestId('detail-my-review')).not.toBeInTheDocument()
+    expect(screen.getByTestId('detail-review-rating-star-5')).toHaveClass('btn-warning')
+    expect(screen.getByTestId('detail-review-submit-button')).toHaveTextContent('리뷰 저장')
+  })
+
+  it('submits a new review, updates aggregates, and switches to my review state', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.click(screen.getByTestId('detail-review-rating-star-4'))
+    await user.type(screen.getByTestId('detail-review-content-input'), '상세 화면에서 새 리뷰를 남깁니다.')
+    await user.click(screen.getByTestId('detail-review-submit-button'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-my-review')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByTestId('detail-review-compose')).not.toBeInTheDocument()
+    expect(screen.getByTestId('detail-my-review')).toHaveTextContent('상세 화면에서 새 리뷰를 남깁니다.')
+    expect(screen.getByTestId('detail-my-rating-status')).toHaveTextContent('4점')
+    expect(screen.getByTestId('desktop-detail-panel')).toHaveTextContent('★ 4.3 · 리뷰 9')
+    expect(screen.getByTestId('detail-review-list')).toHaveTextContent('테스트 사용자')
+    expect(screen.getByTestId('detail-review-list')).toHaveTextContent('2026-03-08')
+  })
+
+  it('shows the review submitting state and disables the save button while saving', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.type(screen.getByTestId('detail-review-content-input'), '저장 중 상태 테스트')
+    const submitButton = screen.getByTestId('detail-review-submit-button')
+    const clickPromise = user.click(submitButton)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-review-submit-loading')).toBeInTheDocument()
+      expect(submitButton).toBeDisabled()
+    })
+
+    await clickPromise
+  })
+
+  it('keeps the entered review values after a save failure', async () => {
+    const user = userEvent.setup()
+    render(
+      <DetailReviewComposer
+        onSubmit={() => ({
+          status: 'error',
+          message: '리뷰를 저장하지 못했어요. 다시 시도해 주세요.',
+        })}
+        placeId="place-review-fail"
+      />,
+    )
+
+    await user.click(screen.getByTestId('detail-review-rating-star-2'))
+    await user.type(screen.getByTestId('detail-review-content-input'), '실패 후에도 남아 있어야 하는 리뷰')
+    await user.click(screen.getByRole('button', { name: '리뷰 저장' }))
+
+    expect(await screen.findByText('리뷰를 저장하지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-review-content-input')).toHaveValue('실패 후에도 남아 있어야 하는 리뷰')
+    expect(screen.getByTestId('detail-review-rating-star-2')).toHaveClass('btn-warning')
+    expect(screen.getByTestId('detail-review-submit-button')).toHaveTextContent('리뷰 저장')
   })
 
   it('provides the naver map link', async () => {

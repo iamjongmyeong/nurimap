@@ -116,6 +116,31 @@ export const MOCK_PLACES: PlaceSummary[] = [
     my_review: null,
     reviews: [],
   },
+  {
+    id: 'place-review-fail',
+    naver_place_id: '10005',
+    naver_place_url: 'https://map.naver.com/p/entry/place/10005',
+    name: '리뷰 저장 실패 장소',
+    road_address: '서울 마포구 실패로 5',
+    latitude: 37.55651,
+    longitude: 126.92641,
+    place_type: 'cafe',
+    zeropay_status: 'available',
+    average_rating: 3.9,
+    review_count: 3,
+    created_by_name: '오류검증',
+    recommendation_count: 0,
+    my_review: null,
+    reviews: [
+      {
+        id: 'review-6',
+        author_name: '오류검증',
+        content: '리뷰 저장 실패 흐름 테스트용 장소입니다.',
+        created_at: '2026-03-02',
+        rating_score: 4,
+      },
+    ],
+  },
 ]
 
 export const DEFAULT_SELECTED_PLACE_ID = null

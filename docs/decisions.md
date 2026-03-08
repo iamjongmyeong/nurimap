@@ -235,3 +235,35 @@
   - docs/specs/03-place-data-extraction.md
   - docs/specs/12-local-integration-qa.md
 - Related commit: f644b0a
+
+
+## 2026-03-08 Plan 08 - Treat Outlook mobile no-op link open as client compatibility follow-up
+- Context: production에서 `request-link`, `verify-link`, Supabase `verifyOtp`까지는 실제로 성공하는 것을 확인했지만, Outlook 모바일 앱에서 링크를 눌렀을 때 사용자는 “아무 반응이 없다”고 보고했다.
+- Options considered:
+  - Option A: authentication backend defect로 간주하고 Plan 08을 계속 차단한다.
+  - Option B: 메일 발송/링크 검증 backend는 정상으로 보고, Outlook 모바일 인앱 브라우저 또는 handoff 특성 가능성을 별도 client compatibility 이슈로 보류한다.
+- Decision: Option B를 선택한다.
+- Rationale: production 기준으로 유효한 링크는 서버 검증과 세션 생성까지 성공했고, 브라우저 재현에서는 이름 입력 화면까지 진입했다. 따라서 현재 근거만으로 backend defect로 단정하기보다 Outlook 모바일 환경 특이사항으로 분리하는 편이 맞다.
+- Impact: Plan 08은 메일 발송/링크 검증 backend가 동작하는 상태로 간주하고 다음 Plan으로 진행한다. Outlook 모바일 링크 오픈 UX는 이후 기본 브라우저 열기, deep-link handoff, 인앱 브라우저 정책 관점에서 추가 점검한다.
+- Revisit trigger: 모바일 Outlook 사용자가 링크를 기본 브라우저로 열어도 동일 증상이 재현되면 auth redirect / session persistence / mobile browser compatibility를 다시 조사한다.
+- Related docs:
+  - docs/specs/01-auth-email-login-link.md
+  - docs/qa/plan-08-auth-email-login-link.md
+  - docs/architecture/user-flow.md
+- Related commit: TBD
+
+
+## 2026-03-08 Plan 09 - Update rating aggregates from canonical summary fields, not visible review slice
+- Context: place 상세와 목록은 `average_rating` / `review_count`를 canonical 집계값으로 보여주지만, mock review 목록은 전체 review 집합의 일부만 담고 있다. 새 review 저장 시 화면에 보이는 review 배열 길이만 기준으로 다시 계산하면 집계값이 실제 상세/목록 수치와 어긋난다.
+- Options considered:
+  - Option A: 현재 메모리에 있는 `reviews` 배열만 기준으로 평균/개수를 다시 계산한다.
+  - Option B: `average_rating`과 `review_count`를 canonical aggregate로 보고, 새 별점 입력 시 그 요약값에 incremental update를 적용한다.
+- Decision: Option B를 선택한다.
+- Rationale: domain-model 문서가 `review_count`를 canonical 집계 필드로 정의하고 있으므로, 상세 화면에 노출하는 review list가 부분 목록이어도 aggregate 숫자는 항상 summary field와 일치해야 한다.
+- Impact: Plan 09 review 저장과 Plan 06 기존 place 병합 review 추가는 모두 `average_rating` / `review_count`에 incremental update를 적용한다. 리뷰 목록은 최신 review를 prepend하지만, aggregate 숫자는 전체 canonical count를 유지한다.
+- Revisit trigger: 추후 전체 review 목록을 서버에서 page 없이 완전 로드하게 되면 aggregate를 서버 계산값으로 일원화하고 클라이언트 incremental 계산은 제거할 수 있다.
+- Related docs:
+  - docs/specs/10-review.md
+  - docs/specs/04-place-registration.md
+  - docs/architecture/domain-model.md
+- Related commit: TBD

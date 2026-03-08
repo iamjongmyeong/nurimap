@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { createInitialPlaces, type PlaceRegistrationResult } from './placeRepository'
+import { createInitialPlaces, submitReviewForPlace, type PlaceRegistrationResult, type ReviewDraft, type ReviewSubmissionResult } from './placeRepository'
 import { DEFAULT_SELECTED_PLACE_ID } from './mockPlaces'
 import type { PlaceSummary } from './types'
 
@@ -32,6 +32,7 @@ type AppShellState = {
   setPlaces: (places: PlaceSummary[]) => void
   setRegistrationMessage: (message: string | null) => void
   applyRegistrationResult: (result: PlaceRegistrationResult) => void
+  submitPlaceReview: (placeId: string, draft: ReviewDraft) => ReviewSubmissionResult
   retryPlaceList: () => void
   retryPlaceDetail: () => void
   reset: () => void
@@ -47,7 +48,7 @@ const buildInitialState = () => ({
   registrationMessage: null,
 })
 
-export const useAppShellStore = create<AppShellState>((set) => ({
+export const useAppShellStore = create<AppShellState>((set, get) => ({
   ...buildInitialState(),
   openMobilePlaceList: () => set({ navigationState: 'mobile_place_list_open' }),
   openPlaceAdd: () => set({ navigationState: 'place_add_open', registrationMessage: null }),
@@ -73,6 +74,24 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       placeDetailLoad: 'ready',
       registrationMessage: result.message,
     }),
+  submitPlaceReview: (placeId, draft) => {
+    const result = submitReviewForPlace({
+      placeId,
+      draft,
+      places: get().places,
+    })
+
+    if (result.status === 'saved') {
+      set({
+        places: result.places,
+        selectedPlaceId: result.place.id,
+        navigationState: 'place_detail_open',
+        placeDetailLoad: 'ready',
+      })
+    }
+
+    return result
+  },
   retryPlaceList: () => set({ placeListLoad: 'ready' }),
   retryPlaceDetail: () => set({ placeDetailLoad: 'ready' }),
   reset: () => set(buildInitialState()),
