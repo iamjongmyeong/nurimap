@@ -3,7 +3,7 @@
 ## Overview
 Nurimap은 외부 서비스와의 연동을 place 등록, 지도 렌더링, 인증, 외부 딥링크 네 가지 범주로 나눈다.
 
-## Naver URL Ingestion
+## Naver Map URL Ingestion
 
 ### Supported Input Shapes
 - `https://map.naver.com/p/search/.../place/{placeId}?...`
@@ -18,15 +18,16 @@ https://map.naver.com/p/entry/place/{placeId}
 
 ### Extraction Contract
 - 입력
-  - raw Naver URL
+  - raw Naver Map URL
 - 출력
   - `naver_place_id`
-  - canonical Naver URL
+  - canonical Naver Map URL
 
 ### Failure Cases
 - `map.naver.com`이 아님
 - `placeId`가 없음
 - 지원하지 않는 URL 형식
+- URL 입력 필드 아래에 `네이버 지도 URL을 입력해주세요.` inline error 표시
 
 ## Naver Place Data Lookup
 
@@ -43,7 +44,7 @@ https://map.naver.com/p/entry/place/{placeId}
 현재 가장 유력한 후보는 `placeId` 기반 서버 측 조회다.
 
 후보 흐름:
-1. 클라이언트가 raw URL을 제출한다.
+1. 클라이언트가 raw Naver Map URL을 제출한다.
 2. 서버가 URL을 검증하고 `naver_place_id`를 추출한다.
 3. 서버가 place 데이터를 조회한다.
 4. 좌표 확보는 아래 우선순위로 진행한다.
@@ -51,8 +52,8 @@ https://map.naver.com/p/entry/place/{placeId}
    - 2순위: `road_address`를 Kakao geocoding으로 변환
    - 3순위: `land_lot_address`를 Kakao geocoding으로 변환
 5. 최종 좌표를 확보하면 place 생성 또는 병합을 진행한다.
-6. 네이버 응답 자체가 실패하면 alert를 표시하고 등록 프로세스를 종료한다.
-7. 최종 좌표 확보에 실패하면 alert를 표시하고 등록 프로세스를 종료한다.
+6. 네이버 응답 자체가 실패하면 실패 modal을 표시하고 place 추가 UI에 머문다.
+7. 최종 좌표 확보에 실패하면 실패 modal을 표시하고 place 추가 UI에 머문다.
 
 ### Current Technical Observation
 현 시점 탐색으로는 HTML 직접 파싱보다 `placeId -> place summary JSON` 경로가 더 현실적이다. 내부 API 형태는 확인되었지만 공식 공개 API가 아니므로 구현 단계에서 안정성, 약관, fallback 정책을 다시 검증해야 한다.
@@ -64,8 +65,8 @@ https://map.naver.com/p/entry/place/{placeId}
 - Kakao 지도 표시는 최종 좌표를 가진 place만 허용한다.
 - 네이버 좌표가 없으면 Kakao 주소 검색으로 좌표를 보강한다.
 - 도로명 주소 geocoding 실패 시 지번 주소 geocoding을 한 번 더 시도한다.
-- 네이버 응답 자체가 실패하면 저장하지 않고 사용자에게 명확한 alert를 제공한다.
-- 좌표 확보에 최종 실패하면 저장하지 않고 사용자에게 명확한 alert를 제공한다.
+- 네이버 응답 자체가 실패하면 저장하지 않고 사용자에게 실패 modal을 제공한다.
+- 좌표 확보에 최종 실패하면 저장하지 않고 사용자에게 실패 modal을 제공한다.
 
 ## Kakao Map
 
@@ -107,7 +108,7 @@ place를 지도에 표시하고 탐색 상태를 관리한다.
 place 상세 화면에서 사용자가 Naver 지도 앱 또는 웹으로 이동할 수 있게 한다.
 
 ### Preferred Reference
-- canonical Naver URL을 기본 연결 대상로 사용한다.
+- canonical Naver Map URL을 기본 연결 대상로 사용한다.
 - 네이티브 앱 scheme 최적화 여부는 구현 단계에서 별도 확정한다.
 
 ### Failure Handling

@@ -14,6 +14,7 @@ Your role is to coordinate specialized agents, tools, and skills so work is comp
 - When frontend state management is needed, React-oriented libraries such as Zustand may be used.
 - For React or frontend implementation and review work, you MUST use the `vercel-react-best-practices` skill before proceeding.
 - When a relevant spec exists under `docs/specs/`, treat it as implementation source of truth and follow TDD: write or update failing tests first, then implement, then verify.
+- When modifying documents under `docs/`, verify the current directory structure and existing reference targets first, then update content in a way that preserves valid document references and links.
 </operating_principles>
 
 ---

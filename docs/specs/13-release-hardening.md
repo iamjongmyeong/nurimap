@@ -20,7 +20,7 @@
 - `robots.txt`, `noindex`, `nofollow`, `X-Robots-Tag`를 적용한다.
 - 공개/비공개 환경변수를 분리한다.
 - Naver 조회 실패와 로그인 링크 실패를 운영 로그에 남긴다.
-- Naver 조회 캐시와 실패 alert UX를 정리한다.
+- Naver 조회 캐시와 실패 modal/error UX를 정리한다.
 - 배포 전 검증 절차를 문서와 구현에 맞춘다.
 
 ## Acceptance Criteria

@@ -33,7 +33,7 @@ flowchart LR
 | Component | Responsibility |
 |---|---|
 | Browser App | 로그인 UI, 로그인 전용 URL 진입 처리, URL 입력, 지도/목록/상세 렌더링, 세션 복원, 사용자 상호작용 |
-| App Server | Naver URL 정규화 보조, place 조회 프록시, 좌표 fallback geocoding, 민감한 API 호출, 서버 검증 |
+| App Server | Naver Map URL 정규화 보조, place 조회 프록시, 좌표 fallback geocoding, 민감한 API 호출, 서버 검증 |
 | Supabase Auth | 이메일 로그인 링크 인증, 세션 발급 및 갱신 |
 | Supabase DB | place, review, recommendation, user 관련 데이터 저장 |
 | Kakao Map SDK | 지도 렌더링, 마커 표시, 줌/팬 이벤트 |

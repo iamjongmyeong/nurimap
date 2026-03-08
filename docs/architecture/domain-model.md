@@ -1,11 +1,14 @@
 # Domain Model
 
+This document is the source of truth for domain rules.
+
 ## Naming Rule
 - 내부 대표 도메인 객체는 `place`다.
 - `location`은 좌표 또는 지도 위치 정보에만 사용한다.
 - `place_type`은 `restaurant | cafe`다.
 - `zeropay_status`는 `available | unavailable | needs_verification`다.
 - `recommendation`은 내부 도메인 용어다. UI에서는 `추천` 또는 `좋아요`로 표현할 수 있다.
+- 내부 집계 필드명은 `review_count`를 사용하고, UI에서는 필요할 때 `리뷰 수` 또는 `별점 수`로 표현할 수 있다.
 
 ## Core Entities
 
@@ -47,10 +50,14 @@
 
 핵심 규칙:
 - 로그인 사용자만 작성 가능하다.
+- 한 사용자는 같은 place에 review 하나만 가진다.
 - 리뷰 작성 시 별점 평가를 함께 입력한다.
+- review의 `rating_score`는 해당 사용자의 place별 단일 별점 상태다.
 - `rating_score`는 1점에서 5점 사이의 정수만 허용한다.
+- place 등록 시 입력한 초기 리뷰와 별점은 동일 Review 엔터티로 저장한다.
 - 작성자와 작성일이 상세 화면에 보여야 한다.
-- 수정/삭제 가능 여부는 추후 확정한다.
+- 이번 릴리즈에서는 이미 review가 있는 사용자가 같은 place에 새 review를 추가할 수 없다.
+- 수정/삭제는 이번 릴리즈 범위에 포함하지 않는다.
 
 ### Recommendation
 사용자의 place 추천 액션을 나타내는 엔터티다.
@@ -104,7 +111,7 @@
 |---|---|---|
 | User | Place | 한 사용자는 여러 place를 등록할 수 있다 |
 | Place | Review | 한 place에는 여러 review가 달릴 수 있다 |
-| User | Review | 한 사용자는 여러 review를 작성할 수 있다 |
+| User | Review | 한 사용자는 여러 review를 작성할 수 있지만, 같은 place에는 하나만 작성할 수 있다 |
 | Place | Recommendation | 한 place에는 여러 recommendation이 달릴 수 있다 |
 | User | Recommendation | 한 사용자는 여러 place를 추천할 수 있다 |
 
@@ -112,12 +119,14 @@
 - Place List View
   - `name`, `road_address`, `average_rating`, `review_count`
 - Place Detail View
-  - `name`, 주소, `place_type`, `average_rating`, `rating_count`, 등록자, `recommendation_count`, review 목록
+  - `name`, 주소, `place_type`, `average_rating`, `review_count`, `my_rating_score`, 등록자, `recommendation_count`, review 목록
 - Map Marker View
   - `latitude`, `longitude`, `place_type`, `name`
 
 ## Data Integrity Rules
 - `naver_place_id`는 canonical uniqueness 후보 키다.
+- review는 `(place_id, author_user_id)` 조합으로 하나만 허용한다.
+- 현재 도메인 규칙에서는 `review_count`를 리뷰 수와 별점 수의 canonical 집계 필드로 사용한다.
 - place 저장 전 좌표를 확보해야 한다.
 - 좌표 추출 실패 시 `road_address`, 이후 `land_lot_address` 순서로 geocoding fallback을 시도한다.
 - geocoding까지 실패하면 place를 저장하지 않는다.
