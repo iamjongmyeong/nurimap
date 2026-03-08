@@ -139,3 +139,35 @@
   - docs/architecture/user-flow.md
 - Related commit: c8bd3ec
 
+
+## 2026-03-08 Plan 05 - Server-side place lookup starts with fixture-backed adapter
+- Context: 문서는 server-side Naver place lookup과 Kakao geocoding fallback을 요구하지만, 현재 저장소에는 공식 Naver place detail API 계약이 확정돼 있지 않다. `docs/architecture/integrations.md`도 내부 API 후보는 있으나 안정성과 약관을 구현 단계에서 재검증해야 한다고 적고 있다.
+- Options considered:
+  - Option A: 실제 Naver 비공식 source를 바로 붙여서 Plan 05를 끝낸다.
+  - Option B: server-side lookup boundary와 geocoding fallback 계약을 먼저 구현하고, place source는 fixture-backed adapter로 시작한다. 이후 실제 Naver source를 같은 interface 뒤에 교체한다.
+- Decision: Option B를 선택한다.
+- Rationale: 현재는 사용자 개입 없이 연속 개발을 진행해야 하고, 공식 API 부재 상태에서 비공식 source를 바로 고정하면 리스크가 크다. fixture-backed adapter로 시작하면 서버 경계, 상태 모델, retry/failure UX, geocoding fallback, 다음 단계 등록 UI를 먼저 안정화할 수 있다.
+- Impact: Plan 05는 server route + lookup contract + fallback 로직 + UI 2단계 진행 구조를 구현한다. 실제 Naver source는 같은 adapter interface 뒤에서 교체 가능하게 유지한다.
+- Revisit trigger: 실제 Naver source를 안전하게 재현할 수 있는 계약이 확보되면 fixture adapter를 실 source adapter로 교체한다.
+- Related docs:
+  - docs/specs/03-place-data-extraction.md
+  - docs/architecture/integrations.md
+  - docs/architecture/user-flow.md
+- Related commit: TBD
+
+
+## 2026-03-08 Plan 05 - Share lookup service between Vercel API and Vite dev middleware
+- Context: Plan 05는 server-side lookup을 요구하지만, 현재 개발 스크립트는 `vite`만 사용한다. Vercel production에서는 `api/` route를 쓸 수 있지만, 로컬 `vite` 개발에서도 같은 `/api/place-lookup` 계약을 유지하는 편이 이후 QA와 구현이 단순하다.
+- Options considered:
+  - Option A: production은 `api/` route를 쓰고, 로컬 개발에서는 프론트엔드가 직접 fixture를 호출한다.
+  - Option B: lookup service를 공유 모듈로 만들고, production은 `api/` route, local dev는 Vite middleware에서 같은 service를 호출한다.
+- Decision: Option B를 선택한다.
+- Rationale: 같은 `/api/place-lookup` 계약을 로컬과 배포에서 공통으로 쓰면 테스트와 UI 구현이 단순해지고, 나중에 실제 source adapter로 교체할 때도 접점이 하나로 유지된다.
+- Impact: `src/server/*`에 lookup service를 두고, `api/place-lookup.ts`와 `vite.config.ts` dev middleware가 이를 공유한다.
+- Revisit trigger: 추후 별도 backend나 edge/server framework를 도입하면 Vite middleware는 제거하고 실제 API server 하나로 통합할 수 있다.
+- Related docs:
+  - docs/specs/03-place-data-extraction.md
+  - docs/architecture/integrations.md
+  - docs/definition-of-done.md
+- Related commit: TBD
+
