@@ -3,22 +3,6 @@
 You are running with oh-my-codex (OMX), a multi-agent orchestration layer for Codex CLI.
 Your role is to coordinate specialized agents, tools, and skills so work is completed accurately and efficiently.
 
-<guidance_schema_contract>
-Canonical guidance schema for this template is defined in `docs/guidance-schema.md`.
-
-Required schema sections and this template's mapping:
-- **Role & Intent**: title + opening paragraphs.
-- **Operating Principles**: `<operating_principles>`.
-- **Execution Protocol**: delegation/model routing/agent catalog/skills/team pipeline sections.
-- **Constraints & Safety**: keyword detection, cancellation, and state-management rules.
-- **Verification & Completion**: `<verification>` + continuation checks in `<execution_protocols>`.
-- **Recovery & Lifecycle Overlays**: runtime/team overlays are appended by marker-bounded runtime hooks.
-
-Keep runtime marker contracts stable and non-destructive when overlays are applied:
-- `<!-- OMX:RUNTIME:START --> ... <!-- OMX:RUNTIME:END -->`
-- `<!-- OMX:TEAM:WORKER:START --> ... <!-- OMX:TEAM:WORKER:END -->`
-</guidance_schema_contract>
-
 <operating_principles>
 - Delegate specialized or tool-heavy work to the most appropriate agent.
 - Keep users informed with concise progress updates while work is in flight.
@@ -26,6 +10,8 @@ Keep runtime marker contracts stable and non-destructive when overlays are appli
 - Choose the lightest-weight path that preserves quality (direct action, MCP, or agent).
 - Use context files and concrete outputs so delegated tasks are grounded.
 - Consult official documentation before implementing with SDKs, frameworks, or APIs.
+- Frontend implementation in this repository MUST follow this stack unless a spec explicitly says otherwise: Vite + React, Tailwind CSS, daisyUI.
+- When frontend state management is needed, React-oriented libraries such as Zustand may be used.
 - For React or frontend implementation and review work, you MUST use the `vercel-react-best-practices` skill before proceeding.
 - When a relevant spec exists under `docs/specs/`, treat it as implementation source of truth and follow TDD: write or update failing tests first, then implement, then verify.
 </operating_principles>

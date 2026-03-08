@@ -40,31 +40,17 @@
 - `id`
 - `place_id`
 - `author_user_id`
+- `rating_score`
 - `content`
 - `created_at`
 - `updated_at`
 
 핵심 규칙:
 - 로그인 사용자만 작성 가능하다.
+- 리뷰 작성 시 별점 평가를 함께 입력한다.
+- `rating_score`는 1점에서 5점 사이의 정수만 허용한다.
 - 작성자와 작성일이 상세 화면에 보여야 한다.
 - 수정/삭제 가능 여부는 추후 확정한다.
-
-### Rating
-사용자가 place에 남기는 1점에서 5점 사이의 별점 엔터티다.
-
-후보 필드:
-- `id`
-- `place_id`
-- `user_id`
-- `score`
-- `created_at`
-- `updated_at`
-
-핵심 규칙:
-- 점수는 1점에서 5점 사이의 정수만 허용한다.
-- 한 사용자는 place마다 하나의 rating만 가진다.
-- 같은 사용자가 다시 평가하면 기존 rating을 수정한다.
-- rating은 review 없이도 독립적으로 남길 수 있다.
 
 ### Recommendation
 사용자의 place 추천 액션을 나타내는 엔터티다.
@@ -87,11 +73,15 @@
 - `id`
 - `email`
 - `email_domain`
+- `name`
 - `created_at`
 - `last_seen_at`
 
 핵심 규칙:
 - 허용 도메인은 `@nurimedia.co.kr`다.
+- 이름은 필수 값이다.
+- 최초 로그인 후 이름이 비어 있으면 이름 입력을 완료해야 한다.
+- 이름은 단일 input field로 수집하고, 1글자 이상이면 유효하다.
 - place 등록자, 리뷰 작성자, 추천자 연결에 사용한다.
 
 ### Session
@@ -113,8 +103,6 @@
 | From | To | Relation |
 |---|---|---|
 | User | Place | 한 사용자는 여러 place를 등록할 수 있다 |
-| Place | Rating | 한 place에는 여러 rating이 달릴 수 있다 |
-| User | Rating | 한 사용자는 여러 place를 평가할 수 있다 |
 | Place | Review | 한 place에는 여러 review가 달릴 수 있다 |
 | User | Review | 한 사용자는 여러 review를 작성할 수 있다 |
 | Place | Recommendation | 한 place에는 여러 recommendation이 달릴 수 있다 |
