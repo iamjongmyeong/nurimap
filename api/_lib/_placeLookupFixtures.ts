@@ -1,4 +1,4 @@
-import type { PlaceLookupSourceRecord } from './placeLookupTypes'
+import type { PlaceLookupSourceRecord } from './_placeLookupTypes'
 
 export const PLACE_LOOKUP_FIXTURES: Record<string, PlaceLookupSourceRecord> = {
 

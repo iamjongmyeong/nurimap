@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { verifyAccessToken } from './_lib/authService'
-import { lookupPlaceFromRawUrl } from './_lib/placeLookupService'
-import { NAVER_URL_ERROR_MESSAGE } from './_lib/naverUrl'
+import { verifyAccessToken } from './_lib/_authService'
+import { lookupPlaceFromRawUrl } from './_lib/_placeLookupService'
+import { NAVER_URL_ERROR_MESSAGE } from './_lib/_naverUrl'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
