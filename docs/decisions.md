@@ -121,5 +121,5 @@
   - docs/specs/08-place-detail.md
   - docs/architecture/ui-design.md
   - docs/architecture/user-flow.md
-- Related commit: TBD
+- Related commit: 89bb3dd
 
