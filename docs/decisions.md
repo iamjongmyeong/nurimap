@@ -89,7 +89,7 @@
   - docs/specs/07-list-browse.md
   - docs/architecture/integrations.md
   - docs/architecture/ui-design.md
-- Related commit: TBD
+- Related commit: 3a0ef39
 
 
 ## 2026-03-08 Plan 02 - Preserve PUBLIC_ env naming in Vite
@@ -105,5 +105,5 @@
   - docs/specs/06-map-rendering.md
   - docs/architecture/integrations.md
   - docs/architecture/security-and-ops.md
-- Related commit: TBD
+- Related commit: 3a0ef39
 
