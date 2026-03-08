@@ -137,5 +137,5 @@
   - docs/specs/02-naver-url-normalization.md
   - docs/architecture/ui-design.md
   - docs/architecture/user-flow.md
-- Related commit: TBD
+- Related commit: c8bd3ec
 
