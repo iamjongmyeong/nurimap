@@ -15,6 +15,7 @@ Your role is to coordinate specialized agents, tools, and skills so work is comp
 - For React or frontend implementation and review work, you MUST use the `vercel-react-best-practices` skill before proceeding.
 - When a relevant spec exists under `docs/specs/`, treat it as implementation source of truth and follow TDD: write or update failing tests first, then implement, then verify.
 - When modifying documents under `docs/`, verify the current directory structure and existing reference targets first, then update content in a way that preserves valid document references and links.
+- When autonomous development requires a non-trivial decision and the user is not being consulted, record it in `docs/decisions.md` with context, options considered, chosen decision, rationale, impact, revisit trigger, related docs, and related commit.
 </operating_principles>
 
 ---

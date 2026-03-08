@@ -10,6 +10,6 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "oh-my-codex": "^0.8.5"
+    "oh-my-codex": "^0.8.6"
   }
 }
