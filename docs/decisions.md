@@ -153,7 +153,7 @@
   - docs/specs/03-place-data-extraction.md
   - docs/architecture/integrations.md
   - docs/architecture/user-flow.md
-- Related commit: TBD
+- Related commit: a7d759e
 
 
 ## 2026-03-08 Plan 05 - Share lookup service between Vercel API and Vite dev middleware
@@ -169,5 +169,5 @@
   - docs/specs/03-place-data-extraction.md
   - docs/architecture/integrations.md
   - docs/definition-of-done.md
-- Related commit: TBD
+- Related commit: a7d759e
 
