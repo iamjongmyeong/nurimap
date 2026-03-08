@@ -1,5 +1,13 @@
 import { create } from 'zustand'
-import { createInitialPlaces, submitReviewForPlace, type PlaceRegistrationResult, type ReviewDraft, type ReviewSubmissionResult } from './placeRepository'
+import {
+  createInitialPlaces,
+  submitReviewForPlace,
+  toggleRecommendationForPlace,
+  type PlaceRegistrationResult,
+  type RecommendationToggleResult,
+  type ReviewDraft,
+  type ReviewSubmissionResult,
+} from './placeRepository'
 import { DEFAULT_SELECTED_PLACE_ID } from './mockPlaces'
 import type { PlaceSummary } from './types'
 
@@ -33,6 +41,7 @@ type AppShellState = {
   setRegistrationMessage: (message: string | null) => void
   applyRegistrationResult: (result: PlaceRegistrationResult) => void
   submitPlaceReview: (placeId: string, draft: ReviewDraft) => ReviewSubmissionResult
+  togglePlaceRecommendation: (placeId: string) => RecommendationToggleResult
   retryPlaceList: () => void
   retryPlaceDetail: () => void
   reset: () => void
@@ -82,6 +91,23 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
     })
 
     if (result.status === 'saved') {
+      set({
+        places: result.places,
+        selectedPlaceId: result.place.id,
+        navigationState: 'place_detail_open',
+        placeDetailLoad: 'ready',
+      })
+    }
+
+    return result
+  },
+  togglePlaceRecommendation: (placeId) => {
+    const result = toggleRecommendationForPlace({
+      placeId,
+      places: get().places,
+    })
+
+    if (result.status === 'toggled') {
       set({
         places: result.places,
         selectedPlaceId: result.place.id,

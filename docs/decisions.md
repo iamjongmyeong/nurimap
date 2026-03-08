@@ -267,3 +267,19 @@
   - docs/specs/04-place-registration.md
   - docs/architecture/domain-model.md
 - Related commit: aeed182
+
+
+## 2026-03-09 Plan 10 - Use detail-local async state with store-backed recommendation toggles
+- Context: Plan 10은 추천 추가/취소, 진행 상태, 실패 시 상태 복원을 요구한다. 현재 앱 구조는 Zustand store가 canonical place summary를 들고 있고, 상세 패널은 그 summary를 읽어 렌더링한다.
+- Options considered:
+  - Option A: 추천 버튼에서 optimistic count/state를 별도 local draft로 먼저 바꾸고 실패 시 롤백한다.
+  - Option B: 상세 컴포넌트는 `recommendation_toggle` UI 상태만 로컬로 관리하고, 성공 시 canonical count/state 갱신은 store helper 결과에만 의존한다.
+- Decision: Option B를 선택한다.
+- Rationale: canonical `recommendation_count`와 `my_recommendation_active`는 store가 단일 source of truth로 유지하고, 상세 컴포넌트는 비동기 진행/오류 표시만 담당하는 편이 React 상태 분리가 단순하고 실패 복원도 안전하다.
+- Impact: `DetailRecommendationControl`은 loading/error UI만 로컬로 관리한다. 추천 성공/취소 결과는 `togglePlaceRecommendation` store action이 반영한 최신 place summary로만 표현된다. 비로그인 차단은 앱의 auth gate가 1차 방어선이고, 컨트롤 단위에서 fallback guard를 추가로 둔다.
+- Revisit trigger: 추후 recommendation API가 실제 서버 round-trip/optimistic UI를 요구하면 local optimistic update와 rollback 전략을 다시 도입할 수 있다.
+- Related docs:
+  - docs/specs/11-recommendation.md
+  - docs/architecture/domain-model.md
+  - docs/architecture/ui-design.md
+- Related commit: TBD

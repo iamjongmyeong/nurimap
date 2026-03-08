@@ -269,10 +269,80 @@ export const DetailReviewComposer = ({
   )
 }
 
+export const DetailRecommendationControl = ({
+  active,
+  canRecommend,
+  count,
+  onToggle,
+}: {
+  active: boolean
+  canRecommend: boolean
+  count: number
+  onToggle: () => { status: 'toggled' | 'error'; message?: string }
+}) => {
+  const [toggleState, setToggleState] = useState<'idle' | 'submitting' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const handleToggle = async () => {
+    if (!canRecommend) {
+      setToggleState('error')
+      setErrorMessage('로그인 후에 추천할 수 있어요.')
+      return
+    }
+
+    setToggleState('submitting')
+    setErrorMessage(null)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    const result = onToggle()
+    if (result.status === 'error') {
+      setToggleState('error')
+      setErrorMessage(result.message ?? '추천 상태를 변경하지 못했어요. 다시 시도해 주세요.')
+      return
+    }
+
+    setToggleState('idle')
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-base-300 bg-base-100 p-4" data-testid="detail-recommendation-control">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold text-base-content">추천</h4>
+          <p className="mt-2 text-sm text-base-content/70">
+            현재 추천 수: <span data-testid="detail-recommendation-count">{count}</span>
+          </p>
+        </div>
+        <button
+          className={`btn rounded-2xl ${active ? 'btn-secondary' : 'btn-primary'}`}
+          data-testid="detail-recommendation-button"
+          disabled={toggleState === 'submitting'}
+          onClick={() => {
+            void handleToggle()
+          }}
+          type="button"
+        >
+          {toggleState === 'submitting' ? '처리 중...' : active ? '추천 취소' : '추천'}
+        </button>
+      </div>
+
+      {toggleState === 'submitting' ? (
+        <div className="mt-4 rounded-2xl bg-base-200 p-4 text-sm text-base-content/80" data-testid="detail-recommendation-loading">
+          추천 상태를 변경하는 중입니다.
+        </div>
+      ) : null}
+
+      {errorMessage ? <p className="mt-3 text-sm text-error">{errorMessage}</p> : null}
+    </div>
+  )
+}
+
 const DetailCard = ({ place }: { place: PlaceSummary }) => {
   const hasMyReview = place.my_review !== null
   const myReview = hasMyReview ? place.my_review : null
+  const { accessToken } = useAuth()
   const submitPlaceReview = useAppShellStore((state) => state.submitPlaceReview)
+  const togglePlaceRecommendation = useAppShellStore((state) => state.togglePlaceRecommendation)
 
   return (
     <div data-testid="place-detail-ready">
@@ -298,7 +368,7 @@ const DetailCard = ({ place }: { place: PlaceSummary }) => {
         </div>
         <div>
           <dt className="font-semibold text-base-content">추천 수</dt>
-          <dd data-testid="detail-recommendation-count">{place.recommendation_count}</dd>
+          <dd data-testid="detail-recommendation-summary-count">{place.recommendation_count}</dd>
         </div>
         <div>
           <dt className="font-semibold text-base-content">별점 수</dt>
@@ -321,6 +391,13 @@ const DetailCard = ({ place }: { place: PlaceSummary }) => {
           네이버 지도 이동
         </a>
       </div>
+
+      <DetailRecommendationControl
+        active={place.my_recommendation_active}
+        canRecommend={Boolean(accessToken)}
+        count={place.recommendation_count}
+        onToggle={() => togglePlaceRecommendation(place.id)}
+      />
 
       <div className="mt-6 rounded-2xl bg-base-100 p-4">
         <h4 className="text-sm font-semibold text-base-content">리뷰</h4>
