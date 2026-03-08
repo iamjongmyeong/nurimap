@@ -114,7 +114,7 @@ describe('Plan 03 place detail', () => {
 
   it('keeps the entered review values after a save failure', async () => {
     const user = userEvent.setup()
-    render(
+    const view = render(
       <DetailReviewComposer
         onSubmit={() => ({
           status: 'error',
@@ -124,14 +124,14 @@ describe('Plan 03 place detail', () => {
       />,
     )
 
-    await user.click(screen.getByTestId('detail-review-rating-star-2'))
-    await user.type(screen.getByTestId('detail-review-content-input'), '실패 후에도 남아 있어야 하는 리뷰')
-    await user.click(screen.getByRole('button', { name: '리뷰 저장' }))
+    await user.click(view.getByTestId('detail-review-rating-star-2'))
+    await user.type(view.getByTestId('detail-review-content-input'), '실패 후에도 남아 있어야 하는 리뷰')
+    await user.click(view.getByTestId('detail-review-submit-button'))
 
-    expect(await screen.findByText('리뷰를 저장하지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
-    expect(screen.getByTestId('detail-review-content-input')).toHaveValue('실패 후에도 남아 있어야 하는 리뷰')
-    expect(screen.getByTestId('detail-review-rating-star-2')).toHaveClass('btn-warning')
-    expect(screen.getByTestId('detail-review-submit-button')).toHaveTextContent('리뷰 저장')
+    expect(await view.findByText('리뷰를 저장하지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(view.getByTestId('detail-review-content-input')).toHaveValue('실패 후에도 남아 있어야 하는 리뷰')
+    expect(view.getByTestId('detail-review-rating-star-2')).toHaveClass('btn-warning')
+    expect(view.getByTestId('detail-review-submit-button')).toHaveTextContent('리뷰 저장')
   })
 
   it('provides the naver map link', async () => {
