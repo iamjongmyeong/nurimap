@@ -201,7 +201,7 @@
   - docs/specs/01-auth-email-login-link.md
   - docs/architecture/security-and-ops.md
   - docs/architecture/system-context.md
-- Related commit: TBD
+- Related commit: 6ff97ad
 
 
 ## 2026-03-08 Plan 08 - Store user name in Supabase auth user_metadata
@@ -217,5 +217,21 @@
   - docs/specs/01-auth-email-login-link.md
   - docs/architecture/domain-model.md
   - docs/definition-of-done.md
-- Related commit: TBD
+- Related commit: 6ff97ad
 
+
+## 2026-03-08 Plan 08 - Keep Vercel function runtime dependencies under `api/_lib`
+- Context: Vercel production에서 `api/auth/request-link`가 `/var/task/src/server/authService.ts`를 찾지 못해 `ERR_MODULE_NOT_FOUND`로 실패했다. `api/` route가 `src/server/*`를 직접 import하면 함수 번들에 필요한 파일이 안정적으로 포함되지 않을 수 있다.
+- Options considered:
+  - Option A: `api/` route가 계속 `src/server/*`와 `src/app-shell/*`를 직접 import한다.
+  - Option B: Vercel 함수가 쓰는 server-side dependency를 `api/_lib/*` 아래로 복제하고 route는 그 경로만 참조한다.
+  - Option C: 별도 shared package/build step을 도입해 `src/server/*`를 함수용 산출물로 재구성한다.
+- Decision: Option B를 선택한다.
+- Rationale: 현재 구조에서는 가장 작은 수정으로 Vercel 함수 번들 경계를 명확히 만들 수 있고, Plan 08 런타임 장애를 빠르게 해소할 수 있다.
+- Impact: `api/auth/*`, `api/place-lookup.ts`는 `api/_lib/*`만 참조한다. 또한 `src/server/apiImportBoundary.test.ts`를 추가해 `api/` 코드가 다시 `src/*`를 직접 import하지 않도록 검증한다.
+- Revisit trigger: `api/_lib`와 `src/server` 사이 중복이 커지거나 함수 수가 늘어나면 shared package 또는 build-safe server module 구조로 재설계한다.
+- Related docs:
+  - docs/specs/01-auth-email-login-link.md
+  - docs/specs/03-place-data-extraction.md
+  - docs/specs/12-local-integration-qa.md
+- Related commit: f644b0a
