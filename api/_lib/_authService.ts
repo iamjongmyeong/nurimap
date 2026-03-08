@@ -7,8 +7,8 @@ import {
   evaluateVerificationState,
   isAllowedEmailDomain,
   type LoginLinkState,
-} from './_authPolicy'
-import { createSupabaseAdminClient, createSupabaseBrowserlessClient } from './_supabaseAdmin'
+} from './_authPolicy.js'
+import { createSupabaseAdminClient, createSupabaseBrowserlessClient } from './_supabaseAdmin.js'
 
 type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'daily_limit' | 'delivery_failed'
 type AuthVerifyErrorReason = 'expired' | 'used' | 'invalidated'

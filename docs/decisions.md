@@ -228,7 +228,7 @@
   - Option C: 별도 shared package/build step을 도입해 `src/server/*`를 함수용 산출물로 재구성한다.
 - Decision: Option B를 선택한다.
 - Rationale: 현재 구조에서는 가장 작은 수정으로 Vercel 함수 번들 경계를 명확히 만들 수 있고, Plan 08 런타임 장애를 빠르게 해소할 수 있다.
-- Impact: `api/auth/*`, `api/place-lookup.ts`는 `api/_lib/*`만 참조한다. 또한 `src/server/apiImportBoundary.test.ts`를 추가해 `api/` 코드가 다시 `src/*`를 직접 import하지 않도록 검증한다. Vercel이 함수 소스를 JS로 변환할 때 `.ts` 확장자 import가 런타임 해석을 깨뜨릴 수 있으므로, 함수 경계 코드의 상대 import는 확장자를 생략한다. `api/_lib` 아래 helper 파일은 `_` prefix를 붙여 Vercel route entrypoint로 취급되지 않도록 한다.
+- Impact: `api/auth/*`, `api/place-lookup.ts`는 `api/_lib/*`만 참조한다. 또한 `src/server/apiImportBoundary.test.ts`를 추가해 `api/` 코드가 다시 `src/*`를 직접 import하지 않도록 검증한다. Vercel이 함수 소스를 JS로 변환할 때 `.ts` 확장자 import가 런타임 해석을 깨뜨릴 수 있으므로, 함수 경계 코드의 상대 import는 `.js` specifier를 사용한다. `api/_lib` 아래 helper 파일은 `_` prefix를 붙여 Vercel route entrypoint로 취급되지 않도록 한다.
 - Revisit trigger: `api/_lib`와 `src/server` 사이 중복이 커지거나 함수 수가 늘어나면 shared package 또는 build-safe server module 구조로 재설계한다.
 - Related docs:
   - docs/specs/01-auth-email-login-link.md

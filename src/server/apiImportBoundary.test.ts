@@ -34,10 +34,11 @@ const extractImportSpecifiers = (source: string) => {
 
 const resolveRelativeImport = (fromFile: string, specifier: string) => {
   const resolvedPath = path.resolve(path.dirname(fromFile), specifier)
-  const candidates = [resolvedPath, `${resolvedPath}.ts`, path.join(resolvedPath, 'index.ts')]
+  const jsToTsPath = resolvedPath.endsWith('.js') ? resolvedPath.slice(0, -3) + '.ts' : null
+  const candidates = [resolvedPath, jsToTsPath, `${resolvedPath}.ts`, path.join(resolvedPath, 'index.ts')].filter(Boolean)
   return candidates.find((candidate) => {
     try {
-      return statSync(candidate).isFile()
+      return statSync(candidate as string).isFile()
     } catch {
       return false
     }
