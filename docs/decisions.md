@@ -250,7 +250,7 @@
   - docs/specs/01-auth-email-login-link.md
   - docs/qa/plan-08-auth-email-login-link.md
   - docs/architecture/user-flow.md
-- Related commit: aeed182
+- Related commit: c0f861d
 
 
 ## 2026-03-08 Plan 09 - Update rating aggregates from canonical summary fields, not visible review slice
