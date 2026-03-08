@@ -299,3 +299,21 @@
   - docs/architecture/security-and-ops.md
   - docs/architecture/integrations.md
 - Related commit: 31f1ac2
+
+
+## 2026-03-09 Bypass auth - Keep actual allowlist values out of git while allowing env-managed bypass across environments
+- Context: 특정 외부 이메일 1개에 대해 이메일 링크 클릭 없이 바로 로그인시키고 싶지만, 저장소는 public repository라 실제 bypass 이메일 목록을 git에 올리면 안 된다. 요구사항은 local-only bypass에서 env-managed global bypass로 바뀌었다.
+- Options considered:
+  - Option A: bypass 이메일을 client/server source code에 직접 하드코딩한다.
+  - Option B: bypass 이메일을 committed 문서나 Makefile default 값에 직접 넣는다.
+  - Option C: generic bypass mechanism만 커밋하고, 실제 이메일 값은 `.env.local` 또는 배포 env 같은 비추적 환경 변수에만 둔다.
+- Decision: Option C를 선택한다.
+- Rationale: public repo에서도 bypass 메커니즘 자체는 안전하게 version control할 수 있고, 실제 allowlist 값은 로컬 파일이나 호스팅 env에만 남겨 유출 위험을 줄일 수 있다. 동시에 필요하면 local/dev/prod 어디서든 같은 메커니즘을 사용할 수 있다.
+- Impact: auth service는 `AUTH_BYPASS_ENABLED` / `AUTH_BYPASS_EMAILS`를 읽어 bypass 여부를 결정한다. `make dev` / `make dev-run`은 `.env`와 `.env.local`을 로드하므로 로컬 bypass가 적용되고, Vercel env에도 같은 키를 넣으면 배포 환경 bypass도 가능하다. 실제 이메일 목록은 tracked file에 남기지 않는다.
+- Revisit trigger: bypass 대상이 늘어나거나 감사 요구가 커지면 별도 admin/test-login 정책과 audit trail 구조를 도입한다.
+- Related docs:
+  - .omx/plans/plan-global-bypass-email-and-make.md
+  - docs/local-development.md
+  - docs/architecture/security-and-ops.md
+  - docs/definition-of-done.md
+- Related commit: 65f9910

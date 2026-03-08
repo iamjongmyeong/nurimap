@@ -8,11 +8,72 @@ import {
   isAllowedEmailDomain,
   type LoginLinkState,
 } from './_authPolicy.js'
-import { logAuthRequestFailure } from './_opsLogger.js'
+import { logAuthBypassLogin, logAuthRequestFailure } from './_opsLogger.js'
 import { createSupabaseAdminClient, createSupabaseBrowserlessClient } from './_supabaseAdmin.js'
 
 type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'daily_limit' | 'delivery_failed'
 type AuthVerifyErrorReason = 'expired' | 'used' | 'invalidated'
+type AuthVerifyType = 'magiclink' | 'signup' | 'invite'
+type AuthRequestSuccess =
+  | {
+      status: 'success'
+      mode: 'link'
+      message: string
+    }
+  | {
+      status: 'success'
+      mode: 'bypass'
+      message: string
+      tokenHash: string
+      verificationType: AuthVerifyType
+    }
+
+const getBypassEmails = () =>
+  (process.env.AUTH_BYPASS_EMAILS ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+
+const isBypassLoginEmail = (email: string) => {
+  if (process.env.AUTH_BYPASS_ENABLED !== 'true') {
+    return false
+  }
+
+  return getBypassEmails().includes(email.trim().toLowerCase())
+}
+
+const toVerificationType = (verificationType: string | undefined): AuthVerifyType =>
+  verificationType === 'magiclink' || verificationType === 'invite' ? verificationType : 'signup'
+
+const generateImmediateBypassPayload = async (email: string): Promise<AuthRequestSuccess | { status: 'error'; code: AuthRequestErrorCode; message: string }> => {
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+    options: {
+      redirectTo: process.env.PUBLIC_APP_URL,
+    },
+  })
+
+  if (error || !data.properties.hashed_token) {
+    logAuthRequestFailure({ code: 'delivery_failed', email })
+    return {
+      status: 'error',
+      code: 'delivery_failed',
+      message: '로그인 링크를 보내지 못했어요. 다시 시도해 주세요.',
+    }
+  }
+
+  logAuthBypassLogin({ email })
+
+  return {
+    status: 'success',
+    mode: 'bypass',
+    message: '테스트 계정으로 바로 로그인합니다.',
+    tokenHash: data.properties.hashed_token,
+    verificationType: toVerificationType(data.properties.verification_type),
+  }
+}
 
 const findUserByEmail = async (email: string) => {
   const admin = createSupabaseAdminClient()
@@ -89,6 +150,10 @@ export const requestLoginLink = async (email: string) => {
   const allowedDomain = process.env.AUTH_ALLOWED_EMAIL_DOMAIN ?? ''
   const normalizedEmail = email.trim().toLowerCase()
 
+  if (isBypassLoginEmail(normalizedEmail)) {
+    return await generateImmediateBypassPayload(normalizedEmail)
+  }
+
   if (!isAllowedEmailDomain(normalizedEmail, allowedDomain)) {
     logAuthRequestFailure({ code: 'invalid_domain', email: normalizedEmail })
     return {
@@ -141,7 +206,7 @@ export const requestLoginLink = async (email: string) => {
 
   const nonce = crypto.randomUUID()
   const expiresAt = new Date(now.getTime() + AUTH_LINK_EXPIRES_MINUTES * 60 * 1000)
-  const verificationType = data.properties.verification_type === 'magiclink' ? 'magiclink' : 'signup'
+  const verificationType = toVerificationType(data.properties.verification_type)
   const nextState = buildIssuedLoginLinkState({
     baseState: requestPolicy.nextState,
     expiresAt,
@@ -168,6 +233,7 @@ export const requestLoginLink = async (email: string) => {
 
   return {
     status: 'success' as const,
+    mode: 'link' as const,
     message: '로그인 링크를 보냈어요.',
   }
 }

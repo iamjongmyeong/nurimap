@@ -14,6 +14,12 @@ const writeLog = (level: 'warn' | 'error', event: string, details: Record<string
   console[level](`[ops] ${event}`, details)
 }
 
+export const logAuthBypassLogin = ({ email }: { email: string }) => {
+  writeLog('warn', 'auth.request_link.bypass_login', {
+    email: maskEmail(email),
+  })
+}
+
 export const logAuthRequestFailure = ({
   code,
   email,

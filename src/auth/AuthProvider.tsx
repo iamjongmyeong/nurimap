@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AuthContext, type AuthContextValue, type AuthPhase } from './authContext'
 import { supabaseBrowser } from './supabaseBrowser'
 import { requestTestLoginLink, setTestAuthState, signOutTestUser, submitTestName, useTestAuthState } from './testAuthState'
@@ -112,7 +112,13 @@ const AuthShell = ({
         />
       </label>
       {message ? <p className="mt-3 text-sm text-error">{message}</p> : null}
-      <button className="btn btn-primary mt-6 w-full rounded-2xl" disabled={submitting} onClick={onSubmit} type="button">
+      <button
+        className="btn btn-primary mt-6 w-full rounded-2xl"
+        data-testid="auth-request-button"
+        disabled={submitting}
+        onClick={onSubmit}
+        type="button"
+      >
         {submitting ? '요청 중...' : '로그인 링크 받기'}
       </button>
     </div>
@@ -209,6 +215,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const devOverrideState = useMemo(() => getDevAuthOverride(), [])
   const isTestMode = import.meta.env.MODE === 'test' || devOverrideState !== null
 
+  const verifyAndAdoptSession = useCallback(async ({
+    tokenHash,
+    verificationType,
+  }: {
+    tokenHash: string
+    verificationType: 'magiclink' | 'signup' | 'invite'
+  }) => {
+    const { data, error } = await supabaseBrowser.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: verificationType,
+    })
+
+    if (error || !data.session || !data.user) {
+      return {
+        status: 'error' as const,
+        message: error?.message ?? '인증에 실패했어요.',
+      }
+    }
+
+    markSessionStarted()
+    setAccessToken(data.session.access_token)
+    setEmail(data.user.email ?? '')
+    setMessage(null)
+    setFailureReason(null)
+    if (data.user.user_metadata?.name) {
+      setPhase('authenticated')
+    } else {
+      setPhase('name_required')
+    }
+
+    return {
+      status: 'success' as const,
+    }
+  }, [])
+
   useEffect(() => {
     if (devOverrideState) {
       setTestAuthState(devOverrideState)
@@ -248,28 +289,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return
         }
 
-        const { data, error } = await supabaseBrowser.auth.verifyOtp({
-          token_hash: payload.tokenHash,
-          type: payload.verificationType,
+        clearAuthQuery()
+        const verification = await verifyAndAdoptSession({
+          tokenHash: payload.tokenHash,
+          verificationType: payload.verificationType,
         })
 
-        clearAuthQuery()
-
-        if (error || !data.session || !data.user) {
+        if (verification.status === 'error') {
           if (isMounted) {
             setPhase('auth_failure')
-            setFailureReason(error?.message ?? '인증에 실패했어요.')
+            setFailureReason(verification.message)
           }
           return
-        }
-
-        markSessionStarted()
-        setAccessToken(data.session.access_token)
-        setEmail(data.user.email ?? '')
-        if (data.user.user_metadata?.name) {
-          setPhase('authenticated')
-        } else {
-          setPhase('name_required')
         }
         return
       }
@@ -333,7 +364,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isMounted = false
       listener.subscription.unsubscribe()
     }
-  }, [isTestMode, testState])
+  }, [isTestMode, testState, verifyAndAdoptSession])
 
   const requestLink = async (nextEmail: string) => {
     setSubmitting(true)
@@ -354,13 +385,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: nextEmail }),
     })
-    const payload = (await response.json()) as { status: 'success'; message: string } | { status: 'error'; message: string }
+    const payload = (await response.json()) as
+      | { status: 'success'; mode: 'link'; message: string }
+      | {
+          status: 'success'
+          mode: 'bypass'
+          message: string
+          tokenHash: string
+          verificationType: 'magiclink' | 'signup' | 'invite'
+        }
+      | { status: 'error'; message: string }
     setSubmitting(false)
     setEmail(nextEmail)
 
     if (!response.ok || payload.status === 'error') {
       setMessage(payload.message)
       setPhase('auth_required')
+      return
+    }
+
+    if (payload.mode === 'bypass') {
+      setPhase('verifying')
+      setMessage(payload.message)
+
+      const verification = await verifyAndAdoptSession({
+        tokenHash: payload.tokenHash,
+        verificationType: payload.verificationType,
+      })
+
+      if (verification.status === 'error') {
+        setPhase('auth_failure')
+        setFailureReason(verification.message)
+        return
+      }
       return
     }
 
@@ -477,4 +534,3 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
-

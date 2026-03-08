@@ -55,6 +55,33 @@ export const useTestAuthState = () =>
 
 export const requestTestLoginLink = async (email: string) => {
   await new Promise((resolve) => setTimeout(resolve, 10))
+
+  if (email === 'bypass.user@example.com') {
+    setTestAuthState({
+      phase: 'name_required',
+      user: {
+        email,
+        name: null,
+      },
+      message: null,
+      failureReason: null,
+    })
+    return { status: 'success' as const, mode: 'bypass' as const }
+  }
+
+  if (email === 'bypass.named@example.com') {
+    setTestAuthState({
+      phase: 'authenticated',
+      user: {
+        email,
+        name: 'Bypass Tester',
+      },
+      message: null,
+      failureReason: null,
+    })
+    return { status: 'success' as const, mode: 'bypass' as const }
+  }
+
   if (!email.endsWith('@nurimedia.co.kr')) {
     setTestAuthState({ message: '허용된 회사 이메일만 사용할 수 있어요.' })
     return { status: 'error' as const, code: 'invalid_domain' as const }
@@ -74,7 +101,7 @@ export const requestTestLoginLink = async (email: string) => {
     phase: 'auth_link_sent',
     message: '로그인 링크를 보냈어요.',
   })
-  return { status: 'success' as const }
+  return { status: 'success' as const, mode: 'link' as const }
 }
 
 export const verifyTestLoginLink = async (reason: string | null = null) => {

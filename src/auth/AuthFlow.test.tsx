@@ -89,6 +89,19 @@ describe('Plan 08 auth flow', () => {
     expect(await screen.findByText('로그인 링크를 보냈어요.')).toBeInTheDocument()
   })
 
+  it('immediately enters the onboarding flow for a bypass test account', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.type(screen.getByLabelText('이메일'), 'bypass.user@example.com')
+    await user.click(screen.getByTestId('auth-request-button'))
+
+    expect(await screen.findByText('이름 입력')).toBeInTheDocument()
+    expect(screen.queryByTestId('auth-request-button')).not.toBeInTheDocument()
+  })
+
   it('shows the verifying state while processing the login link', () => {
     setTestAuthState({ phase: 'verifying', user: null, message: null, failureReason: null })
     render(<App />)
