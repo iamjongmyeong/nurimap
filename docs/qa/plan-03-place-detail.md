@@ -17,7 +17,8 @@
   "desktopComposeVisible": true,
   "desktopMyReviewVisible": 0,
   "mobileMapVisibleAfterBack": true,
-  "mobileFloatingActionsVisibleAfterBack": true
+  "mobileFloatingActionsVisibleAfterBack": true,
+  "mobileMapCenterAfterBack": "중심 좌표: 37.55918, 126.92374"
 }
 ```
 
@@ -32,6 +33,7 @@
 - [pass] 모바일 상세가 전체 화면으로 열린다.
 - [pass] 모바일 뒤로 가기 시 지도 화면으로 돌아간다.
 - [pass] 모바일 뒤로 가기 후 선택한 place가 유지된다.
+- [pass] 모바일 뒤로 가기 후 지도 HUD 중심 좌표가 선택한 place 좌표로 유지된다.
 - [auto-pass] 상세 로딩 중 진행 상태는 자동 테스트로 검증했다.
 - [auto-pass] 상세 로딩 실패 시 재시도 액션은 자동 테스트로 검증했다.
 - [auto-pass] 모바일 브라우저 기본 뒤로 가기(popstate)는 자동 테스트로 검증했다.
@@ -42,6 +44,7 @@
 - `desktop-map-after-close.png`에서 데스크톱 닫기 후 지도 탐색 상태로 복귀하는 것을 확인했다.
 - `mobile-detail.png`에서 모바일 상세가 modal이 아닌 전체 화면 페이지로 열리는 것을 확인했다.
 - `mobile-map-after-back.png`에서 모바일 뒤로 가기 후 지도 화면과 하단 floating button UI가 다시 보이는 것을 확인했다.
+- runtime evidence의 `mobileMapCenterAfterBack` 값이 `37.55918, 126.92374`로 남아 선택한 place 기준 중심을 유지하는 것을 확인했다.
 
 ## Supporting Files
 - `artifacts/qa/plan-03/desktop-detail-with-my-review.png`

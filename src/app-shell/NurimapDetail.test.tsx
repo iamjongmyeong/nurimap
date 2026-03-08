@@ -32,7 +32,9 @@ describe('Plan 03 place detail', () => {
     expect(detail).toHaveTextContent('서울 마포구 양화로19길 22-16 1층')
     expect(detail).toHaveTextContent('등록자')
     expect(detail).toHaveTextContent('추천 수')
-    expect(detail).toHaveTextContent('리뷰')
+    expect(detail).toHaveTextContent('★ 4.7 · 리뷰 12')
+    expect(detail).toHaveTextContent('김누리')
+    expect(detail).toHaveTextContent('제로페이 결제가 잘 되고 회전이 빨라요.')
   })
 
   it('shows the my rating status', async () => {
@@ -114,6 +116,7 @@ describe('Plan 03 place detail', () => {
 
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
     expect(useAppShellStore.getState().selectedPlaceId).toBe('place-restaurant-1')
+    expect(screen.getByTestId('map-center')).toHaveTextContent('37.55918, 126.92374')
   })
 
 
@@ -131,6 +134,7 @@ describe('Plan 03 place detail', () => {
 
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
     expect(useAppShellStore.getState().selectedPlaceId).toBe('place-cafe-1')
+    expect(screen.getByTestId('map-center')).toHaveTextContent('37.55831, 126.92518')
   })
 
   it('shows the detail loading state', () => {

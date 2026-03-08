@@ -30,6 +30,7 @@ console.log(JSON.stringify({
   desktopMyReviewVisible: await desktop.getByTestId('detail-my-review').count(),
   mobileMapVisibleAfterBack: await mobile.getByTestId('map-canvas').isVisible(),
   mobileFloatingActionsVisibleAfterBack: await mobile.getByTestId('mobile-floating-actions').isVisible(),
+  mobileMapCenterAfterBack: await mobile.getByTestId('map-center').textContent(),
 }, null, 2))
 
 await browser.close()
