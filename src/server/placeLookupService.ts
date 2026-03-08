@@ -105,7 +105,6 @@ export const lookupPlaceFromRawUrl = async (rawUrl: string): Promise<PlaceLookup
       },
     }
     logPlaceLookupFailure({ code: 'lookup_failed', naverPlaceId: normalized.naverPlaceId, rawUrl })
-    lookupResultCache.set(normalized.canonicalUrl, result)
     return result
   }
 
@@ -120,7 +119,6 @@ export const lookupPlaceFromRawUrl = async (rawUrl: string): Promise<PlaceLookup
       },
     }
     logPlaceLookupFailure({ code: 'coordinates_unavailable', naverPlaceId: normalized.naverPlaceId, rawUrl })
-    lookupResultCache.set(normalized.canonicalUrl, result)
     return result
   }
 

@@ -272,12 +272,10 @@ export const DetailReviewComposer = ({
 export const DetailRecommendationControl = ({
   active,
   canRecommend,
-  count,
   onToggle,
 }: {
   active: boolean
   canRecommend: boolean
-  count: number
   onToggle: () => { status: 'toggled' | 'error'; message?: string }
 }) => {
   const [toggleState, setToggleState] = useState<'idle' | 'submitting' | 'error'>('idle')
@@ -307,12 +305,7 @@ export const DetailRecommendationControl = ({
   return (
     <div className="mt-6 rounded-2xl border border-base-300 bg-base-100 p-4" data-testid="detail-recommendation-control">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h4 className="text-sm font-semibold text-base-content">추천</h4>
-          <p className="mt-2 text-sm text-base-content/70">
-            현재 추천 수: <span data-testid="detail-recommendation-count">{count}</span>
-          </p>
-        </div>
+        <h4 className="text-sm font-semibold text-base-content">추천</h4>
         <button
           className={`btn rounded-2xl ${active ? 'btn-secondary' : 'btn-primary'}`}
           data-testid="detail-recommendation-button"
@@ -395,7 +388,6 @@ const DetailCard = ({ place }: { place: PlaceSummary }) => {
       <DetailRecommendationControl
         active={place.my_recommendation_active}
         canRecommend={Boolean(accessToken)}
-        count={place.recommendation_count}
         onToggle={() => togglePlaceRecommendation(place.id)}
       />
 

@@ -153,18 +153,18 @@ describe('Plan 03 place detail', () => {
     render(<App />)
 
     await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
-    expect(screen.getByTestId('detail-recommendation-count')).toHaveTextContent('5')
+    expect(screen.getByTestId('detail-recommendation-summary-count')).toHaveTextContent('5')
     expect(screen.getByTestId('detail-recommendation-button')).toHaveTextContent('추천')
 
     await user.click(screen.getByTestId('detail-recommendation-button'))
     await waitFor(() => {
-      expect(screen.getByTestId('detail-recommendation-count')).toHaveTextContent('6')
+      expect(screen.getByTestId('detail-recommendation-summary-count')).toHaveTextContent('6')
       expect(screen.getByTestId('detail-recommendation-button')).toHaveTextContent('추천 취소')
     })
 
     await user.click(screen.getByTestId('detail-recommendation-button'))
     await waitFor(() => {
-      expect(screen.getByTestId('detail-recommendation-count')).toHaveTextContent('5')
+      expect(screen.getByTestId('detail-recommendation-summary-count')).toHaveTextContent('5')
       expect(screen.getByTestId('detail-recommendation-button')).toHaveTextContent('추천')
     })
   })
@@ -272,7 +272,6 @@ describe('Plan 03 place detail', () => {
       <DetailRecommendationControl
         active={false}
         canRecommend
-        count={3}
         onToggle={() => ({
           status: 'error',
           message: '추천 상태를 변경하지 못했어요. 다시 시도해 주세요.',
@@ -283,7 +282,6 @@ describe('Plan 03 place detail', () => {
     await user.click(view.getByTestId('detail-recommendation-button'))
 
     expect(await view.findByText('추천 상태를 변경하지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
-    expect(view.getByTestId('detail-recommendation-count')).toHaveTextContent('3')
     expect(view.getByTestId('detail-recommendation-button')).toHaveTextContent('추천')
   })
 
@@ -291,13 +289,12 @@ describe('Plan 03 place detail', () => {
     const user = userEvent.setup()
     const onToggle = vi.fn()
     const view = render(
-      <DetailRecommendationControl active={false} canRecommend={false} count={3} onToggle={onToggle} />,
+      <DetailRecommendationControl active={false} canRecommend={false} onToggle={onToggle} />,
     )
 
     await user.click(view.getByTestId('detail-recommendation-button'))
 
     expect(await view.findByText('로그인 후에 추천할 수 있어요.')).toBeInTheDocument()
     expect(onToggle).not.toHaveBeenCalled()
-    expect(view.getByTestId('detail-recommendation-count')).toHaveTextContent('3')
   })
 })
