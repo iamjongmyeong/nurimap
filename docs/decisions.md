@@ -107,3 +107,19 @@
   - docs/architecture/security-and-ops.md
 - Related commit: 3a0ef39
 
+
+## 2026-03-08 Plan 03 - Mobile detail back uses history bridge
+- Context: Plan 03은 모바일 상세 화면의 뒤로 가기 버튼과 브라우저 기본 뒤로 가기가 모두 지도 화면으로 돌아가도록 요구한다. 현재 앱은 React Router 없이 Zustand 기반 navigation state를 사용 중이라 브라우저 history와 상태를 직접 연결해야 한다.
+- Options considered:
+  - Option A: 모바일 뒤로 가기 버튼은 store state만 바꾸고, 브라우저 기본 뒤로 가기는 별도로 지원하지 않는다.
+  - Option B: 모바일 상세 진입 시 history state를 push하고, popstate에서 지도 탐색 상태로 복귀시키는 얇은 history bridge를 둔다.
+- Decision: Option B를 선택한다.
+- Rationale: 라우터를 지금 도입하지 않고도 spec이 요구하는 브라우저 뒤로 가기 동작을 만족할 수 있다. 현재 Plan 범위에서는 전체 라우팅 도입보다 얇은 history bridge가 더 작은 변경이다.
+- Impact: 모바일 상세 진입 시 `window.history.pushState`를 사용하고, `popstate` listener가 `map_browse` 복귀를 담당한다. 이후 라우터 도입 시 이 부분을 대체할 수 있다.
+- Revisit trigger: Plan 08 이후 보호 라우트/링크 기반 탐색이 본격화되면 state-only navigation 대신 라우터 기반 구조로 재검토한다.
+- Related docs:
+  - docs/specs/08-place-detail.md
+  - docs/architecture/ui-design.md
+  - docs/architecture/user-flow.md
+- Related commit: TBD
+

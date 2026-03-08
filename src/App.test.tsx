@@ -27,8 +27,9 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
   })
 
-  it('renders the desktop floating detail panel', () => {
+  it('renders the desktop floating detail panel when detail is open', () => {
     setViewport(1280)
+    useAppShellStore.setState({ navigationState: 'place_detail_open', selectedPlaceId: 'place-restaurant-1' })
     render(<App />)
 
     expect(screen.getByTestId('desktop-detail-panel')).toBeInTheDocument()
@@ -36,6 +37,7 @@ describe('Nurimap app shell', () => {
 
   it('keeps the map visible behind the desktop detail panel', () => {
     setViewport(1280)
+    useAppShellStore.setState({ navigationState: 'place_detail_open', selectedPlaceId: 'place-restaurant-1' })
     render(<App />)
 
     expect(screen.getByTestId('map-canvas')).toBeInTheDocument()

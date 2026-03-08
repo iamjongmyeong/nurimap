@@ -18,6 +18,31 @@ export const MOCK_PLACES: PlaceSummary[] = [
     zeropay_status: 'available',
     average_rating: 4.7,
     review_count: 12,
+    created_by_name: '김누리',
+    recommendation_count: 9,
+    my_review: {
+      id: 'review-mine-1',
+      author_name: '내 리뷰',
+      content: '점심 모임으로 가기 좋은 식당이에요.',
+      created_at: '2026-03-07',
+      rating_score: 5,
+    },
+    reviews: [
+      {
+        id: 'review-1',
+        author_name: '김누리',
+        content: '점심 모임으로 가기 좋은 식당이에요.',
+        created_at: '2026-03-07',
+        rating_score: 5,
+      },
+      {
+        id: 'review-2',
+        author_name: '박지도',
+        content: '제로페이 결제가 잘 되고 회전이 빨라요.',
+        created_at: '2026-03-05',
+        rating_score: 4,
+      },
+    ],
   },
   {
     id: 'place-cafe-1',
@@ -31,6 +56,25 @@ export const MOCK_PLACES: PlaceSummary[] = [
     zeropay_status: 'needs_verification',
     average_rating: 4.3,
     review_count: 8,
+    created_by_name: '이합정',
+    recommendation_count: 5,
+    my_review: null,
+    reviews: [
+      {
+        id: 'review-3',
+        author_name: '이합정',
+        content: '노트북 작업하기 좋고 조용해요.',
+        created_at: '2026-03-06',
+        rating_score: 4,
+      },
+      {
+        id: 'review-4',
+        author_name: '최카페',
+        content: '오후 시간대에도 자리 여유가 있는 편입니다.',
+        created_at: '2026-03-04',
+        rating_score: 5,
+      },
+    ],
   },
   {
     id: 'place-restaurant-2',
@@ -44,6 +88,18 @@ export const MOCK_PLACES: PlaceSummary[] = [
     zeropay_status: 'unavailable',
     average_rating: 4.1,
     review_count: 5,
+    created_by_name: '정점심',
+    recommendation_count: 2,
+    my_review: null,
+    reviews: [
+      {
+        id: 'review-5',
+        author_name: '정점심',
+        content: '무난하게 점심 먹기 좋아요.',
+        created_at: '2026-03-03',
+        rating_score: 4,
+      },
+    ],
   },
   {
     id: 'place-no-coord',
@@ -55,9 +111,11 @@ export const MOCK_PLACES: PlaceSummary[] = [
     zeropay_status: 'available',
     average_rating: 3.8,
     review_count: 2,
+    created_by_name: '무좌표',
+    recommendation_count: 1,
+    my_review: null,
+    reviews: [],
   },
 ]
 
-export const DEFAULT_SELECTED_PLACE_ID = MOCK_PLACES.find(
-  (place) => place.latitude !== undefined && place.longitude !== undefined,
-)?.id
+export const DEFAULT_SELECTED_PLACE_ID = null

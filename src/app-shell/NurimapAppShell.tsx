@@ -1,12 +1,13 @@
+import { useEffect } from 'react'
 import { MOCK_PLACES } from './mockPlaces'
 import { MapPane } from './MapPane'
 import {
   useAppShellStore,
+  type PlaceDetailLoadState,
   type PlaceListLoadState,
 } from './appShellStore'
 import type { PlaceSummary } from './types'
 import { useViewportMode } from './useViewportMode'
-
 
 type PlaceWithCoordinates = PlaceSummary & {
   latitude: number
@@ -145,18 +146,32 @@ const PlaceListPanel = ({
   )
 }
 
-const DetailContent = ({ place }: { place: PlaceSummary | undefined }) => {
-  if (!place) {
-    return (
-      <div className="mt-6 flex-1 rounded-2xl border border-dashed border-base-300 bg-base-200/70 p-5">
-        <p className="text-sm font-medium text-base-content">선택된 장소가 아직 없어요</p>
-        <p className="mt-2 text-sm leading-6 text-base-content/70">목록이나 지도 마커를 선택하면 상세 흐름이 이 패널에 연결됩니다.</p>
-      </div>
-    )
-  }
+const DetailLoadingState = () => (
+  <div className="mt-6 flex items-center gap-3 rounded-2xl bg-base-200/70 p-5" data-testid="place-detail-loading">
+    <span className="loading loading-spinner loading-md text-primary" />
+    <div>
+      <p className="text-sm font-semibold text-base-content">상세 정보를 불러오는 중이에요</p>
+      <p className="text-sm text-base-content/70">필드 대신 진행 중 상태를 표시합니다.</p>
+    </div>
+  </div>
+)
+
+const DetailErrorState = ({ onRetry }: { onRetry: () => void }) => (
+  <div className="mt-6 rounded-2xl bg-base-200/70 p-5" data-testid="place-detail-error">
+    <p className="text-sm font-semibold text-error">상세 정보를 불러오지 못했어요</p>
+    <p className="mt-2 text-sm text-base-content/70">현재 상세 컨테이너에서 재시도 액션을 제공합니다.</p>
+    <button className="btn btn-outline btn-sm mt-4" onClick={onRetry} type="button">
+      다시 시도
+    </button>
+  </div>
+)
+
+const DetailCard = ({ place }: { place: PlaceSummary }) => {
+  const hasMyReview = place.my_review !== null
+  const myReview = hasMyReview ? place.my_review : null
 
   return (
-    <div className="mt-6 flex-1 overflow-auto rounded-2xl border border-base-300 bg-base-200/70 p-5">
+    <div data-testid="place-detail-ready">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">Selected Place</p>
@@ -164,16 +179,103 @@ const DetailContent = ({ place }: { place: PlaceSummary | undefined }) => {
         </div>
         <span className="badge badge-outline">{place.place_type === 'restaurant' ? '식당' : '카페'}</span>
       </div>
+
       <p className="mt-4 text-sm text-base-content/70">{place.road_address}</p>
+
       <div className="mt-4 flex flex-wrap gap-2">
         <RatingBadge averageRating={place.average_rating} reviewCount={place.review_count} />
         {place.zeropay_status === 'available' ? <ZeroPayBadge /> : null}
       </div>
-      <p className="mt-6 rounded-2xl bg-base-100 p-4 text-sm leading-6 text-base-content/70">
-        Plan 02에서는 목록/지도 선택이 상세 흐름으로 연결되는 구조를 검증합니다. 실제 상세 정보 구성은 Plan 03에서 확장됩니다.
-      </p>
+
+      <dl className="mt-6 grid gap-3 rounded-2xl bg-base-100 p-4 text-sm text-base-content/80 md:grid-cols-2">
+        <div>
+          <dt className="font-semibold text-base-content">등록자</dt>
+          <dd data-testid="detail-created-by">{place.created_by_name}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-base-content">추천 수</dt>
+          <dd data-testid="detail-recommendation-count">{place.recommendation_count}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-base-content">별점 수</dt>
+          <dd data-testid="detail-review-count">{place.review_count}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-base-content">내 별점 상태</dt>
+          <dd data-testid="detail-my-rating-status">{myReview ? `${myReview.rating_score}점` : '아직 평가하지 않음'}</dd>
+        </div>
+      </dl>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        <a
+          className="btn btn-primary btn-sm rounded-2xl"
+          data-testid="detail-naver-link"
+          href={place.naver_place_url}
+          rel="noreferrer"
+          target="_blank"
+        >
+          네이버 지도 이동
+        </a>
+      </div>
+
+      <div className="mt-6 rounded-2xl bg-base-100 p-4">
+        <h4 className="text-sm font-semibold text-base-content">리뷰</h4>
+        <div className="mt-3 space-y-3" data-testid="detail-review-list">
+          {place.reviews.map((review) => (
+            <article className="rounded-2xl bg-base-200/70 p-4 text-sm" key={review.id}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-semibold text-base-content">{review.author_name}</p>
+                <span className="text-xs text-base-content/60">{review.created_at}</span>
+              </div>
+              <p className="mt-2 font-medium text-base-content">★ {review.rating_score}</p>
+              <p className="mt-2 text-base-content/70">{review.content}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      {hasMyReview ? (
+        <div className="mt-6 rounded-2xl border border-base-300 bg-base-100 p-4" data-testid="detail-my-review">
+          <h4 className="text-sm font-semibold text-base-content">내 리뷰</h4>
+          <p className="mt-2 text-sm text-base-content/70">{myReview?.content}</p>
+        </div>
+      ) : (
+        <div className="mt-6 rounded-2xl border border-dashed border-base-300 bg-base-100 p-4" data-testid="detail-review-compose">
+          <h4 className="text-sm font-semibold text-base-content">리뷰 작성 UI</h4>
+          <p className="mt-2 text-sm text-base-content/70">현재 사용자가 아직 review를 작성하지 않았기 때문에 리뷰 작성 UI가 노출됩니다.</p>
+        </div>
+      )}
     </div>
   )
+}
+
+const DetailBody = ({
+  onRetry,
+  place,
+  status,
+}: {
+  onRetry: () => void
+  place: PlaceSummary | undefined
+  status: PlaceDetailLoadState
+}) => {
+  if (status === 'loading') {
+    return <DetailLoadingState />
+  }
+
+  if (status === 'error') {
+    return <DetailErrorState onRetry={onRetry} />
+  }
+
+  if (!place) {
+    return (
+      <div className="mt-6 rounded-2xl border border-dashed border-base-300 bg-base-200/70 p-5">
+        <p className="text-sm font-medium text-base-content">선택된 장소가 아직 없어요</p>
+        <p className="mt-2 text-sm leading-6 text-base-content/70">목록이나 지도 마커를 선택하면 상세 흐름이 열립니다.</p>
+      </div>
+    )
+  }
+
+  return <DetailCard place={place} />
 }
 
 const DesktopSidebar = ({
@@ -224,19 +326,27 @@ const DesktopSidebar = ({
   )
 }
 
-const DesktopDetailPanel = ({ place }: { place: PlaceSummary | undefined }) => (
+const DesktopDetailPanel = ({
+  onClose,
+  place,
+  status,
+}: {
+  onClose: () => void
+  place: PlaceSummary | undefined
+  status: PlaceDetailLoadState
+}) => (
   <section className="absolute left-6 rounded-[28px] border border-base-300 bg-base-100/95 p-6 shadow-2xl backdrop-blur" data-testid="desktop-detail-panel" style={detailPanelStyle}>
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-auto">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">Floating Detail Panel</p>
           <h3 className="mt-2 text-xl font-bold text-base-content">선택된 장소 상세 영역</h3>
         </div>
-        <button aria-label="상세 패널 닫기" className="btn btn-ghost btn-circle btn-sm" type="button">
+        <button aria-label="상세 패널 닫기" className="btn btn-ghost btn-circle btn-sm" onClick={onClose} type="button">
           ✕
         </button>
       </div>
-      <DetailContent place={place} />
+      <DetailBody onRetry={useAppShellStore.getState().retryPlaceDetail} place={place} status={status} />
     </div>
   </section>
 )
@@ -293,28 +403,32 @@ const MobileListPage = ({
   )
 }
 
-const MobileDetailPage = ({ place }: { place: PlaceSummary | undefined }) => {
-  const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
-
-  return (
-    <section className="absolute inset-0 z-30 flex min-h-screen flex-col bg-base-100" data-testid="mobile-detail-page">
-      <div className="flex items-center gap-3 border-b border-base-300 px-4 py-4">
-        <button className="btn btn-ghost btn-sm" onClick={returnToMapBrowse} type="button">
-          ← 뒤로
-        </button>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">Place Detail</p>
-          <h2 className="text-lg font-bold text-base-content">전체 화면 상세</h2>
-        </div>
+const MobileDetailPage = ({
+  onBack,
+  place,
+  status,
+}: {
+  onBack: () => void
+  place: PlaceSummary | undefined
+  status: PlaceDetailLoadState
+}) => (
+  <section className="absolute inset-0 z-30 flex min-h-screen flex-col bg-base-100" data-testid="mobile-detail-page">
+    <div className="flex items-center gap-3 border-b border-base-300 px-4 py-4">
+      <button className="btn btn-ghost btn-sm" onClick={onBack} type="button">
+        ← 뒤로
+      </button>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">Place Detail</p>
+        <h2 className="text-lg font-bold text-base-content">전체 화면 상세</h2>
       </div>
-      <div className="flex-1 overflow-auto px-4 py-6">
-        <div className="rounded-[28px] border border-base-300 bg-base-100 p-6 shadow-sm">
-          <DetailContent place={place} />
-        </div>
+    </div>
+    <div className="flex-1 overflow-auto px-4 py-6">
+      <div className="rounded-[28px] border border-base-300 bg-base-100 p-6 shadow-sm">
+        <DetailBody onRetry={useAppShellStore.getState().retryPlaceDetail} place={place} status={status} />
       </div>
-    </section>
-  )
-}
+    </div>
+  </section>
+)
 
 const DesktopAppShell = ({
   mapPlaces,
@@ -323,8 +437,11 @@ const DesktopAppShell = ({
   mapPlaces: PlaceSummary[]
   selectedPlace: PlaceSummary | undefined
 }) => {
+  const closePlaceDetail = useAppShellStore((state) => state.closePlaceDetail)
+  const navigationState = useAppShellStore((state) => state.navigationState)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
+  const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
   const mapLevel = useAppShellStore((state) => state.mapLevel)
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
 
@@ -339,7 +456,9 @@ const DesktopAppShell = ({
           places={mapPlaces}
           selectedPlaceId={selectedPlaceId}
         />
-        <DesktopDetailPanel place={selectedPlace} />
+        {navigationState === 'place_detail_open' ? (
+          <DesktopDetailPanel onClose={closePlaceDetail} place={selectedPlace} status={placeDetailLoad} />
+        ) : null}
       </section>
     </main>
   )
@@ -355,8 +474,19 @@ const MobileAppShell = ({
   const navigationState = useAppShellStore((state) => state.navigationState)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
+  const closePlaceDetail = useAppShellStore((state) => state.closePlaceDetail)
+  const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
   const mapLevel = useAppShellStore((state) => state.mapLevel)
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
+
+  const handleBack = () => {
+    if (window.history.state?.nurimapDetail === true) {
+      window.history.back()
+      return
+    }
+
+    closePlaceDetail()
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-base-100 md:hidden" data-testid="mobile-shell">
@@ -370,7 +500,9 @@ const MobileAppShell = ({
       {navigationState === 'mobile_place_list_open' ? (
         <MobileListPage places={mapPlaces} selectedPlaceId={selectedPlaceId} />
       ) : null}
-      {navigationState === 'place_detail_open' ? <MobileDetailPage place={selectedPlace} /> : null}
+      {navigationState === 'place_detail_open' ? (
+        <MobileDetailPage onBack={handleBack} place={selectedPlace} status={placeDetailLoad} />
+      ) : null}
       {navigationState !== 'place_detail_open' ? <MobileFloatingActions /> : null}
     </main>
   )
@@ -378,9 +510,34 @@ const MobileAppShell = ({
 
 export const NurimapAppShell = () => {
   const { isDesktop } = useViewportMode()
+  const navigationState = useAppShellStore((state) => state.navigationState)
+  const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
   const mapPlaces = MOCK_PLACES.filter(hasCoordinates)
   const selectedPlace = mapPlaces.find((place) => place.id === selectedPlaceId)
+
+  useEffect(() => {
+    if (isDesktop || navigationState !== 'place_detail_open') {
+      return
+    }
+
+    window.history.pushState({ nurimapDetail: true }, '')
+  }, [isDesktop, navigationState])
+
+  useEffect(() => {
+    if (isDesktop) {
+      return
+    }
+
+    const handlePopState = () => {
+      returnToMapBrowse()
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [isDesktop, returnToMapBrowse])
 
   return isDesktop ? (
     <DesktopAppShell mapPlaces={mapPlaces} selectedPlace={selectedPlace} />
