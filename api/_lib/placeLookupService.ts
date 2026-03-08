@@ -1,6 +1,6 @@
-import { normalizeNaverMapUrl } from './naverUrl.ts'
-import { GEOCODE_FIXTURES, PLACE_LOOKUP_FIXTURES } from './placeLookupFixtures.ts'
-import type { PlaceLookupResult, PlaceLookupSourceRecord } from './placeLookupTypes.ts'
+import { normalizeNaverMapUrl } from './naverUrl'
+import { GEOCODE_FIXTURES, PLACE_LOOKUP_FIXTURES } from './placeLookupFixtures'
+import type { PlaceLookupResult, PlaceLookupSourceRecord } from './placeLookupTypes'
 
 const LOOKUP_FAILED_MESSAGE = '장소 정보를 가져오지 못했어요. 다시 시도해 주세요.'
 const COORDINATES_FAILED_MESSAGE = '좌표를 확인하지 못했어요. 다시 시도해 주세요.'
