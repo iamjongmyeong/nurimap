@@ -187,3 +187,35 @@
   - docs/plans.md
 - Related commit: 2cfd248
 
+
+## 2026-03-08 Plan 08 - Wrap Supabase magic link with app-managed nonce
+- Context: spec는 5분 만료, 재발급 시 이전 링크 무효화, 1회 사용, 인증 실패 화면 이유 구분을 요구한다. Supabase magic link 자체만으로는 이 정책을 앱 화면/정책 수준에서 완전히 통제하기 어렵다.
+- Options considered:
+  - Option A: Supabase 기본 magic link를 그대로 이메일로 보낸다.
+  - Option B: Supabase admin `generateLink`로 얻은 hashed token을 앱이 관리하는 nonce wrapper 링크 뒤에 숨기고, 앱 서버가 nonce 정책을 검증한 뒤 token_hash를 클라이언트에 전달한다.
+- Decision: Option B를 선택한다.
+- Rationale: 앱이 직접 5분 만료, 재발급 invalidation, 1회 사용, 실패 reason mapping을 통제할 수 있으면서도 실제 세션 발급은 Supabase Auth가 담당한다.
+- Impact: 이메일의 direct login URL은 `PUBLIC_APP_URL?auth_mode=verify&email=...&nonce=...` 형식을 사용한다. verify-link API가 nonce 상태를 검증한 뒤 `token_hash`와 verification type을 반환한다.
+- Revisit trigger: verified sending domain 확보 후 실제 이메일 검증에서 wrapper flow가 과도하게 복잡하다고 판단되면 단순화 여부를 재검토한다.
+- Related docs:
+  - docs/specs/01-auth-email-login-link.md
+  - docs/architecture/security-and-ops.md
+  - docs/architecture/system-context.md
+- Related commit: TBD
+
+
+## 2026-03-08 Plan 08 - Store user name in Supabase auth user_metadata
+- Context: spec는 로그인 후 이름이 비어 있으면 이름 입력 화면으로 보내고, 이름 저장 후 앱 진입을 요구한다. 현재 저장소에는 별도 user profile table이 없다.
+- Options considered:
+  - Option A: public profile table을 새로 만들고 이름을 거기에 저장한다.
+  - Option B: Supabase Auth user의 `user_metadata.name`에 이름을 저장한다.
+- Decision: Option B를 선택한다.
+- Rationale: 현재 단계에서는 별도 profile table 없이도 이름 수집 요구사항을 만족할 수 있고, 인증 직후 온보딩 흐름과 세션 복원을 단순하게 유지할 수 있다.
+- Impact: name capture 화면 저장은 `supabase.auth.updateUser({ data: { name } })`를 사용한다. 이후 richer profile 요구가 생기면 profile table을 추가로 도입할 수 있다.
+- Revisit trigger: 사용자 사진, 이름 수정, profile 확장 요구가 커지면 dedicated profile table로 분리한다.
+- Related docs:
+  - docs/specs/01-auth-email-login-link.md
+  - docs/architecture/domain-model.md
+  - docs/definition-of-done.md
+- Related commit: TBD
+

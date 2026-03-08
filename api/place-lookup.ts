@@ -1,10 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { verifyAccessToken } from '../src/server/authService'
 import { lookupPlaceFromRawUrl } from '../src/server/placeLookupService'
 import { NAVER_URL_ERROR_MESSAGE } from '../src/app-shell/naverUrl'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: { code: 'method_not_allowed', message: 'Method not allowed' } })
+    return
+  }
+
+  const authorization = req.headers.authorization
+  const accessToken = authorization?.startsWith('Bearer ') ? authorization.slice(7) : ''
+  const user = accessToken ? await verifyAccessToken(accessToken) : null
+  if (!user) {
+    res.status(401).json({ error: { code: 'unauthorized', message: 'Unauthorized' } })
     return
   }
 

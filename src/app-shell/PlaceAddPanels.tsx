@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { NAVER_URL_ERROR_MESSAGE, normalizeNaverMapUrl } from './naverUrl'
 import { registerOrMergePlace, validateRegistrationDraft } from './placeRepository'
 import { useAppShellStore } from './appShellStore'
+import { useAuth } from '../auth/authContext'
 import type { PlaceLookupResult, PlaceLookupSuccess } from '../server/placeLookupTypes'
 import type { PlaceType, ZeropayStatus } from './types'
 
@@ -182,6 +183,7 @@ const RegistrationStep = ({
 )
 
 const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
+  const { accessToken } = useAuth()
   const applyRegistrationResult = useAppShellStore((state) => state.applyRegistrationResult)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
   const places = useAppShellStore((state) => state.places)
@@ -235,6 +237,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         body: JSON.stringify({ rawUrl: targetRawUrl }),
       })

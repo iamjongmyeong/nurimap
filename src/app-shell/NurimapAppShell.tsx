@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { MapPane } from './MapPane'
+import { useAuth } from '../auth/authContext'
 import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
 import {
   useAppShellStore,
@@ -292,6 +293,7 @@ const DesktopSidebar = ({
   places: PlaceSummary[]
   selectedPlaceId: string | null
 }) => {
+  const { signOut } = useAuth()
   const openPlaceAdd = useAppShellStore((state) => state.openPlaceAdd)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
@@ -305,9 +307,14 @@ const DesktopSidebar = ({
           <h2 className="mt-1 text-2xl font-bold text-base-content">장소 탐색</h2>
           <p className="mt-2 text-sm text-base-content/70">목록과 지도에서 같은 장소를 비교하며 탐색할 수 있습니다.</p>
         </div>
-        <button aria-label="사이드바 접기 또는 펼치기" className="btn btn-ghost btn-square btn-sm" type="button">
-          ☰
-        </button>
+        <div className="flex gap-2">
+          <button className="btn btn-ghost btn-sm rounded-2xl" onClick={() => { void signOut() }} type="button">
+            로그아웃
+          </button>
+          <button aria-label="사이드바 접기 또는 펼치기" className="btn btn-ghost btn-square btn-sm" type="button">
+            ☰
+          </button>
+        </div>
       </div>
 
       <button
