@@ -134,7 +134,15 @@ const useKakaoScript = () => {
   }
 }
 
-const MapMetaHud = ({ mapLevel }: { mapLevel: number }) => (
+const MapMetaHud = ({
+  focusCenter,
+  mapLevel,
+  selectedPlaceName,
+}: {
+  focusCenter: { latitude: number; longitude: number }
+  mapLevel: number
+  selectedPlaceName: string | null
+}) => (
   <div className="absolute inset-x-6 top-6 z-10 flex flex-col gap-3 rounded-3xl bg-base-100/10 p-4 text-white backdrop-blur">
     <div>
       <p className="text-xs uppercase tracking-[0.24em] text-emerald-200">Nurimap</p>
@@ -145,11 +153,16 @@ const MapMetaHud = ({ mapLevel }: { mapLevel: number }) => (
     </div>
     <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-200/90">
       <span className="rounded-full bg-white/10 px-3 py-1" data-testid="map-center">
-        중심 좌표: {MAP_INITIAL_CENTER.latitude}, {MAP_INITIAL_CENTER.longitude}
+        중심 좌표: {focusCenter.latitude}, {focusCenter.longitude}
       </span>
       <span className="rounded-full bg-white/10 px-3 py-1" data-testid="map-level">
         level {mapLevel}
       </span>
+      {selectedPlaceName ? (
+        <span className="rounded-full bg-white/10 px-3 py-1" data-testid="map-focus-place">
+          선택된 장소: {selectedPlaceName}
+        </span>
+      ) : null}
     </div>
   </div>
 )
@@ -164,6 +177,10 @@ const FallbackMapPane = ({
     () => places.filter(hasCoordinates),
     [places],
   )
+  const focusedPlace = visiblePlaces.find((place) => place.id === selectedPlaceId) ?? null
+  const focusCenter = focusedPlace
+    ? { latitude: focusedPlace.latitude, longitude: focusedPlace.longitude }
+    : MAP_INITIAL_CENTER
 
   return (
     <div
@@ -172,16 +189,16 @@ const FallbackMapPane = ({
       data-testid="map-canvas"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,197,94,0.25),_transparent_25%),linear-gradient(135deg,_rgba(15,23,42,1)_0%,_rgba(30,41,59,1)_45%,_rgba(59,130,246,0.35)_100%)]" />
-      <MapMetaHud mapLevel={mapLevel} />
+      <MapMetaHud focusCenter={focusCenter} mapLevel={mapLevel} selectedPlaceName={focusedPlace?.name ?? null} />
       {visiblePlaces.map((place) => {
         const palette = markerPalette[place.place_type]
         const top = clamp(
-          50 - ((place.latitude ?? MAP_INITIAL_CENTER.latitude) - MAP_INITIAL_CENTER.latitude) * 3500,
+          50 - (place.latitude - focusCenter.latitude) * 3500,
           18,
           86,
         )
         const left = clamp(
-          50 + ((place.longitude ?? MAP_INITIAL_CENTER.longitude) - MAP_INITIAL_CENTER.longitude) * 8000,
+          50 + (place.longitude - focusCenter.longitude) * 8000,
           12,
           88,
         )
@@ -238,6 +255,10 @@ export const MapPane = ({
     () => places.filter(hasCoordinates),
     [places],
   )
+  const focusedPlace = visiblePlaces.find((place) => place.id === selectedPlaceId) ?? null
+  const focusCenter = focusedPlace
+    ? { latitude: focusedPlace.latitude, longitude: focusedPlace.longitude }
+    : MAP_INITIAL_CENTER
 
   useEffect(() => {
     if (status !== 'ready' || !mapRef.current || !window.kakao?.maps) {
@@ -337,7 +358,7 @@ export const MapPane = ({
 
   return (
     <div className="relative h-full min-h-screen overflow-hidden bg-slate-900" data-testid="map-canvas">
-      <MapMetaHud mapLevel={mapLevel} />
+      <MapMetaHud focusCenter={focusCenter} mapLevel={mapLevel} selectedPlaceName={focusedPlace?.name ?? null} />
       <div className="h-full min-h-screen" ref={mapRef} />
     </div>
   )
