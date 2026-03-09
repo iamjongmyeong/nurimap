@@ -18,7 +18,8 @@
 - 데스크톱과 모바일에서 정의된 UX 흐름을 따른다.
 - 기존 화면 구조와 상호작용 패턴을 불필요하게 깨지 않는다.
 - 목록, 상세, 폼, 에러 상태가 일관된 방식으로 동작한다.
-- 프론트엔드 작업인 경우 `vercel-react-best-practices` 기준을 적용했다.
+- 프론트엔드 구현 작업인 경우 `vercel-react-best-practices`와 `frontend-design` 기준을 적용했다.
+- 프론트엔드 UI 리뷰나 UX 점검 작업인 경우 `web-design-guidelines` 기준을 참고했다.
 
 ## 4. Data And Domain Integrity
 - `place`, `place_type`, `zeropay_status`, `naver_place_id` 같은 핵심 도메인 용어를 일관되게 사용한다.

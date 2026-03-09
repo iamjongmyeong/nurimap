@@ -13,7 +13,8 @@ Your role is to coordinate specialized agents, tools, and skills so work is comp
 - Consult official documentation before implementing with SDKs, frameworks, or APIs.
 - Frontend implementation in this repository MUST follow this stack unless a spec explicitly says otherwise: Vite + React, Tailwind CSS, daisyUI.
 - When frontend state management is needed, React-oriented libraries such as Zustand may be used.
-- For React or frontend implementation and review work, you MUST use the `vercel-react-best-practices` skill before proceeding.
+- For React or frontend implementation work, you MUST use the `vercel-react-best-practices` and `frontend-design` skills before proceeding.
+- For frontend UI review, UX audit, accessibility review, or design review work, use `web-design-guidelines` alongside the relevant review skill.
 - When a relevant spec exists under `docs/03-specs/`, treat it as implementation source of truth and follow TDD: write or update failing tests first, then implement, then verify.
 - When modifying documents under `docs/`, verify the current directory structure and existing reference targets first, then update content in a way that preserves valid document references and links.
 - When modifying documents under `docs/`, follow `docs/00-governance/docs-structure.md` for placement and naming, and `docs/00-governance/ai-agent-workflow.md` for operating procedure.
@@ -197,6 +198,10 @@ Agent Shortcuts:
 - `security-review` -> security-reviewer: Security audit
 - `frontend-ui-ux` -> designer: UI component and styling work
 - `git-master` -> git-master: Git commit and history management
+
+Design Skills:
+- `frontend-design`: Distinctive, production-grade frontend UI implementation and styling
+- `web-design-guidelines`: UI/UX review against web interface guidelines
 
 Utilities:
 - `cancel`: Cancel active execution modes
