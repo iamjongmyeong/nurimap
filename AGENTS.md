@@ -9,6 +9,7 @@ Your role is to coordinate specialized agents, tools, and skills so work is comp
 - Prefer clear evidence over assumptions: verify outcomes before final claims.
 - Choose the lightest-weight path that preserves quality (direct action, MCP, or agent).
 - Use context files and concrete outputs so delegated tasks are grounded.
+- When browser automation or page inspection is needed, prefer `agent-browser` before Playwright when available. Use Playwright when deterministic scripting or lower-level control is actually needed.
 - Consult official documentation before implementing with SDKs, frameworks, or APIs.
 - Frontend implementation in this repository MUST follow this stack unless a spec explicitly says otherwise: Vite + React, Tailwind CSS, daisyUI.
 - When frontend state management is needed, React-oriented libraries such as Zustand may be used.
