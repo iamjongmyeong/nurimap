@@ -32,6 +32,9 @@ const clearSessionStarted = () => {
   window.localStorage.removeItem(SESSION_STARTED_AT_KEY)
 }
 
+const authLoginWordmarkStyle = {
+  fontFamily: 'Rota, Pretendard, system-ui, sans-serif',
+} as const
 
 const getDevAuthOverride = () => {
   if (!import.meta.env.DEV) {
@@ -83,47 +86,82 @@ const getDevAuthOverride = () => {
   }
 }
 
+const AuthSurface = ({ children }: { children: ReactNode }) => (
+  <main className="min-h-screen bg-base-200 px-4 py-10">
+    <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl items-center justify-center">
+      <div className="w-full max-w-md px-8 py-8 sm:px-10 sm:py-10">{children}</div>
+    </div>
+  </main>
+)
+
 const AuthShell = ({
   email,
   message,
   onEmailChange,
   onSubmit,
+  requestedEmail,
+  showLinkSentState,
   submitting,
 }: {
   email: string
   message: string | null
   onEmailChange: (value: string) => void
   onSubmit: () => void
+  requestedEmail: string | null
+  showLinkSentState: boolean
   submitting: boolean
-}) => (
-  <main className="min-h-screen bg-base-200 px-4 py-10">
-    <div className="mx-auto max-w-md rounded-[28px] bg-base-100 p-8 shadow-xl">
-      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Nurimap Auth</p>
-      <h1 className="mt-3 text-2xl font-bold text-base-content">회사 이메일로 로그인</h1>
-      <p className="mt-3 text-sm text-base-content/70">@nurimedia.co.kr 이메일로 로그인 링크를 요청할 수 있습니다.</p>
-      <label className="form-control mt-6 w-full gap-2">
-        <span className="label-text font-semibold text-base-content">이메일</span>
-        <input
-          aria-label="이메일"
-          className={`input input-bordered w-full ${message ? 'input-error' : ''}`}
-          onChange={(event) => onEmailChange(event.target.value)}
-          type="email"
-          value={email}
-        />
-      </label>
-      {message ? <p className="mt-3 text-sm text-error">{message}</p> : null}
-      <button
-        className="btn btn-primary mt-6 w-full rounded-2xl"
-        data-testid="auth-request-button"
-        disabled={submitting}
-        onClick={onSubmit}
-        type="button"
+}) => {
+  const hasInlineError = !showLinkSentState && Boolean(message)
+  const deliveredEmail = requestedEmail ?? email
+
+  return (
+    <AuthSurface>
+      <p
+        className="text-center text-[20px] font-bold uppercase leading-none tracking-[0.16em] text-base-content"
+        style={authLoginWordmarkStyle}
       >
-        {submitting ? '요청 중...' : '로그인 링크 받기'}
-      </button>
-    </div>
-  </main>
-)
+        NURIMAP LOGIN
+      </p>
+      <form
+        className="mt-8"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void onSubmit()
+        }}
+      >
+        <label className="form-control w-full gap-2">
+          <span className="sr-only">이메일</span>
+          <input
+            className={`input input-bordered h-13 w-full rounded-2xl focus:border-primary focus:outline-none focus:ring-0 focus:shadow-none ${hasInlineError ? 'input-error' : ''}`}
+            onChange={(event) => onEmailChange(event.target.value)}
+            placeholder="example@nurimedia.co.kr"
+            type="email"
+            value={email}
+          />
+        </label>
+
+        {showLinkSentState ? (
+          <div className="mt-4 rounded-[24px] border border-primary/15 bg-primary/5 px-4 py-4 text-center">
+            <p className="text-sm font-semibold text-base-content">{message ?? '로그인 링크를 보냈어요.'}</p>
+            <p className="mt-2 break-all text-sm text-base-content">{deliveredEmail}</p>
+            <p className="mt-2 text-sm text-base-content/70">메일함에서 로그인 링크를 확인해 주세요.</p>
+          </div>
+        ) : null}
+
+        {hasInlineError ? <p className="mt-4 text-sm text-error">{message}</p> : null}
+
+        <button
+          className="btn btn-primary mt-6 h-13 w-full rounded-2xl"
+          data-testid="auth-request-button"
+          disabled={submitting}
+          type="submit"
+        >
+          {submitting ? '요청 중...' : '이메일로 로그인 링크 전송'}
+        </button>
+      </form>
+    </AuthSurface>
+  )
+}
 
 const AuthFailureScreen = ({
   onReset,
@@ -134,20 +172,19 @@ const AuthFailureScreen = ({
   onRetry: () => void
   reason: string | null
 }) => (
-  <main className="min-h-screen bg-base-200 px-4 py-10">
-    <div className="mx-auto max-w-md rounded-[28px] bg-base-100 p-8 shadow-xl">
-      <h1 className="text-2xl font-bold text-base-content">인증에 실패했어요</h1>
-      <p className="mt-3 text-sm text-base-content/70">{reason ?? '로그인 링크를 다시 확인해 주세요.'}</p>
-      <div className="mt-6 flex gap-3">
-        <button className="btn btn-primary flex-1 rounded-2xl" onClick={onRetry} type="button">
-          새 로그인 링크 받기
-        </button>
-        <button className="btn btn-ghost flex-1 rounded-2xl" onClick={onReset} type="button">
-          이메일 다시 입력
-        </button>
-      </div>
+  <AuthSurface>
+    <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-primary/80">NURIMAP LOGIN</p>
+    <h1 className="mt-8 text-center text-2xl font-bold text-base-content">인증에 실패했어요</h1>
+    <p className="mt-3 text-center text-sm text-base-content/70">{reason ?? '로그인 링크를 다시 확인해 주세요.'}</p>
+    <div className="mt-6 flex gap-3">
+      <button className="btn btn-primary flex-1 rounded-2xl" onClick={onRetry} type="button">
+        새 로그인 링크 받기
+      </button>
+      <button className="btn btn-ghost flex-1 rounded-2xl" onClick={onReset} type="button">
+        이메일 다시 입력
+      </button>
     </div>
-  </main>
+  </AuthSurface>
 )
 
 const NameCaptureScreen = ({
@@ -161,13 +198,13 @@ const NameCaptureScreen = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   return (
-    <main className="min-h-screen bg-base-200 px-4 py-10">
-      <div className="mx-auto max-w-md rounded-[28px] bg-base-100 p-8 shadow-xl">
+    <AuthSurface>
+      <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-primary/80">NURIMAP LOGIN</p>
+      <div className="mt-8">
         <h1 className="text-2xl font-bold text-base-content">이름 입력</h1>
         <label className="form-control mt-6 gap-2">
           <span className="label-text font-semibold text-base-content">이름</span>
           <input
-            aria-label="이름"
             className={`input input-bordered ${errorMessage ? 'input-error' : ''}`}
             onChange={(event) => setName(event.target.value)}
             value={name}
@@ -190,17 +227,17 @@ const NameCaptureScreen = ({
           {submitting ? '저장 중...' : '이름 저장'}
         </button>
       </div>
-    </main>
+    </AuthSurface>
   )
 }
 
 const VerifyingScreen = () => (
-  <main className="flex min-h-screen items-center justify-center bg-base-200">
-    <div className="rounded-[28px] bg-base-100 px-8 py-10 shadow-xl">
+  <AuthSurface>
+    <div className="flex flex-col items-center justify-center py-6 text-center">
       <span className="loading loading-spinner loading-lg text-primary" />
       <p className="mt-4 text-sm font-medium text-base-content">로그인 링크를 확인하는 중입니다.</p>
     </div>
-  </main>
+  </AuthSurface>
 )
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -209,6 +246,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [message, setMessage] = useState<string | null>(null)
   const [failureReason, setFailureReason] = useState<string | null>(null)
   const [email, setEmail] = useState('')
+  const [requestedEmail, setRequestedEmail] = useState<string | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -237,6 +275,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     markSessionStarted()
     setAccessToken(data.session.access_token)
     setEmail(data.user.email ?? '')
+    setRequestedEmail(null)
     setMessage(null)
     setFailureReason(null)
     if (data.user.user_metadata?.name) {
@@ -271,6 +310,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (authMode === 'verify' && authEmail && nonce) {
         setPhase('verifying')
+        setEmail(authEmail)
         const response = await fetch('/api/auth/verify-link', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -334,6 +374,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       markSessionStarted()
       setAccessToken(session.access_token)
       setEmail(data.user.email ?? '')
+      setRequestedEmail(null)
       if (data.user.user_metadata?.name) {
         setPhase('authenticated')
       } else {
@@ -356,6 +397,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data } = await supabaseBrowser.auth.getUser()
         const user = data.user
         setEmail(user?.email ?? '')
+        setRequestedEmail(null)
         setPhase(user?.user_metadata?.name ? 'authenticated' : 'name_required')
       }
     })
@@ -367,6 +409,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [isTestMode, testState, verifyAndAdoptSession])
 
   const requestLink = async (nextEmail: string) => {
+    if (!nextEmail.trim()) {
+      setRequestedEmail(null)
+      if (isTestMode) {
+        setTestAuthState({
+          phase: 'auth_required',
+          message: '이메일을 입력해 주세요.',
+          failureReason: null,
+        })
+      } else {
+        setMessage('이메일을 입력해 주세요.')
+        setPhase('auth_required')
+      }
+      return
+    }
+
     setSubmitting(true)
     setMessage(null)
 
@@ -375,8 +432,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setEmail(nextEmail)
       setSubmitting(false)
       if (result.status === 'error') {
-        setMessage(result.code === 'invalid_domain' ? '허용된 회사 이메일만 사용할 수 있어요.' : null)
+        setRequestedEmail(null)
+        setMessage(result.code === 'invalid_domain' ? '누리미디어 구성원만 사용할 수 있어요.' : null)
+        return
       }
+      setRequestedEmail(result.mode === 'link' ? nextEmail : null)
       return
     }
 
@@ -399,12 +459,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setEmail(nextEmail)
 
     if (!response.ok || payload.status === 'error') {
+      setRequestedEmail(null)
       setMessage(payload.message)
       setPhase('auth_required')
       return
     }
 
     if (payload.mode === 'bypass') {
+      setRequestedEmail(null)
       setPhase('verifying')
       setMessage(payload.message)
 
@@ -422,6 +484,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     setMessage(payload.message)
+    setRequestedEmail(nextEmail)
     setPhase('auth_link_sent')
   }
 
@@ -457,6 +520,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabaseBrowser.auth.signOut()
     clearSessionStarted()
     setAccessToken(null)
+    setRequestedEmail(null)
+    setMessage(null)
+    setFailureReason(null)
     setPhase('auth_required')
   }
 
@@ -486,12 +552,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return (
       <AuthContext.Provider value={value}>
         <AuthShell
-          email={email}
+          email={resolvedEmail}
           message={resolvedMessage}
           onEmailChange={setEmail}
           onSubmit={() => {
-            void requestLink(email)
+            void requestLink(resolvedEmail)
           }}
+          requestedEmail={requestedEmail}
+          showLinkSentState={resolvedPhase === 'auth_link_sent'}
           submitting={submitting}
         />
       </AuthContext.Provider>
@@ -508,7 +576,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } else {
               setPhase('auth_required')
               setFailureReason(null)
+              setMessage(null)
             }
+            setRequestedEmail(null)
           }}
           onRetry={() => {
             if (isTestMode) {
@@ -516,7 +586,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } else {
               setPhase('auth_required')
               setFailureReason(null)
+              setMessage(null)
             }
+            setRequestedEmail(null)
           }}
           reason={resolvedFailureReason}
         />

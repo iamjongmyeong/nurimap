@@ -83,7 +83,7 @@ export const requestTestLoginLink = async (email: string) => {
   }
 
   if (!email.endsWith('@nurimedia.co.kr')) {
-    setTestAuthState({ message: '허용된 회사 이메일만 사용할 수 있어요.' })
+    setTestAuthState({ message: '누리미디어 구성원만 사용할 수 있어요.' })
     return { status: 'error' as const, code: 'invalid_domain' as const }
   }
 

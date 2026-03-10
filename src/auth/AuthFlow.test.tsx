@@ -15,7 +15,7 @@ const setViewport = (width: number) => {
   })
 }
 
-describe('Plan 08 auth flow', () => {
+describe('Sprint 12 auth flow', () => {
   beforeEach(() => {
     resetTestAuthState()
   })
@@ -25,8 +25,32 @@ describe('Plan 08 auth flow', () => {
     setViewport(1280)
     render(<App />)
 
-    expect(screen.getByRole('button', { name: '로그인 링크 받기' })).toBeInTheDocument()
+    expect(screen.getByText('NURIMAP LOGIN')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('example@nurimedia.co.kr')).toBeInTheDocument()
+    expect(screen.queryByText('@nurimedia.co.kr 이메일로 로그인 링크를 요청할 수 있습니다.')).not.toBeInTheDocument()
     expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
+  })
+
+  it('keeps the email label accessible while visually hiding it', () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    render(<App />)
+
+    expect(screen.getByLabelText('이메일')).toHaveAttribute('placeholder', 'example@nurimedia.co.kr')
+    expect(screen.getByText('이메일')).toHaveClass('sr-only')
+  })
+
+  it('shows the empty-email warning when submitted without input', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
+
+    expect(await screen.findByText('이메일을 입력해 주세요.')).toBeInTheDocument()
+    expect(screen.getByLabelText('이메일')).toHaveValue('')
   })
 
   it('shows an inline error and keeps the email input for an invalid domain', async () => {
@@ -37,9 +61,9 @@ describe('Plan 08 auth flow', () => {
 
     const input = screen.getByLabelText('이메일')
     await user.type(input, 'user@example.com')
-    await user.click(screen.getByRole('button', { name: '로그인 링크 받기' }))
+    await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
 
-    expect(await screen.findByText('허용된 회사 이메일만 사용할 수 있어요.')).toBeInTheDocument()
+    expect(await screen.findByText('누리미디어 구성원만 사용할 수 있어요.')).toBeInTheDocument()
     expect(input).toHaveValue('user@example.com')
   })
 
@@ -51,7 +75,7 @@ describe('Plan 08 auth flow', () => {
 
     const input = screen.getByLabelText('이메일')
     await user.type(input, 'cooldown@nurimedia.co.kr')
-    await user.click(screen.getByRole('button', { name: '로그인 링크 받기' }))
+    await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
 
     expect(await screen.findByText('300초 후에 다시 시도해 주세요.')).toBeInTheDocument()
     expect(input).toHaveValue('cooldown@nurimedia.co.kr')
@@ -65,7 +89,7 @@ describe('Plan 08 auth flow', () => {
 
     const input = screen.getByLabelText('이메일')
     await user.type(input, 'limit@nurimedia.co.kr')
-    await user.click(screen.getByRole('button', { name: '로그인 링크 받기' }))
+    await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
 
     expect(await screen.findByText('오늘은 더 이상 로그인 링크를 요청할 수 없어요.')).toBeInTheDocument()
     expect(input).toHaveValue('limit@nurimedia.co.kr')
@@ -78,7 +102,7 @@ describe('Plan 08 auth flow', () => {
     render(<App />)
 
     await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
-    const button = screen.getByRole('button', { name: '로그인 링크 받기' })
+    const button = screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })
     const clickPromise = user.click(button)
 
     await waitFor(() => {
@@ -87,6 +111,33 @@ describe('Plan 08 auth flow', () => {
 
     await clickPromise
     expect(await screen.findByText('로그인 링크를 보냈어요.')).toBeInTheDocument()
+  })
+
+  it('shows the link-sent state inside the same auth shell with the requested email', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
+    await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
+
+    expect(await screen.findByText('로그인 링크를 보냈어요.')).toBeInTheDocument()
+    expect(screen.getByText('tester@nurimedia.co.kr')).toBeInTheDocument()
+    expect(screen.getByText('NURIMAP LOGIN')).toBeInTheDocument()
+    expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
+  })
+
+  it('submits when enter is pressed in a non-empty email input', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr{enter}')
+
+    expect(await screen.findByText('로그인 링크를 보냈어요.')).toBeInTheDocument()
+    expect(screen.getByText('tester@nurimedia.co.kr')).toBeInTheDocument()
   })
 
   it('immediately enters the onboarding flow for a bypass test account', async () => {
@@ -115,9 +166,10 @@ describe('Plan 08 auth flow', () => {
     render(<App />)
 
     expect(screen.getByText('인증에 실패했어요')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '새 로그인 링크 받기' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '이메일 다시 입력' }))
 
-    expect(await screen.findByRole('button', { name: '로그인 링크 받기' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
   })
 
   it('shows the name capture screen for users without a name and requires at least one character', async () => {
@@ -155,7 +207,7 @@ describe('Plan 08 auth flow', () => {
 
     await user.click(screen.getByRole('button', { name: '로그아웃' }))
 
-    expect(await screen.findByRole('button', { name: '로그인 링크 받기' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
     expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
   })
 })

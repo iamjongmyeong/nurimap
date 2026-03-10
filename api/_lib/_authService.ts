@@ -45,23 +45,79 @@ const isBypassLoginEmail = (email: string) => {
 const toVerificationType = (verificationType: string | undefined): AuthVerifyType =>
   verificationType === 'magiclink' || verificationType === 'invite' ? verificationType : 'signup'
 
-const generateImmediateBypassPayload = async (email: string): Promise<AuthRequestSuccess | { status: 'error'; code: AuthRequestErrorCode; message: string }> => {
+const getPublicAppUrl = () => {
+  const rawValue = process.env.PUBLIC_APP_URL?.trim()
+  if (!rawValue) {
+    return null
+  }
+
+  try {
+    const parsedUrl = new URL(rawValue)
+    if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+      return null
+    }
+
+    if (parsedUrl.hash) {
+      parsedUrl.hash = ''
+    }
+
+    const normalizedUrl = parsedUrl.toString()
+    if (parsedUrl.pathname === '/' && !parsedUrl.search) {
+      return normalizedUrl.replace(/\/$/, '')
+    }
+
+    return normalizedUrl
+  } catch {
+    return null
+  }
+}
+
+const buildLoginUrl = ({ baseUrl, email, nonce }: { baseUrl: string; email: string; nonce: string }) => {
+  const separator = baseUrl.includes('?') ? '&' : '?'
+  return `${baseUrl}${separator}auth_mode=verify&email=${encodeURIComponent(email)}&nonce=${encodeURIComponent(nonce)}`
+}
+
+const buildLoginEmailHtml = (loginUrl: string) => `
+  <div style="margin:0 auto;max-width:480px;padding:32px 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;color:#111827;">
+    <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:0.32em;">NURIMAP LOGIN</p>
+    <p style="margin:28px 0 0;">
+      <a href="${loginUrl}" style="display:inline-block;border-radius:999px;background:#111827;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">누리맵 로그인</a>
+    </p>
+    <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:#4b5563;">링크는 5분 동안만 유효합니다.</p>
+    <p style="margin:12px 0 0;font-size:14px;line-height:1.7;color:#4b5563;">버튼이 동작하지 않으면 아래 링크를 직접 열어주세요.</p>
+    <p style="margin:16px 0 0;font-size:13px;line-height:1.7;word-break:break-all;">
+      <a href="${loginUrl}" style="color:#2563eb;text-decoration:underline;">${loginUrl}</a>
+    </p>
+  </div>
+`
+
+const buildLoginEmailText = (loginUrl: string) =>
+  ['[NURIMAP] 로그인 링크', '', loginUrl, '', '5분 동안만 유효합니다.'].join('\n')
+
+const deliveryFailedResult = (email: string) => {
+  logAuthRequestFailure({ code: 'delivery_failed', email })
+  return {
+    status: 'error' as const,
+    code: 'delivery_failed' as AuthRequestErrorCode,
+    message: '로그인 링크를 보내지 못했어요. 다시 시도해 주세요.',
+  }
+}
+
+const generateImmediateBypassPayload = async (
+  email: string,
+  publicAppUrl: string,
+): Promise<AuthRequestSuccess | { status: 'error'; code: AuthRequestErrorCode; message: string }> => {
   const admin = createSupabaseAdminClient()
   const { data, error } = await admin.auth.admin.generateLink({
     type: 'magiclink',
     email,
     options: {
-      redirectTo: process.env.PUBLIC_APP_URL,
+      redirectTo: publicAppUrl,
     },
   })
 
   if (error || !data.properties.hashed_token) {
-    logAuthRequestFailure({ code: 'delivery_failed', email })
-    return {
-      status: 'error',
-      code: 'delivery_failed',
-      message: '로그인 링크를 보내지 못했어요. 다시 시도해 주세요.',
-    }
+    return deliveryFailedResult(email)
   }
 
   logAuthBypassLogin({ email })
@@ -135,9 +191,9 @@ const sendLoginEmail = async ({ email, loginUrl }: { email: string; loginUrl: st
     body: JSON.stringify({
       from: process.env.RESEND_FROM_EMAIL,
       to: [email],
-      subject: 'Nurimap 로그인 링크',
-      html: `<p>아래 링크로 로그인하세요.</p><p><a href="${loginUrl}">${loginUrl}</a></p>`,
-      text: `아래 링크로 로그인하세요.\n${loginUrl}`,
+      subject: '[NURIMAP] 로그인 링크',
+      html: buildLoginEmailHtml(loginUrl),
+      text: buildLoginEmailText(loginUrl),
     }),
   })
 
@@ -149,9 +205,14 @@ const sendLoginEmail = async ({ email, loginUrl }: { email: string; loginUrl: st
 export const requestLoginLink = async (email: string) => {
   const allowedDomain = process.env.AUTH_ALLOWED_EMAIL_DOMAIN ?? ''
   const normalizedEmail = email.trim().toLowerCase()
+  const publicAppUrl = getPublicAppUrl()
 
   if (isBypassLoginEmail(normalizedEmail)) {
-    return await generateImmediateBypassPayload(normalizedEmail)
+    if (!publicAppUrl) {
+      return deliveryFailedResult(normalizedEmail)
+    }
+
+    return await generateImmediateBypassPayload(normalizedEmail, publicAppUrl)
   }
 
   if (!isAllowedEmailDomain(normalizedEmail, allowedDomain)) {
@@ -159,7 +220,7 @@ export const requestLoginLink = async (email: string) => {
     return {
       status: 'error' as const,
       code: 'invalid_domain' as AuthRequestErrorCode,
-      message: '허용된 회사 이메일만 사용할 수 있어요.',
+      message: '누리미디어 구성원만 사용할 수 있어요.',
     }
   }
 
@@ -186,22 +247,21 @@ export const requestLoginLink = async (email: string) => {
     }
   }
 
+  if (!publicAppUrl) {
+    return deliveryFailedResult(normalizedEmail)
+  }
+
   const admin = createSupabaseAdminClient()
   const { data, error } = await admin.auth.admin.generateLink({
     type: 'magiclink',
     email: normalizedEmail,
     options: {
-      redirectTo: process.env.PUBLIC_APP_URL,
+      redirectTo: publicAppUrl,
     },
   })
 
   if (error || !data.user || !data.properties.hashed_token) {
-    logAuthRequestFailure({ code: 'delivery_failed', email: normalizedEmail })
-    return {
-      status: 'error' as const,
-      code: 'delivery_failed' as AuthRequestErrorCode,
-      message: '로그인 링크를 보내지 못했어요. 다시 시도해 주세요.',
-    }
+    return deliveryFailedResult(normalizedEmail)
   }
 
   const nonce = crypto.randomUUID()
@@ -218,17 +278,12 @@ export const requestLoginLink = async (email: string) => {
 
   await updateUserAuthState(data.user.id, nextState, data.user.user_metadata ?? undefined)
 
-  const loginUrl = `${process.env.PUBLIC_APP_URL}?auth_mode=verify&email=${encodeURIComponent(normalizedEmail)}&nonce=${encodeURIComponent(nonce)}`
+  const loginUrl = buildLoginUrl({ baseUrl: publicAppUrl, email: normalizedEmail, nonce })
 
   try {
     await sendLoginEmail({ email: normalizedEmail, loginUrl })
   } catch {
-    logAuthRequestFailure({ code: 'delivery_failed', email: normalizedEmail })
-    return {
-      status: 'error' as const,
-      code: 'delivery_failed' as AuthRequestErrorCode,
-      message: '로그인 링크를 보내지 못했어요. 다시 시도해 주세요.',
-    }
+    return deliveryFailedResult(normalizedEmail)
   }
 
   return {

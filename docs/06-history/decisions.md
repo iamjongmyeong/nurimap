@@ -356,3 +356,20 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/04-design/review.md
   - docs/04-design/recommendation.md
 - Related commit:
+
+## 2026-03-10 Sprint 12 - Refuse auth email delivery when PUBLIC_APP_URL is missing or invalid
+- Context: Sprint 12 needed to stop auth emails from containing `undefined...` wrapper links. The backend auth flow builds the app-managed wrapper URL from `PUBLIC_APP_URL`, uses it as the Supabase `redirectTo` target, and embeds it in the Resend email body. If that env is empty or malformed, silently continuing would generate broken links and mislead users into a dead-end auth flow.
+- Options considered:
+  - Option A: fall back to a relative path or permissive default origin when `PUBLIC_APP_URL` is missing/invalid.
+  - Option B: continue generating the Supabase link and let downstream email/body assembly fail implicitly.
+  - Option C: validate `PUBLIC_APP_URL` up front, normalize only valid `http/https` origins/paths, and return the existing `delivery_failed` error instead of generating or sending a broken link.
+- Decision: Option C를 선택한다.
+- Rationale: Sprint 12’s main auth defect was a broken email entrypoint. A guessed fallback origin could send users to the wrong host, and implicit failure later in the flow would still risk emitting a malformed link. Explicit validation at the auth service boundary keeps behavior deterministic, prevents `undefined...` links, and preserves the existing user-facing failure contract (`로그인 링크를 보내지 못했어요. 다시 시도해 주세요.`) without inventing a new error mode.
+- Impact: `src/server/authService.ts` and `api/_lib/_authService.ts` now validate `PUBLIC_APP_URL` before bypass or standard magic-link generation. Only valid `http/https` URLs are accepted; hash fragments are stripped; root trailing slash is normalized; missing/invalid values short-circuit to `delivery_failed`, skip Supabase `generateLink`, and skip Resend delivery. Tests now cover both the Sprint 12 email template and the missing-env failure path.
+- Revisit trigger: If Nurimap later supports multiple deployment origins, tenant-specific domains, preview URLs, or a safer server-side canonical-origin source, revisit whether `PUBLIC_APP_URL` should stay a single required env or be replaced by a more structured origin-resolution policy.
+- Related docs:
+  - docs/05-sprints/sprint-12/planning.md
+  - docs/03-specs/05-auth-email-login-link.md
+  - docs/02-architecture/security-and-ops.md
+  - docs/05-sprints/sprint-12/qa.md
+- Related commit:
