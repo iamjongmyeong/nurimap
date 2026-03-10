@@ -11,6 +11,7 @@ Your role is to coordinate specialized agents, tools, and skills so work is comp
 - Use context files and concrete outputs so delegated tasks are grounded.
 - When browser automation or page inspection is needed, use Playwright CLI by default.
 - Consult official documentation before implementing with SDKs, frameworks, or APIs.
+- In this repository, do not use Claude Code or Gemini provider paths. Do not invoke `ask-claude`, `ask-gemini`, `omx ask claude`, or `omx ask gemini`. Team worker CLI must stay Codex-only with `OMX_TEAM_WORKER_CLI=codex`; do not use Claude/Gemini worker CLI selections.
 - Frontend implementation in this repository MUST follow this stack unless a spec explicitly says otherwise: Vite + React, Tailwind CSS, daisyUI.
 - When frontend state management is needed, React-oriented libraries such as Zustand may be used.
 - For React or frontend implementation work, you MUST use the `vercel-react-best-practices` and `frontend-design` skills before proceeding. When the task needs stronger visual direction, industry-specific design-system generation, or broader UI exploration, also use `ui-ux-pro-max`.
