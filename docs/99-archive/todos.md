@@ -1,7 +1,7 @@
 > Status: Archived
 > Archived on: 2026-03-09
 > Reason: The old backlog note file is no longer used as live source of truth.
-> Replaced by: No direct replacement. Future work should be captured in `docs/03-specs/*.md`, `docs/04-sprints/sprint-XX/planning.md`, or `docs/05-history/change-log.md`.
+> Replaced by: No direct replacement. Future work should be captured in `docs/03-specs/*.md`, `docs/05-sprints/sprint-XX/planning.md`, or `docs/06-history/change-log.md`.
 >
 > 이 문서는 더 이상 현재 기준 문서가 아니다.
 

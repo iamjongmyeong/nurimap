@@ -1,7 +1,7 @@
 > Status: Archived
 > Archived on: 2026-03-09
 > Reason: Legacy Plan-based execution model was replaced by Sprint-based docs governance.
-> Replaced by: `docs/00-governance/ai-agent-workflow.md`, `docs/00-governance/docs-structure.md`, `docs/04-sprints/sprint-XX/planning.md`
+> Replaced by: `docs/00-governance/ai-agent-workflow.md`, `docs/00-governance/docs-structure.md`, `docs/05-sprints/sprint-XX/planning.md`
 >
 > 이 문서는 더 이상 현재 기준 문서가 아니다.
 

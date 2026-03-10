@@ -15,10 +15,11 @@ docs/
     user-flows/
   02-architecture/
   03-specs/
-  04-sprints/
+  04-design/
+  05-sprints/
     template/
     sprint-XX/
-  05-history/
+  06-history/
   99-archive/
     qa/
 ```
@@ -47,7 +48,7 @@ docs/
 - 자주 바뀌지 않는 상위 문서를 유지한다.
 
 ### `02-architecture/`
-- 도메인 모델, 시스템 경계, integration, security, UI 구조를 둔다.
+- 도메인 모델, 시스템 경계, integration, security 규칙을 둔다.
 - 구현 제약과 공통 규칙은 이 폴더에서 관리한다.
 
 ### `03-specs/`
@@ -55,7 +56,12 @@ docs/
 - 현재 Sprint에서 선택된 spec만 source of truth로 사용한다.
 - QA 전용 일회성 문서는 두지 않는다.
 
-### `04-sprints/`
+### `04-design/`
+- 공통 레이아웃, breakpoint, UI 상태 모델, 흐름별 화면 구조를 둔다.
+- `foundations.md`에는 전역 디자인 기준을 둔다.
+- 흐름별 디자인 문서는 가능한 한 대응하는 `user-flows/` slug와 같은 이름을 사용한다.
+
+### `05-sprints/`
 - 현재 또는 과거 Sprint의 실행 문서를 둔다.
 - `template/`에는 새 Sprint를 시작할 때 복사할 기본 문서를 둔다.
 - Sprint마다 동일한 파일 세트를 사용한다.
@@ -63,7 +69,7 @@ docs/
 - `qa.md`는 검증 실행 결과 문서다.
 - `review.md`는 결과 요약, 미완료 항목, carry-over, 회고를 함께 담는다.
 
-### `05-history/`
+### `06-history/`
 - 현재 구현의 source of truth는 아니지만 남겨야 할 이력을 둔다.
 - `decisions.md`는 비자명한 의사결정 기록이다.
 - `change-log.md`는 변경 요청과 반영 여부 기록이다.
@@ -75,11 +81,12 @@ docs/
 
 ## Document Creation Rules
 - 새로운 기능 요구사항은 `03-specs/`에 다음 번호로 추가한다.
-- 새로운 Sprint를 시작할 때는 `04-sprints/template/`를 기준으로 `04-sprints/sprint-XX/`를 만든다.
+- 새로운 디자인 기준이나 화면 구조를 만들거나 바꿀 때는 `04-design/`을 우선 검토한다.
+- 새로운 Sprint를 시작할 때는 `05-sprints/template/`를 기준으로 `05-sprints/sprint-XX/`를 만든다.
 - 운영 규칙을 추가할 때는 `00-governance/`에 둔다.
 - 제품 설명이나 흐름을 바꿀 때는 `01-product/`를 우선 검토한다.
 - 기술 구조나 제약을 바꿀 때는 `02-architecture/`를 우선 검토한다.
-- 변경 요청이나 비자명한 판단은 각각 `05-history/change-log.md`, `05-history/decisions.md`에 기록한다.
+- 변경 요청이나 비자명한 판단은 각각 `06-history/change-log.md`, `06-history/decisions.md`에 기록한다.
 - 사용자의 명시적 요청이 없으면 `README` 같은 보조 문서를 새로 만들지 않는다.
 
 ## Spec Lifecycle
@@ -100,7 +107,7 @@ docs/
 - In Scope
 - Out Of Scope
 - Selected Specs
-- Related Product / Architecture Docs
+- Related Product / Design / Architecture Docs
 - Constraints
 - Agent Instructions
 - Done Criteria
@@ -141,7 +148,7 @@ docs/
 - Sprint 종료 시 결과 요약과 회고를 같은 형식으로 남기기 위해 사용한다.
 
 ## Live And Archive Boundary
-- 라이브 문서는 `00-governance/`부터 `05-history/`까지다.
+- 라이브 문서는 `00-governance/`부터 `06-history/`까지다.
 - `99-archive/`는 읽을 수는 있지만 현재 구현 기준이 아니다.
 - 라이브 문서를 대체하는 구조 변경이 생기면 먼저 archive snapshot을 만든 뒤 새 구조를 반영한다.
 - `99-archive/`의 문서는 파일 상단에 archived 상태와 대체 경로를 명시한다.

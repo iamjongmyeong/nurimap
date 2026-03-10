@@ -6,7 +6,7 @@
 
 # Selected Specs
 
-# Related Product / Architecture Docs
+# Related Product / Design / Architecture Docs
 
 # Constraints
 

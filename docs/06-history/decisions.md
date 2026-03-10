@@ -55,7 +55,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: 추후 빌드/테스트 툴체인이 현재 저장소 제약과 충돌하거나, TypeScript가 과도한 복잡성을 만든다고 판단될 때 재검토한다.
 - Related docs:
   - docs/03-specs/01-app-shell-and-layout.md
-  - docs/02-architecture/ui-design.md
+  - docs/04-design/foundations.md
   - docs/00-governance/definition-of-done.md
 - Related commit: 30b00cc
 
@@ -66,12 +66,12 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - Option A: Plan 01에서는 단순 정적 마크업만 만들고 상태 모델은 나중에 추가한다.
   - Option B: Plan 01부터 최소한의 navigation state 골격을 두고, 모바일 목록 페이지 전환 같은 기본 상호작용을 상태 기반으로 구현한다.
 - Decision: Option B를 선택해 Zustand 기반의 최소 navigation state 골격을 도입한다.
-- Rationale: ui-design 문서가 navigation state와 async substate 분리를 강조하고 있고, Plan 01 scope에도 선택 상태 공유 골격이 포함된다. 지금 최소 상태 골격을 잡아두면 이후 Plan에서 구조를 덜 흔들고 확장할 수 있다.
+- Rationale: design foundations 문서가 navigation state와 async substate 분리를 강조하고 있고, Plan 01 scope에도 선택 상태 공유 골격이 포함된다. 지금 최소 상태 골격을 잡아두면 이후 Plan에서 구조를 덜 흔들고 확장할 수 있다.
 - Impact: `map_browse`, `mobile_place_list_open`, `place_add_open`, `place_detail_open` 상태 골격이 초기 구현에 포함된다. 모바일 `목록 보기` 버튼은 실제 상태 전환을 수행한다.
 - Revisit trigger: Plan 02~03 구현 중 라우팅 또는 전역 상태 경계가 현재 store 구조와 크게 어긋난다고 판단될 때 재검토한다.
 - Related docs:
   - docs/03-specs/01-app-shell-and-layout.md
-  - docs/02-architecture/ui-design.md
+  - docs/04-design/foundations.md
   - docs/01-product/user-flows/browse-and-detail.md
 - Related commit: 30b00cc
 
@@ -89,7 +89,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/03-specs/02-map-rendering.md
   - docs/03-specs/03-list-browse.md
   - docs/02-architecture/integrations.md
-  - docs/02-architecture/ui-design.md
+  - docs/04-design/browse-and-detail.md
 - Related commit: 3a0ef39
 
 
@@ -120,7 +120,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: Plan 08 이후 보호 라우트/링크 기반 탐색이 본격화되면 state-only navigation 대신 라우터 기반 구조로 재검토한다.
 - Related docs:
   - docs/03-specs/04-place-detail.md
-  - docs/02-architecture/ui-design.md
+  - docs/04-design/browse-and-detail.md
   - docs/01-product/user-flows/browse-and-detail.md
 - Related commit: 89bb3dd
 
@@ -131,12 +131,12 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - Option A: Plan 04에서는 별도 임시 페이지나 전용 route를 만들고, 이후 Plan 06에서 다시 2단계 place add UI로 교체한다.
   - Option B: 현재 `place_add_open` state를 그대로 활용해 데스크톱은 floating panel, 모바일은 full-screen page에서 URL 입력 1단계를 먼저 구현하고 이후 같은 surface를 2단계로 확장한다.
 - Decision: Option B를 선택한다.
-- Rationale: ui-design과 user-flow 문서가 place add를 같은 화면 안의 progressive disclosure로 정의하고 있어, 지금부터 동일 surface를 쓰는 편이 later refactor를 줄인다.
+- Rationale: design 문서와 user-flow 문서가 place add를 같은 화면 안의 progressive disclosure로 정의하고 있어, 지금부터 동일 surface를 쓰는 편이 later refactor를 줄인다.
 - Impact: Plan 04의 URL 입력 UI는 이후 Plan 05/06에서 동일한 state와 surface 위에 place 요약/등록 입력 단계가 추가될 예정이다.
 - Revisit trigger: Plan 06 구현 시 2단계 등록 UI가 현재 panel/page 구조로는 자연스럽게 확장되지 않는다고 판단되면 재조정한다.
 - Related docs:
   - docs/03-specs/06-naver-url-normalization.md
-  - docs/02-architecture/ui-design.md
+  - docs/04-design/place-submission.md
   - docs/01-product/user-flows/place-submission.md
 - Related commit: c8bd3ec
 
@@ -282,7 +282,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Related docs:
   - docs/03-specs/11-recommendation.md
   - docs/02-architecture/domain-model.md
-  - docs/02-architecture/ui-design.md
+  - docs/04-design/recommendation.md
 - Related commit: 12b73ef
 
 
@@ -318,3 +318,24 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/02-architecture/security-and-ops.md
   - docs/00-governance/definition-of-done.md
 - Related commit: 65f9910
+
+
+## 2026-03-10 Docs structure - Split design docs out of architecture and align them with user flows
+- Context: 기존에는 `docs/02-architecture/ui-design.md` 하나에 공통 레이아웃, 상태 모델, 인증 화면, 탐색 화면, 장소 등록, 리뷰/추천 디자인 규칙이 함께 들어 있었다. 사용자는 user-flow 문서와 UI design 문서의 역할을 더 명확히 분리하고, 공통 기준과 흐름별 디자인 문서를 따로 관리하길 원했다.
+- Options considered:
+  - Option A: 기존 `docs/02-architecture/ui-design.md`를 유지하고 필요한 문단만 정리한다.
+  - Option B: `04-design/` 폴더를 새로 만들고, 공통 기준은 `foundations.md`, 흐름별 화면 규칙은 대응하는 flow slug 문서로 분리한다. 이후 `04-sprints`, `05-history`도 `05-sprints`, `06-history`로 민다.
+- Decision: Option B를 선택한다.
+- Rationale: 디자인 문서는 architecture의 도메인/보안/시스템 경계와 성격이 다르고, 사용자 흐름과 더 가까운 화면 구조 규칙을 따로 읽을 수 있어야 문서 책임이 분명해진다. 공통 기준과 흐름별 규칙을 분리하면 이후 auth, browse, submission, review, recommendation 변경도 영향 범위를 더 쉽게 좁힐 수 있다.
+- Impact: `docs/04-design/foundations.md`가 전역 breakpoint/state model source of truth가 된다. `docs/04-design/auth-and-name-entry.md`, `browse-and-detail.md`, `place-submission.md`, `review.md`, `recommendation.md`가 흐름별 UI 기준을 담당한다. Sprint와 history 문서 경로는 각각 `docs/05-sprints/`, `docs/06-history/`로 이동한다.
+- Revisit trigger: 향후 design 문서가 다시 한 파일에 과도하게 집중되거나, flow별 문서보다 컴포넌트 시스템 문서가 더 적합해지면 design 정보 구조를 다시 조정한다.
+- Related docs:
+  - docs/00-governance/docs-structure.md
+  - docs/00-governance/ai-agent-workflow.md
+  - docs/04-design/foundations.md
+  - docs/04-design/auth-and-name-entry.md
+  - docs/04-design/browse-and-detail.md
+  - docs/04-design/place-submission.md
+  - docs/04-design/review.md
+  - docs/04-design/recommendation.md
+- Related commit:

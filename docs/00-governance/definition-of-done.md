@@ -42,10 +42,10 @@
 
 ## 7. Documentation Sync
 - 구현 결과가 관련 문서와 일치한다.
-- 필요 시 `docs/03-specs/`, `docs/01-product/`, `docs/02-architecture/`, 현재 Sprint 문서를 업데이트했다.
+- 필요 시 `docs/03-specs/`, `docs/01-product/`, `docs/04-design/`, `docs/02-architecture/`, 현재 Sprint 문서를 업데이트했다.
 - Open Questions가 해소되었으면 문서에서 반영했다.
-- 범위 변경이 있었다면 `docs/05-history/change-log.md`에 남긴다.
-- 중요한 판단이 있었다면 `docs/05-history/decisions.md`에 남긴다.
+- 범위 변경이 있었다면 `docs/06-history/change-log.md`에 남긴다.
+- 중요한 판단이 있었다면 `docs/06-history/decisions.md`에 남긴다.
 
 ## 8. Review Readiness
 - 다른 개발자나 AI Agent가 읽고 이어서 작업할 수 있다.

@@ -29,7 +29,7 @@
   - `project-overview.md`를 `product-overview.md`로 변경했다.
   - 기존 `user-flow.md`를 `user-flows/` 아래 개별 문서로 분해했다.
   - 기능 spec은 `03-specs/` 아래 새 번호 체계로 재정렬했다.
-  - `docs/04-sprints/template/`를 만들고 `planning.md`, `qa.md`, `review.md` 템플릿을 추가했다.
+  - `docs/05-sprints/template/`를 만들고 `planning.md`, `qa.md`, `review.md` 템플릿을 추가했다.
   - `ai-agent-workflow.md`, `definition-of-ready.md`, `definition-of-done.md`, `AGENTS.md`를 새 구조 기준으로 정리했다.
   - 구조 규칙과 Sprint 문서 계약을 `docs/00-governance/docs-structure.md`에 문서화했다.
   - `docs/99-archive/` 루트에 retired 문서만 남기고, legacy QA 기록은 `docs/99-archive/qa/`에 모았다.
@@ -40,8 +40,8 @@
   - `docs/01-product/`
   - `docs/02-architecture/`
   - `docs/03-specs/`
-  - `docs/04-sprints/`
-  - `docs/05-history/`
+  - `docs/05-sprints/`
+  - `docs/06-history/`
 - Archived docs:
   - `docs/99-archive/plans.md`
   - `docs/99-archive/user-flow.md`
@@ -49,3 +49,29 @@
   - `docs/99-archive/local-integration-qa.md`
   - `docs/99-archive/todos.md`
   - `docs/99-archive/qa/`
+
+## 2026-03-10 - Separate `04-design` and renumber downstream docs folders
+- Request:
+  - user-flow와 UI design 내용을 분리하기 위해 전용 design 폴더를 만들고, layout/breakpoint 같은 공통 내용과 흐름별 화면 문서를 나눠 관리한다.
+  - `04-design` 폴더를 추가하고 기존 sprint/history 번호는 하나씩 뒤로 민다.
+- Reason:
+  - 사용자 흐름 문서와 화면 구조 문서의 역할이 섞이면 source of truth 경계가 흐려진다.
+  - 공통 디자인 기준과 흐름별 화면 규칙을 분리하면 문서를 읽고 갱신하는 기준이 더 명확해진다.
+- Requested by:
+  - user
+- Affected docs/specs:
+  - `docs/00-governance/docs-structure.md`
+  - `docs/00-governance/ai-agent-workflow.md`
+  - `docs/04-design/`
+  - `docs/05-sprints/`
+  - `docs/06-history/`
+  - `AGENTS.md`
+- Decision:
+  - 공통 디자인 기준은 `docs/04-design/foundations.md`로 분리하고, 흐름별 화면 규칙은 `docs/04-design/*.md`로 대응 분리한다.
+  - 기존 `docs/04-sprints/`는 `docs/05-sprints/`로, `docs/05-history/`는 `docs/06-history/`로 이동한다.
+- Sprint impact:
+  - 문서 해석 경계와 참조 경로가 바뀌므로 이후 Sprint 문서와 design 관련 문서는 새 경로를 기준으로 작성한다.
+  - 이번 변경은 문서 구조 개편이며 기능 scope 자체를 넓히지는 않는다.
+- Follow-up:
+  - 이후 UI 변경은 먼저 `docs/04-design/`을 기준으로 반영한다.
+  - archive 문서의 `Replaced by` 경로와 관련 link는 현재 구조 기준으로 계속 유지한다.

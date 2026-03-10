@@ -1,7 +1,7 @@
 > Status: Archived
 > Archived on: 2026-03-09
 > Reason: This was a legacy plan-era QA spec, not a long-lived feature spec in the Sprint-based structure.
-> Replaced by: `docs/04-sprints/sprint-XX/qa.md`
+> Replaced by: `docs/05-sprints/sprint-XX/qa.md`
 >
 > 이 문서는 더 이상 현재 기준 문서가 아니다.
 

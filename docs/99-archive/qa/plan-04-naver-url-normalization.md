@@ -1,7 +1,7 @@
 > Status: Archived
 > Archived on: 2026-03-09
 > Reason: Historical QA report from the legacy Plan workflow.
-> Replaced by: No direct replacement. Future Sprint verification records belong in `docs/04-sprints/sprint-XX/qa.md` and `review.md`.
+> Replaced by: No direct replacement. Future Sprint verification records belong in `docs/05-sprints/sprint-XX/qa.md` and `review.md`.
 >
 > 이 문서는 더 이상 현재 기준 문서가 아니다.
 

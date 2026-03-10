@@ -15,8 +15,8 @@
 - 구현 기준이 되는 `docs/03-specs/*.md`가 선택돼 있다.
 - 선택된 spec의 acceptance criteria가 검증 가능하다.
 
-## 4. User Flow And Architecture Context
-- 관련 `user-flows`와 `architecture` 문서가 연결돼 있다.
+## 4. User Flow, Design, And Architecture Context
+- 관련 `user-flows`, `04-design`, `architecture` 문서가 연결돼 있다.
 - 구현 중 추정으로 메우면 안 되는 흐름과 제약이 파악돼 있다.
 
 ## 5. Dependencies And Access
