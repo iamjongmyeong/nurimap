@@ -50,6 +50,31 @@
   - `docs/99-archive/todos.md`
   - `docs/99-archive/qa/`
 
+## 2026-03-10 - Sprint 12 auth login fix and UX simplification
+- Request:
+  - 로그인 메일이 `undefined`로 시작하는 잘못된 링크를 보내는 원인을 정리하고, magic link 유지 여부를 검토한다.
+  - magic link를 유지한다면 메일 제목/본문과 로그인 화면을 더 단순한 SaaS 스타일로 정리한다.
+- Reason:
+  - 현재 로그인 메일 링크를 클릭해도 로그인이 진행되지 않아 인증 진입점이 깨져 있다.
+  - 로그인 메일과 로그인 화면에 불필요한 텍스트와 장식이 있어 핵심 인증 흐름이 산만하다.
+- Requested by:
+  - user
+- Affected docs/specs:
+  - `docs/03-specs/05-auth-email-login-link.md`
+  - `docs/01-product/user-flows/auth-and-name-entry.md`
+  - `docs/04-design/auth-and-name-entry.md`
+  - `docs/04-design/foundations.md`
+  - `docs/05-sprints/sprint-12/planning.md`
+- Decision:
+  - Sprint 12에서는 6자리 코드 로그인으로 전환하지 않고 기존 Supabase magic link + app-managed nonce wrapper 방식을 유지한다.
+  - 로그인 메일과 로그인 화면 UX는 현재 합의된 사양으로 단순화하고, `PUBLIC_APP_URL` 기준 링크 조합/검증을 이번 Sprint 범위에 포함한다.
+- Sprint impact:
+  - Sprint 12를 auth 복구 및 auth UX 정리 Sprint로 시작한다.
+  - 이름 입력 강제 이동, 허용 도메인, cooldown, daily limit, bypass 정책은 이번 Sprint에서 유지한다.
+- Follow-up:
+  - 실제 구현 후 메일 링크가 로컬/Vercel에서 올바른 origin으로 생성되는지 QA evidence에 남긴다.
+  - 필요 시 `PUBLIC_APP_URL` 누락/오설정 시 서버가 조용히 잘못된 링크를 보내지 않도록 보호 방식을 추가 검토한다.
+
 ## 2026-03-10 - Separate `04-design` and renumber downstream docs folders
 - Request:
   - user-flow와 UI design 내용을 분리하기 위해 전용 design 폴더를 만들고, layout/breakpoint 같은 공통 내용과 흐름별 화면 문서를 나눠 관리한다.

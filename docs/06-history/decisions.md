@@ -1,8 +1,8 @@
 # Decisions
 
 ## Purpose
-이 문서는 Nurimap 개발 중 AI Agent가 **사용자 개입 없이 스스로 판단한 비자명한 의사결정**을 기록하는 로그다.
-요구사항 자체를 대체하는 문서는 아니며, `docs/03-specs/*.md`, `docs/02-architecture/*.md`, `docs/99-archive/plans.md`, `docs/00-governance/definition-of-done.md`를 해석·적용하는 과정에서 생긴 판단 근거를 남기는 용도다.
+이 문서는 Nurimap 개발 중 AI Agent가 자율적으로 내린 판단뿐 아니라, 사용자와 함께 확정한 추가 판단이 필요한 의사결정도 기록하는 로그다.
+요구사항 자체를 대체하는 문서는 아니며, `docs/00-governance/definition-of-done.md`, `docs/02-architecture/*.md`, `docs/03-specs/*.md`, `docs/99-archive/plans.md`를 해석·적용하는 과정에서 생긴 판단 근거와 결정 배경을 남기는 용도다.
 Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan XX` 형식을 그대로 남긴다.
 
 ## When To Record
@@ -318,6 +318,23 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/02-architecture/security-and-ops.md
   - docs/00-governance/definition-of-done.md
 - Related commit: 65f9910
+
+
+## 2026-03-10 Sprint 12 - Keep magic link and fix app URL assembly instead of switching auth mode
+- Context: 로그인 메일이 `undefined...`로 시작하는 잘못된 링크를 보내고 있어, 사용자는 magic link를 유지할지 5분 유효 6자리 코드 인증으로 바꿀지 검토하고 싶어 했다. 현재 auth 구현은 Supabase Admin `generateLink`로 `hashed_token`을 발급받고, 앱이 `PUBLIC_APP_URL?auth_mode=verify&email=...&nonce=...` 형태의 wrapper 링크를 직접 조합해 Resend로 보내는 구조다.
+- Options considered:
+  - Option A: 현재 Sprint에서 6자리 코드 기반 로그인으로 인증 방식을 전환한다.
+  - Option B: 기존 magic link + app-managed nonce wrapper 방식을 유지하고, 잘못된 링크 문제를 `PUBLIC_APP_URL` 및 링크 조합/검증 경계 문제로 수정한다.
+- Decision: Option B를 선택한다.
+- Rationale: 현재 증상은 인증 방식 자체보다 링크 조합 기준 URL이 잘못되었을 가능성이 더 높고, magic link 흐름은 이미 5분 만료, 재발급 invalidation, 1회 사용, 이름 입력 강제 이동 요구를 충족하도록 문서와 구현 경계가 잡혀 있다. 이번 Sprint에서는 broken entrypoint를 복구하고 메일/UI UX를 정리하는 편이 범위를 가장 작고 명확하게 유지한다.
+- Impact: Sprint 12의 auth 범위는 `PUBLIC_APP_URL` 기준 로그인 링크 복구, 메일 템플릿 정리, 로그인 화면 단순화에 집중한다. 6자리 코드 입력 화면, 코드 재전송/오입력 정책, 추가 anti-bruteforce 요구는 이번 Sprint 범위에 포함하지 않는다.
+- Revisit trigger: Vercel env와 Supabase redirect 설정을 바로잡은 뒤에도 메일 링크가 안정적으로 동작하지 않거나, 모바일 메일 앱 호환성 이슈가 지속되면 6자리 코드 인증 전환을 다음 후보로 다시 검토한다.
+- Related docs:
+  - docs/03-specs/05-auth-email-login-link.md
+  - docs/05-sprints/sprint-12/planning.md
+  - docs/01-product/user-flows/auth-and-name-entry.md
+  - docs/04-design/auth-and-name-entry.md
+- Related commit:
 
 
 ## 2026-03-10 Docs structure - Split design docs out of architecture and align them with user flows
