@@ -84,11 +84,13 @@
 
 ### 6. Change Handling
 - 실행 중 새 요청이나 범위 변경이 생기면 바로 구현하지 않는다.
-- 먼저 `docs/06-history/change-log.md`에 변경 요청과 처리 결정을 남긴다.
-- 현재 Sprint에 반영하기로 결정한 경우에만 `planning.md`와 필요한 spec을 함께 갱신한다.
-- 반영하지 않기로 결정한 요청은 change log에 보류 또는 후속 후보로 남긴다.
-- feature identity가 유지되면 기존 spec을 수정한다.
-- feature identity가 바뀌거나 spec이 분리되면 새 spec을 만들고, 기존 spec의 retired 여부를 판단한다.
+- 현재 Sprint 범위 안의 작은 변경(문구, 스타일, 간격, 버튼 텍스트, 경고 메시지, 이미 합의된 UX의 미세 조정)은 `planning.md`와 관련 source of truth 문서(선택된 `docs/03-specs/*.md`, 관련 `docs/04-design/*.md`)에 직접 반영한다.
+- 현재 Sprint 범위 안의 작은 변경은 `docs/06-history/decisions.md`나 `docs/06-history/change-log.md`에 기록하지 않는다.
+- 구조, 정책, API/상태 모델, fallback처럼 이유를 남겨야 하는 선택은 `docs/06-history/decisions.md`에 기록한다.
+- 요청 추적이 중요하거나 반영 보류/후속 후보를 남겨야 하는 변경은 `docs/06-history/change-log.md`에 기록한다.
+- feature identity가 유지되면 기존 spec을 수정하고, 바뀌면 새 spec을 만든다.
+
+원칙: 작은 변경은 source of truth에 흡수하고, 큰 선택만 decision으로 남긴다.
 
 ### 7. Autonomous Decision Log
 - AI Agent는 문서 경계 안에서 스스로 판단해 진행하되, 비자명한 판단은 `docs/06-history/decisions.md`에 기록한다.
