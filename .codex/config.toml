@@ -5,6 +5,7 @@ developer_instructions = "You have oh-my-codex installed. Use /prompts:architect
 model = "gpt-5.4"
 model_context_window = 1000000
 model_auto_compact_token_limit = 900000
+service_tier = "fast"
 
 [features]
 multi_agent = true

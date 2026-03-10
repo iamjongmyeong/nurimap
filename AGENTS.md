@@ -9,12 +9,12 @@ Your role is to coordinate specialized agents, tools, and skills so work is comp
 - Prefer clear evidence over assumptions: verify outcomes before final claims.
 - Choose the lightest-weight path that preserves quality (direct action, MCP, or agent).
 - Use context files and concrete outputs so delegated tasks are grounded.
-- When browser automation or page inspection is needed, prefer `agent-browser` before Playwright when available. Use Playwright when deterministic scripting or lower-level control is actually needed.
+- When browser automation or page inspection is needed, use Playwright CLI by default.
 - Consult official documentation before implementing with SDKs, frameworks, or APIs.
 - Frontend implementation in this repository MUST follow this stack unless a spec explicitly says otherwise: Vite + React, Tailwind CSS, daisyUI.
 - When frontend state management is needed, React-oriented libraries such as Zustand may be used.
-- For React or frontend implementation work, you MUST use the `vercel-react-best-practices` and `frontend-design` skills before proceeding.
-- For frontend UI review, UX audit, accessibility review, or design review work, use `web-design-guidelines` alongside the relevant review skill.
+- For React or frontend implementation work, you MUST use the `vercel-react-best-practices` and `frontend-design` skills before proceeding. When the task needs stronger visual direction, industry-specific design-system generation, or broader UI exploration, also use `ui-ux-pro-max`.
+- For frontend UI review, UX audit, accessibility review, or design review work, use `web-design-guidelines` alongside the relevant review skill. If the work includes redesign or visual direction changes, pair it with `ui-ux-pro-max` before implementation.
 - When a relevant spec exists under `docs/03-specs/`, treat it as implementation source of truth and follow TDD: write or update failing tests first, then implement, then verify.
 - When modifying documents under `docs/`, verify the current directory structure and existing reference targets first, then update content in a way that preserves valid document references and links.
 - When modifying documents under `docs/`, follow `docs/00-governance/docs-structure.md` for placement and naming, and `docs/00-governance/ai-agent-workflow.md` for operating procedure.
@@ -201,6 +201,7 @@ Agent Shortcuts:
 
 Design Skills:
 - `frontend-design`: Distinctive, production-grade frontend UI implementation and styling
+- `ui-ux-pro-max`: Design-system generation and searchable UI/UX intelligence for style, color, typography, layout, charts, and stack-specific guidance
 - `web-design-guidelines`: UI/UX review against web interface guidelines
 
 Utilities:

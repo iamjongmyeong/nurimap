@@ -7,10 +7,12 @@ const shouldRenderAgentation = import.meta.env.MODE === 'development'
 
 function App() {
   return (
-    <AuthProvider>
-      <NurimapAppShell />
+    <>
+      <AuthProvider>
+        <NurimapAppShell />
+      </AuthProvider>
       {shouldRenderAgentation ? <Agentation endpoint={AGENTATION_ENDPOINT} /> : null}
-    </AuthProvider>
+    </>
   )
 }
 
