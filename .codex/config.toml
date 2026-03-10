@@ -173,5 +173,8 @@ config_file = "/Users/jongmyeong/dev/projects/nurimap/.omx/agents/vision.toml"
 [tui]
 status_line = ["model-with-reasoning", "git-branch", "context-remaining", "total-input-tokens", "total-output-tokens", "five-hour-limit"]
 
+[projects."/Users/jongmyeong/dev/projects/nurimap"]
+trust_level = "trusted"
+
 # ============================================================
 # End oh-my-codex
