@@ -79,6 +79,8 @@
 ### 5. Verification And Sprint Docs Sync
 - spec의 acceptance criteria를 만족해야 한다.
 - `docs/00-governance/definition-of-done.md`를 통과해야 한다.
+- Sprint의 `planning.md`, `qa.md`, `review.md`는 한국어로 작성한다.
+- 단, 명령어, 파일 경로, 코드 식별자, 환경변수, 외부 서비스의 고유 메시지와 에러명은 원문을 유지할 수 있다.
 - 검증 결과는 현재 Sprint의 `qa.md`에 기록한다.
 - 완료, 미완료, carry-over, 회고는 현재 Sprint의 `review.md`에 기록한다.
 
