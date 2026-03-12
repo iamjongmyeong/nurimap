@@ -240,6 +240,47 @@ describe('Sprint 12 auth flow', () => {
     expect(window.location.search).toBe('')
   })
 
+  it('clears the verify query immediately before the refresh-time verify request resolves', async () => {
+    vi.stubEnv('MODE', 'development')
+    let resolveFetch!: (value: Response) => void
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    window.history.replaceState({}, '', '/?auth_mode=verify&email=tester%40nurimedia.co.kr&nonce=nonce-2')
+
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
+
+    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(window.location.search).toBe('')
+    })
+
+    await act(async () => {
+      resolveFetch(
+        new Response(
+          JSON.stringify({
+            status: 'error',
+            reason: 'invalidated',
+          }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+    })
+
+    expect(await screen.findByText('인증에 실패했어요')).toBeInTheDocument()
+  })
+
   it('restores an existing session instead of re-verifying a stale refresh query', async () => {
     vi.stubEnv('MODE', 'development')
     const fetchMock = vi.fn()

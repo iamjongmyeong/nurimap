@@ -309,6 +309,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const nonce = params.get('nonce')
       const hasVerifyQuery = authMode === 'verify' && authEmail && nonce
 
+      if (hasVerifyQuery) {
+        clearAuthQuery()
+      }
+
       const restoreSession = async (accessToken: string) => {
         const { data, error } = await supabaseBrowser.auth.getUser()
         if (error || !data.user) {
@@ -348,7 +352,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (hasVerifyQuery) {
           if (session?.access_token) {
-            clearAuthQuery()
             await restoreSession(session.access_token)
             return
           }
@@ -369,12 +372,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               if (isMounted) {
                 setPhase('auth_failure')
                 setFailureReason(payload.status === 'error' ? payload.reason : '인증에 실패했어요.')
-                clearAuthQuery()
               }
               return
             }
 
-            clearAuthQuery()
             const verification = await verifyAndAdoptSession({
               tokenHash: payload.tokenHash,
               verificationType: payload.verificationType,
@@ -390,7 +391,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (isMounted) {
               setPhase('auth_failure')
               setFailureReason('인증에 실패했어요.')
-              clearAuthQuery()
             }
           }
           return
@@ -409,7 +409,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (hasVerifyQuery) {
             setPhase('auth_failure')
             setFailureReason('인증에 실패했어요.')
-            clearAuthQuery()
           } else {
             setPhase('auth_required')
           }
