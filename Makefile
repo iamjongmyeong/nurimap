@@ -1,7 +1,7 @@
 SHELL := /bin/zsh
 HOST ?= 127.0.0.1
 PORT ?= 5173
-BROWSER_URL ?= http://localhost:$(PORT)
+BROWSER_URL ?= http://$(HOST):$(PORT)
 
 .PHONY: check dev dev-run agentation
 
