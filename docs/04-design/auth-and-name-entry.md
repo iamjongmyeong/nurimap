@@ -36,6 +36,7 @@
 - 인증 실패 화면에는 `새 로그인 링크 받기`와 `이메일 다시 입력` CTA를 함께 둔다.
 - 인증 에러는 브라우저 기본 `alert`로 표시하지 않는다.
 - `재요청 cooldown` 실패 시 남은 대기 시간을 함께 표시한다.
+- `verifying` 화면은 transient 상태여야 하며, refresh 또는 예외 상황에서도 무한 정지 상태로 남지 않아야 한다.
 
 ## Name Capture Screen
 - 이름 입력 화면은 단일 input field 하나만 사용한다.

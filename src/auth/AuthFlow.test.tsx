@@ -1,7 +1,42 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
+import { AuthProvider } from './AuthProvider'
 import { resetTestAuthState, setTestAuthState } from './testAuthState'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const {
+  getSessionMock,
+  getUserMock,
+  verifyOtpMock,
+  signOutMock,
+  updateUserMock,
+  onAuthStateChangeMock,
+} = vi.hoisted(() => ({
+  getSessionMock: vi.fn(),
+  getUserMock: vi.fn(),
+  verifyOtpMock: vi.fn(),
+  signOutMock: vi.fn(),
+  updateUserMock: vi.fn(),
+  onAuthStateChangeMock: vi.fn(),
+}))
+
+vi.mock('agentation', () => ({
+  Agentation: () => null,
+}))
+
+vi.mock('./supabaseBrowser', () => ({
+  supabaseBrowser: {
+    auth: {
+      getSession: getSessionMock,
+      getUser: getUserMock,
+      verifyOtp: verifyOtpMock,
+      signOut: signOutMock,
+      updateUser: updateUserMock,
+      onAuthStateChange: onAuthStateChangeMock,
+    },
+  },
+}))
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
@@ -18,6 +53,32 @@ const setViewport = (width: number) => {
 describe('Sprint 12 auth flow', () => {
   beforeEach(() => {
     resetTestAuthState()
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    window.localStorage.clear()
+    window.history.replaceState({}, '', '/')
+    getSessionMock.mockResolvedValue({ data: { session: null } })
+    getUserMock.mockResolvedValue({ data: { user: null }, error: null })
+    verifyOtpMock.mockResolvedValue({
+      data: { session: null, user: null },
+      error: new Error('verifyOtp not configured'),
+    })
+    signOutMock.mockResolvedValue({ error: null })
+    updateUserMock.mockResolvedValue({ error: null })
+    onAuthStateChangeMock.mockReturnValue({
+      data: {
+        subscription: {
+          unsubscribe: vi.fn(),
+        },
+      },
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    window.history.replaceState({}, '', '/')
   })
 
   it('blocks protected screens when unauthenticated', () => {
@@ -158,6 +219,64 @@ describe('Sprint 12 auth flow', () => {
     render(<App />)
 
     expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+  })
+
+  it('moves to the auth failure screen and clears the verify query when the refresh-time verify request rejects', async () => {
+    vi.stubEnv('MODE', 'development')
+    const fetchMock = vi.fn().mockRejectedValue(new Error('network down'))
+    vi.stubGlobal('fetch', fetchMock)
+    window.history.replaceState({}, '', '/?auth_mode=verify&email=tester%40nurimedia.co.kr&nonce=nonce-1')
+
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
+
+    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+
+    expect(await screen.findByText('인증에 실패했어요')).toBeInTheDocument()
+    expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
+    expect(window.location.search).toBe('')
+  })
+
+  it('restores an existing session instead of re-verifying a stale refresh query', async () => {
+    vi.stubEnv('MODE', 'development')
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    window.history.replaceState({}, '', '/?auth_mode=verify&email=tester%40nurimedia.co.kr&nonce=stale-nonce')
+
+    getSessionMock.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'existing-session-token',
+        },
+      },
+    })
+    getUserMock.mockResolvedValue({
+      data: {
+        user: {
+          email: 'tester@nurimedia.co.kr',
+          user_metadata: {
+            name: '테스트 사용자',
+          },
+        },
+      },
+      error: null,
+    })
+
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('protected-child')).toBeInTheDocument()
+    })
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(window.location.search).toBe('')
   })
 
   it('shows the auth failure screen CTA and returns to the login form', async () => {

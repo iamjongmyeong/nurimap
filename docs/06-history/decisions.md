@@ -390,3 +390,20 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/03-specs/07-place-data-extraction.md
   - docs/02-architecture/integrations.md
 - Related commit: 38d69a4
+
+## 2026-03-12 Sprint 13 - Existing session wins over stale verify query on refresh
+- Context: auth flow는 `PUBLIC_APP_URL?auth_mode=verify&email=...&nonce=...` wrapper 링크로 진입한다. 이 URL에서 refresh 하거나, 이미 세션이 살아 있는 상태로 stale verify query가 남아 있으면 bootstrap이 verify 분기를 다시 타면서 `verifying` 화면에 머물 가능성이 있었다.
+- Options considered:
+  - Option A: query에 `auth_mode=verify`가 있으면 항상 verify API를 다시 호출한다.
+  - Option B: refresh 시에도 query를 즉시 버리고 무조건 로그인 화면으로 되돌린다.
+  - Option C: 유효한 세션이 이미 있으면 stale verify query보다 세션 복원을 우선하고, verify 경로 예외는 `auth_failure` 같은 terminal state로 정리한다.
+- Decision: Option C를 선택한다.
+- Rationale: 이미 세션이 유효한 사용자는 stale query 때문에 verify를 반복할 필요가 없고, refresh/예외가 발생해도 `verifying` 무한 대기보다 terminal state가 더 안전하다. 이 접근은 기존 magic link / nonce wrapper 구조를 유지하면서 refresh 회귀만 가장 작은 범위로 막는다.
+- Impact: `AuthProvider` bootstrap은 verify query가 있어도 기존 세션이 있으면 query를 정리하고 세션 복원으로 진입한다. verify-link fetch rejection, malformed payload, `verifyAndAdoptSession` 실패도 `verifying`에 머물지 않고 terminal auth state로 수렴한다. Sprint 13 auth 테스트는 refresh 회귀를 고정한다.
+- Revisit trigger: auth 진입 URL 정책이 바뀌거나, email-link verify를 router 수준에서 별도 route로 분리하게 되면 bootstrap precedence를 다시 검토한다.
+- Related docs:
+  - docs/05-sprints/sprint-13/planning.md
+  - docs/03-specs/05-auth-email-login-link.md
+  - docs/01-product/user-flows/auth-and-name-entry.md
+  - docs/04-design/auth-and-name-entry.md
+- Related commit:

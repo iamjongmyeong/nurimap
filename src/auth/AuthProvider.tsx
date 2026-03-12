@@ -307,78 +307,113 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const authMode = params.get('auth_mode')
       const authEmail = params.get('email')
       const nonce = params.get('nonce')
+      const hasVerifyQuery = authMode === 'verify' && authEmail && nonce
 
-      if (authMode === 'verify' && authEmail && nonce) {
-        setPhase('verifying')
-        setEmail(authEmail)
-        const response = await fetch('/api/auth/verify-link', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: authEmail, nonce }),
-        })
-        const payload = (await response.json()) as
-          | { status: 'error'; reason: string }
-          | { status: 'success'; tokenHash: string; verificationType: 'magiclink' | 'signup' | 'invite' }
-
-        if (!response.ok || payload.status === 'error') {
+      const restoreSession = async (accessToken: string) => {
+        const { data, error } = await supabaseBrowser.auth.getUser()
+        if (error || !data.user) {
+          await supabaseBrowser.auth.signOut()
+          clearSessionStarted()
           if (isMounted) {
-            setPhase('auth_failure')
-            setFailureReason(payload.status === 'error' ? payload.reason : '인증에 실패했어요.')
+            setAccessToken(null)
+            setPhase('auth_required')
+          }
+          return
+        }
+
+        markSessionStarted()
+        if (isMounted) {
+          setAccessToken(accessToken)
+          setEmail(data.user.email ?? '')
+          setRequestedEmail(null)
+          setMessage(null)
+          setFailureReason(null)
+          if (data.user.user_metadata?.name) {
+            setPhase('authenticated')
+          } else {
+            setPhase('name_required')
+          }
+        }
+      }
+
+      try {
+        if (getStoredSessionAgeExceeded()) {
+          await supabaseBrowser.auth.signOut()
+          clearSessionStarted()
+        }
+
+        const {
+          data: { session },
+        } = await supabaseBrowser.auth.getSession()
+
+        if (hasVerifyQuery) {
+          if (session?.access_token) {
             clearAuthQuery()
+            await restoreSession(session.access_token)
+            return
+          }
+
+          setPhase('verifying')
+          setEmail(authEmail)
+          try {
+            const response = await fetch('/api/auth/verify-link', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: authEmail, nonce }),
+            })
+            const payload = (await response.json()) as
+              | { status: 'error'; reason: string }
+              | { status: 'success'; tokenHash: string; verificationType: 'magiclink' | 'signup' | 'invite' }
+
+            if (!response.ok || payload.status === 'error') {
+              if (isMounted) {
+                setPhase('auth_failure')
+                setFailureReason(payload.status === 'error' ? payload.reason : '인증에 실패했어요.')
+                clearAuthQuery()
+              }
+              return
+            }
+
+            clearAuthQuery()
+            const verification = await verifyAndAdoptSession({
+              tokenHash: payload.tokenHash,
+              verificationType: payload.verificationType,
+            })
+
+            if (verification.status === 'error') {
+              if (isMounted) {
+                setPhase('auth_failure')
+                setFailureReason(verification.message)
+              }
+            }
+          } catch {
+            if (isMounted) {
+              setPhase('auth_failure')
+              setFailureReason('인증에 실패했어요.')
+              clearAuthQuery()
+            }
           }
           return
         }
 
-        clearAuthQuery()
-        const verification = await verifyAndAdoptSession({
-          tokenHash: payload.tokenHash,
-          verificationType: payload.verificationType,
-        })
-
-        if (verification.status === 'error') {
+        if (!session?.access_token) {
           if (isMounted) {
-            setPhase('auth_failure')
-            setFailureReason(verification.message)
+            setPhase('auth_required')
           }
           return
         }
-        return
-      }
 
-      if (getStoredSessionAgeExceeded()) {
-        await supabaseBrowser.auth.signOut()
-        clearSessionStarted()
-      }
-
-      const {
-        data: { session },
-      } = await supabaseBrowser.auth.getSession()
-
-      if (!session?.access_token) {
+        await restoreSession(session.access_token)
+      } catch {
         if (isMounted) {
-          setPhase('auth_required')
+          if (hasVerifyQuery) {
+            setPhase('auth_failure')
+            setFailureReason('인증에 실패했어요.')
+            clearAuthQuery()
+          } else {
+            setPhase('auth_required')
+          }
         }
-        return
-      }
-
-      const { data, error } = await supabaseBrowser.auth.getUser()
-      if (error || !data.user) {
-        await supabaseBrowser.auth.signOut()
-        clearSessionStarted()
-        if (isMounted) {
-          setPhase('auth_required')
-        }
-        return
-      }
-
-      markSessionStarted()
-      setAccessToken(session.access_token)
-      setEmail(data.user.email ?? '')
-      setRequestedEmail(null)
-      if (data.user.user_metadata?.name) {
-        setPhase('authenticated')
-      } else {
-        setPhase('name_required')
       }
     }
 

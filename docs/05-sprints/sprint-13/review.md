@@ -3,6 +3,7 @@
 - Sprint 13에서는 지도 탐색 런타임 회귀와 Naver URL ingestion 누락을 함께 정리했다.
 - 지도 surface는 hero copy를 제거하고 compact status HUD + 공식 Kakao zoom control 계약으로 정리했다.
 - 장소 추가는 `naver.me`, `favorite`, `search` URL을 동일 canonical place 기준으로 lookup 할 수 있게 만들었다.
+- auth bootstrap은 refresh 시 stale verify query와 예외가 있어도 terminal auth state로 수렴하도록 보강했다.
 
 # Completed
 
@@ -15,6 +16,11 @@
   - 데스크톱 detail panel layer 강화(`z-20`, `isolate`)
 - `src/app-shell/PlaceAddPanels.tsx`
   - place lookup URL validation을 서버 authoritative 응답 기반으로 전환
+- `src/auth/AuthProvider.tsx`
+  - verify bootstrap 예외 처리 추가
+  - stale verify query보다 기존 세션 복원을 우선 적용
+- `src/auth/AuthFlow.test.tsx`
+  - refresh-time verify rejection / stale verify query + 기존 세션 복원 회귀 테스트 추가
 - `src/app-shell/naverUrl.ts`, `api/_lib/_naverUrl.ts`
   - `favorite/.../place/{id}` 포함 direct place URL 정규화 범위 확장
 - `src/server/placeLookupService.ts`, `api/_lib/_placeLookupService.ts`

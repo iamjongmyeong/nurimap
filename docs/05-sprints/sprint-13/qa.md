@@ -4,13 +4,14 @@
   - 데스크톱 상세 패널 런타임 표시 안정성 회귀 방지
   - 지도 hero copy 제거 및 zoom control 추가
   - `naver.me` / `favorite` / `search` URL 정규화 및 lookup 성공
+  - auth verify bootstrap refresh 무한 로딩 방지
   - 관련 spec / architecture 문서 동기화
 
 # Automated Checks Result
 
 - `npm run test:run`
   - 결과: **PASS**
-  - 요약: 13 files, 127 tests passed
+  - 요약: 13 files, 129 tests passed
 - `npx tsc --noEmit --pretty false --project /Users/jongmyeong/dev/projects/nurimap/tsconfig.json`
   - 결과: **PASS**
   - 요약: diagnostics 0 errors / 0 warnings
@@ -38,6 +39,7 @@
 
 - live Kakao SDK script는 삽입되었지만, 이 세션의 headless browser에서는 `window.kakao?.maps` 초기화 완료를 확인하지 못했다.
 - 따라서 실제 Kakao tile/runtime 위에서의 최종 수동 spot-check는 아직 남아 있다.
+- auth refresh regression은 automated test로 보강했고 별도 이슈는 확인되지 않았다.
 
 # QA Verdict
 
@@ -50,3 +52,4 @@
   - 로그인 후 목록 item 클릭 시 상세 패널이 스크롤 정지 후에도 계속 보이는지
   - Kakao zoom control이 실제 지도 우측에 노출되는지
   - `naver.me/I55a1Ogw` 입력 시 동일 canonical place summary가 표시되는지
+  - verify query가 붙은 URL에서 새로고침해도 verifying 상태가 무한히 유지되지 않는지
