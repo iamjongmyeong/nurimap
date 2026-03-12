@@ -5,6 +5,7 @@ import { requestTestLoginLink, setTestAuthState, signOutTestUser, submitTestName
 
 const SESSION_STARTED_AT_KEY = 'nurimap_session_started_at'
 const SESSION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 5000
 
 
 const clearAuthQuery = () => {
@@ -30,6 +31,25 @@ const markSessionStarted = () => {
 
 const clearSessionStarted = () => {
   window.localStorage.removeItem(SESSION_STARTED_AT_KEY)
+}
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = AUTH_BOOTSTRAP_TIMEOUT_MS) => {
+  let timeoutId: number | undefined
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+          reject(new Error('auth_bootstrap_timeout'))
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId)
+    }
+  }
 }
 
 const authLoginWordmarkStyle = {
@@ -314,7 +334,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const restoreSession = async (accessToken: string) => {
-        const { data, error } = await supabaseBrowser.auth.getUser()
+        const { data, error } = await withTimeout(supabaseBrowser.auth.getUser())
         if (error || !data.user) {
           await supabaseBrowser.auth.signOut()
           clearSessionStarted()
@@ -348,7 +368,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         const {
           data: { session },
-        } = await supabaseBrowser.auth.getSession()
+        } = await withTimeout(supabaseBrowser.auth.getSession())
 
         if (hasVerifyQuery) {
           if (session?.access_token) {
@@ -364,11 +384,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email: authEmail, nonce }),
             })
-            const payload = (await response.json()) as
+            const timedResponse = await withTimeout(Promise.resolve(response))
+            const payload = (await withTimeout(timedResponse.json())) as
               | { status: 'error'; reason: string }
               | { status: 'success'; tokenHash: string; verificationType: 'magiclink' | 'signup' | 'invite' }
 
-            if (!response.ok || payload.status === 'error') {
+            if (!timedResponse.ok || payload.status === 'error') {
               if (isMounted) {
                 setPhase('auth_failure')
                 setFailureReason(payload.status === 'error' ? payload.reason : '인증에 실패했어요.')
@@ -376,10 +397,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               return
             }
 
-            const verification = await verifyAndAdoptSession({
+            const verification = await withTimeout(verifyAndAdoptSession({
               tokenHash: payload.tokenHash,
               verificationType: payload.verificationType,
-            })
+            }))
 
             if (verification.status === 'error') {
               if (isMounted) {

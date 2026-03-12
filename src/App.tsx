@@ -3,7 +3,8 @@ import { NurimapAppShell } from './app-shell/NurimapAppShell'
 import { AuthProvider } from './auth/AuthProvider'
 
 const AGENTATION_ENDPOINT = 'http://localhost:4747'
-const shouldRenderAgentation = import.meta.env.MODE === 'development'
+const shouldRenderAgentation =
+  import.meta.env.MODE === 'development' && import.meta.env.VITE_ENABLE_AGENTATION === 'true'
 
 function App() {
   return (

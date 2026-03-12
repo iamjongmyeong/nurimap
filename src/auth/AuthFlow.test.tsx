@@ -78,6 +78,7 @@ describe('Sprint 12 auth flow', () => {
   afterEach(() => {
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
+    vi.useRealTimers()
     window.history.replaceState({}, '', '/')
   })
 
@@ -318,6 +319,27 @@ describe('Sprint 12 auth flow', () => {
 
     expect(fetchMock).not.toHaveBeenCalled()
     expect(window.location.search).toBe('')
+  })
+
+  it('falls back to the login screen when session bootstrap never resolves', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.useFakeTimers()
+    getSessionMock.mockImplementation(() => new Promise(() => {}))
+
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
+
+    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+    expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
   })
 
   it('shows the auth failure screen CTA and returns to the login form', async () => {
