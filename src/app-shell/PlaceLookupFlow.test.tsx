@@ -4,6 +4,20 @@ import App from '../App'
 import { resetAppShellStore } from './appShellStore'
 
 const originalFetch = globalThis.fetch
+const sprint13LookupPayload = {
+  status: 'success',
+  data: {
+    naver_place_id: '1648359924',
+    canonical_url: 'https://map.naver.com/p/entry/place/1648359924',
+    name: '주막보리밥',
+    road_address: '서울 마포구 성미산로 190-31',
+    land_lot_address: '서울 마포구 연남동 240-34',
+    representative_address: '서울 마포구 성미산로 190-31',
+    latitude: 37.566123,
+    longitude: 126.922345,
+    coordinate_source: 'naver',
+  },
+}
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
@@ -54,6 +68,30 @@ describe('Plan 05 place lookup flow', () => {
 
     expect(await screen.findByTestId('place-lookup-summary')).toHaveTextContent('누리 테스트 식당')
     expect(screen.getByTestId('place-lookup-summary')).toHaveTextContent('서울 마포구 양화로19길 22-16')
+  })
+
+  it.each([
+    'https://naver.me/I55a1Ogw',
+    'https://map.naver.com/p/favorite/myPlace/folder/52f873516c87492794d35b0f62ebe0f1/place/1648359924?c=16.00,0,0,0,dh&at=a&placePath=/home?from=map&fromPanelNum=2&timestamp=202603122222&locale=ko&svcName=map_pcv5',
+    'https://map.naver.com/p/search/%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5/place/1648359924?c=15.95,0,0,0,dh&placePath=/home?bk_query=%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5&entry=bmp&from=map&fromPanelNum=2&timestamp=202603122222&locale=ko&svcName=map_pcv5&searchText=%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5',
+  ])('accepts Sprint 13 supported url input: %s', async (rawUrl) => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify(sprint13LookupPayload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    ) as typeof fetch
+
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '장소 추가' }))
+    await user.type(screen.getByLabelText('네이버 지도 URL'), rawUrl)
+    await user.click(screen.getByRole('button', { name: 'URL 확인' }))
+
+    expect(await screen.findByTestId('place-lookup-summary')).toHaveTextContent('주막보리밥')
+    expect(screen.getByTestId('place-lookup-summary')).toHaveTextContent('https://map.naver.com/p/entry/place/1648359924')
   })
 
   it('shows the loading state while the lookup is in progress', async () => {

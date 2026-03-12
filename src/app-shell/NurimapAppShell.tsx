@@ -513,7 +513,7 @@ const DesktopDetailPanel = ({
   registrationMessage: string | null
   status: PlaceDetailLoadState
 }) => (
-  <section className="absolute left-6 rounded-[28px] border border-base-300 bg-base-100/95 p-6 shadow-2xl backdrop-blur" data-testid="desktop-detail-panel" style={detailPanelStyle}>
+  <section className="absolute left-6 z-20 rounded-[28px] border border-base-300 bg-base-100/95 p-6 shadow-2xl backdrop-blur" data-testid="desktop-detail-panel" style={detailPanelStyle}>
     <div className="flex h-full flex-col overflow-auto">
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -632,7 +632,7 @@ const DesktopAppShell = ({
   return (
     <main className="hidden md:flex" data-testid="desktop-shell">
       <DesktopSidebar places={mapPlaces} selectedPlaceId={selectedPlaceId} />
-      <section className="relative flex-1 min-h-screen">
+      <section className="relative isolate flex-1 min-h-screen">
         <MapPane
           mapLevel={mapLevel}
           onMapLevelChange={setMapLevel}

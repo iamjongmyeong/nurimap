@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { __resetPlaceLookupCaches, lookupPlaceFromRawUrl } from './placeLookupService'
 
 const originalFetch = globalThis.fetch
+const sprint13FavoriteUrl = 'https://map.naver.com/p/favorite/myPlace/folder/52f873516c87492794d35b0f62ebe0f1/place/1648359924?c=16.00,0,0,0,dh&at=a&placePath=/home?from=map&fromPanelNum=2&timestamp=202603122222&locale=ko&svcName=map_pcv5'
+const sprint13SearchUrl = 'https://map.naver.com/p/search/%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5/place/1648359924?c=15.95,0,0,0,dh&placePath=/home?bk_query=%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5&entry=bmp&from=map&fromPanelNum=2&timestamp=202603122222&locale=ko&svcName=map_pcv5&searchText=%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5'
 
 describe('Plan 05 place lookup service', () => {
   beforeEach(() => {
@@ -20,6 +22,60 @@ describe('Plan 05 place lookup service', () => {
     if (result.status === 'success') {
       expect(result.data.name).toBe('누리 테스트 식당')
       expect(result.data.coordinate_source).toBe('naver')
+    }
+  })
+
+  it('supports the Sprint 13 favorite url shape', async () => {
+    const result = await lookupPlaceFromRawUrl(sprint13FavoriteUrl)
+
+    expect(result.status).toBe('success')
+    if (result.status === 'success') {
+      expect(result.data.naver_place_id).toBe('1648359924')
+      expect(result.data.canonical_url).toBe('https://map.naver.com/p/entry/place/1648359924')
+      expect(result.data.name).toBe('주막보리밥')
+    }
+  })
+
+  it('supports the Sprint 13 search url shape', async () => {
+    const result = await lookupPlaceFromRawUrl(sprint13SearchUrl)
+
+    expect(result.status).toBe('success')
+    if (result.status === 'success') {
+      expect(result.data.naver_place_id).toBe('1648359924')
+      expect(result.data.canonical_url).toBe('https://map.naver.com/p/entry/place/1648359924')
+      expect(result.data.name).toBe('주막보리밥')
+    }
+  })
+
+  it('resolves the Sprint 13 naver short url before lookup', async () => {
+    globalThis.fetch = vi.fn(async (input, init) => {
+      if (String(input) === 'https://naver.me/I55a1Ogw') {
+        expect(init).toMatchObject({
+          method: 'HEAD',
+          redirect: 'manual',
+        })
+
+        return new Response(null, {
+          status: 307,
+          headers: {
+            Location: 'https://map.naver.com/p/entry/place/1648359924?placePath=%2Fhome',
+          },
+        })
+      }
+
+      return new Response(JSON.stringify({ documents: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }) as typeof fetch
+
+    const result = await lookupPlaceFromRawUrl('https://naver.me/I55a1Ogw')
+
+    expect(result.status).toBe('success')
+    if (result.status === 'success') {
+      expect(result.data.naver_place_id).toBe('1648359924')
+      expect(result.data.canonical_url).toBe('https://map.naver.com/p/entry/place/1648359924')
+      expect(result.data.name).toBe('주막보리밥')
     }
   })
 

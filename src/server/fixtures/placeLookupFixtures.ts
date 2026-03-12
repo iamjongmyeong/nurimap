@@ -47,6 +47,15 @@ export const PLACE_LOOKUP_FIXTURES: Record<string, PlaceLookupSourceRecord> = {
     latitude: null,
     longitude: null,
   },
+  '1648359924': {
+    naver_place_id: '1648359924',
+    canonical_url: 'https://map.naver.com/p/entry/place/1648359924',
+    name: '주막보리밥',
+    road_address: '서울 마포구 성미산로 190-31',
+    land_lot_address: '서울 마포구 연남동 240-34',
+    latitude: 37.566123,
+    longitude: 126.922345,
+  },
 
   '678901234': {
     naver_place_id: '678901234',

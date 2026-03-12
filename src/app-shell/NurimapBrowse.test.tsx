@@ -18,6 +18,7 @@ const setViewport = (width: number) => {
 describe('Plan 02 browse basics', () => {
   beforeEach(() => {
     resetAppShellStore()
+    delete window.kakao
   })
 
   it('shows the initial map center coordinates', () => {
@@ -25,6 +26,16 @@ describe('Plan 02 browse basics', () => {
     render(<App />)
 
     expect(screen.getByTestId('map-center')).toHaveTextContent('37.558721, 126.92444')
+  })
+
+  it('removes the legacy hero copy but keeps compact map status hooks', () => {
+    setViewport(1280)
+    render(<App />)
+
+    expect(screen.queryByText('내부 장소 지도를 위한 앱 셸')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Plan 02에서는 Kakao Map과 목록 탐색의 기본 상호작용을 검증합니다\./)).not.toBeInTheDocument()
+    expect(screen.getByTestId('map-center')).toHaveTextContent('37.558721, 126.92444')
+    expect(screen.getByTestId('map-level')).toHaveTextContent('level 5')
   })
 
   it('renders restaurant and cafe markers with different marker types', () => {
@@ -59,6 +70,96 @@ describe('Plan 02 browse basics', () => {
     render(<App />)
 
     expect(screen.queryByTestId('map-label-place-restaurant-1')).not.toBeInTheDocument()
+  })
+
+  it('renders map zoom controls and keeps map level in sync while zooming', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(screen.getByRole('button', { name: '지도 확대' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '지도 축소' })).toBeInTheDocument()
+    expect(screen.getByTestId('map-label-place-restaurant-1')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '지도 축소' }))
+
+    expect(screen.getByTestId('map-level')).toHaveTextContent('level 6')
+    expect(screen.queryByTestId('map-label-place-restaurant-1')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '지도 확대' }))
+
+    expect(screen.getByTestId('map-level')).toHaveTextContent('level 5')
+    expect(screen.getByTestId('map-label-place-restaurant-1')).toBeInTheDocument()
+  })
+
+  it('attaches the official Kakao zoom control in runtime mode', () => {
+    setViewport(1280)
+    const zoomControl = { kind: 'zoom-control' }
+    const addControl = vi.fn()
+    const getLevel = vi.fn(() => 5)
+    const setLevel = vi.fn()
+    const panTo = vi.fn()
+
+    function MockMap() {
+      return {
+        addControl,
+        getLevel,
+        panTo,
+        setLevel,
+      }
+    }
+
+    function MockLatLng(latitude: number, longitude: number) {
+      return { latitude, longitude }
+    }
+
+    function MockMarker() {
+      return {
+        setMap: vi.fn(),
+      }
+    }
+
+    function MockMarkerImage() {
+      return {}
+    }
+
+    function MockSize() {
+      return {}
+    }
+
+    function MockZoomControl() {
+      return zoomControl
+    }
+
+    function MockCustomOverlay() {
+      return {
+        setMap: vi.fn(),
+      }
+    }
+
+    window.kakao = {
+      maps: {
+        load: (callback: () => void) => callback(),
+        Map: vi.fn(MockMap) as never,
+        LatLng: vi.fn(MockLatLng) as never,
+        Marker: vi.fn(MockMarker) as never,
+        MarkerImage: vi.fn(MockMarkerImage) as never,
+        Size: vi.fn(MockSize) as never,
+        ZoomControl: vi.fn(MockZoomControl) as never,
+        ControlPosition: {
+          RIGHT: 'RIGHT',
+        },
+        CustomOverlay: vi.fn(MockCustomOverlay) as never,
+        event: {
+          addListener: vi.fn(),
+        },
+      },
+    }
+
+    render(<App />)
+
+    expect(window.kakao.maps.ZoomControl).toHaveBeenCalledTimes(1)
+    expect(addControl).toHaveBeenCalledWith(zoomControl, 'RIGHT')
   })
 
   it('does not render map markers for places without coordinates', () => {

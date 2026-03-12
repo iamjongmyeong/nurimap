@@ -373,3 +373,20 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/02-architecture/security-and-ops.md
   - docs/05-sprints/sprint-12/qa.md
 - Related commit:
+
+## 2026-03-12 Sprint 13 - Server-authoritative Naver short-link normalization
+- Context: Sprint 13 needed place lookup to accept `naver.me` short links as well as direct `favorite/.../place/{id}` and `search/.../place/{id}` URLs. The existing client flow synchronously validated URLs in `PlaceAddPanels` before calling the server, which blocked short links and duplicated normalization logic across browser/server boundaries.
+- Options considered:
+  - Option A: keep client-side normalization authoritative and expand it to resolve `naver.me` inside the browser.
+  - Option B: make the server authoritative for URL resolution/canonicalization, and let the client surface inline errors from the server response.
+  - Option C: remove validation entirely and accept any URL string through to lookup.
+- Decision: Option B를 선택한다.
+- Rationale: `naver.me` resolution is network-dependent and better handled at the server boundary where redirect handling is deterministic and testable. This also removes the mismatch where browser-side prevalidation could reject URLs that the server is capable of canonicalizing correctly.
+- Impact: place add flow now relies on `/api/place-lookup` for authoritative URL validation, inline invalid-URL errors come from the server response contract, and lookup services resolve `naver.me` redirects before extracting `naver_place_id`. Direct `favorite`, `search`, and `entry` URLs still normalize to the same canonical entry URL.
+- Revisit trigger: If more Naver URL shapes appear, or if a shared cross-runtime normalization package becomes necessary, revisit whether the current split between sync direct-path parsing and server-side short-link resolution should be replaced by a single shared abstraction.
+- Related docs:
+  - docs/05-sprints/sprint-13/planning.md
+  - docs/03-specs/06-naver-url-normalization.md
+  - docs/03-specs/07-place-data-extraction.md
+  - docs/02-architecture/integrations.md
+- Related commit: febfa55

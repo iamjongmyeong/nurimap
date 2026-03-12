@@ -5,10 +5,7 @@ export type NormalizedNaverMapUrl = {
   naverPlaceId: string
 }
 
-const supportedPathPatterns = [
-  /^\/p\/search\/.*\/place\/(\d+)(?:\/|$)/,
-  /^\/p\/entry\/place\/(\d+)(?:\/|$)/,
-]
+const placePathPattern = /(?:^|\/)place\/(\d+)(?:\/|$)/
 
 export const normalizeNaverMapUrl = (rawUrl: string): NormalizedNaverMapUrl => {
   let parsedUrl: URL
@@ -23,11 +20,7 @@ export const normalizeNaverMapUrl = (rawUrl: string): NormalizedNaverMapUrl => {
     throw new Error(INVALID_URL_MESSAGE)
   }
 
-  const matchedPattern = supportedPathPatterns
-    .map((pattern) => parsedUrl.pathname.match(pattern))
-    .find(Boolean)
-
-  const placeId = matchedPattern?.[1]
+  const placeId = parsedUrl.pathname.match(placePathPattern)?.[1]
 
   if (!placeId) {
     throw new Error(INVALID_URL_MESSAGE)

@@ -197,6 +197,29 @@ describe('Plan 03 place detail', () => {
     expect(screen.queryByTestId('desktop-detail-panel')).not.toBeInTheDocument()
   })
 
+  it('keeps the desktop detail panel visible above the map while zoom controls are used', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
+
+    const detailPanel = screen.getByTestId('desktop-detail-panel')
+    expect(detailPanel).toBeVisible()
+    expect(detailPanel.className).toContain('z-20')
+
+    await user.click(screen.getByRole('button', { name: '지도 축소' }))
+
+    expect(detailPanel).toBeVisible()
+    expect(detailPanel).toHaveTextContent('누리 식당')
+    expect(screen.getByTestId('map-level')).toHaveTextContent('level 6')
+
+    await user.click(screen.getByRole('button', { name: '지도 확대' }))
+
+    expect(detailPanel).toBeVisible()
+    expect(screen.getByTestId('map-level')).toHaveTextContent('level 5')
+  })
+
   it('shows the mobile detail page as a full-screen page', async () => {
     setViewport(390)
     const user = userEvent.setup()

@@ -11,6 +11,7 @@ type MapPaneProps = {
 }
 
 type KakaoMapInstance = {
+  addControl: (control: unknown, position: unknown) => void
   getLevel: () => number
   panTo: (latLng: unknown) => void
   setLevel: (level: number) => void
@@ -32,6 +33,10 @@ type KakaoNamespace = {
     Marker: new (options: { image: unknown; map: KakaoMapInstance; position: unknown }) => KakaoMarkerInstance
     MarkerImage: new (source: string, size: unknown) => unknown
     Size: new (width: number, height: number) => unknown
+    ZoomControl: new () => unknown
+    ControlPosition: {
+      RIGHT: unknown
+    }
     CustomOverlay: new (options: { content: HTMLElement; map: KakaoMapInstance; position: unknown; yAnchor: number }) => KakaoOverlayInstance
     event: {
       addListener: (target: unknown, eventName: string, handler: () => void) => void
@@ -50,7 +55,8 @@ declare global {
 }
 
 const LEVEL_LABEL_THRESHOLD = 5
-
+const MAP_MIN_LEVEL = 1
+const MAP_MAX_LEVEL = 14
 
 type PlaceWithCoordinates = PlaceSummary & {
   latitude: number
@@ -89,16 +95,26 @@ const toMarkerImageSource = (placeType: PlaceType) => {
 
 const useKakaoScript = () => {
   const appKey = import.meta.env.PUBLIC_KAKAO_MAP_APP_KEY
-  const canUseRuntime = Boolean(appKey) && import.meta.env.MODE !== 'test'
+  const hasExistingRuntime = Boolean(window.kakao?.maps)
+  const canUseRuntime = hasExistingRuntime || (Boolean(appKey) && import.meta.env.MODE !== 'test')
   const [status, setStatus] = useState<'loading' | 'ready' | 'unavailable'>(() => {
+    if (hasExistingRuntime) {
+      return 'ready'
+    }
+
     if (!canUseRuntime) {
       return 'unavailable'
     }
 
-    return window.kakao?.maps ? 'ready' : 'loading'
+    return 'loading'
   })
 
   useEffect(() => {
+    if (window.kakao?.maps) {
+      window.kakao.maps.load(() => setStatus('ready'))
+      return
+    }
+
     if (!canUseRuntime) {
       return
     }
@@ -134,7 +150,7 @@ const useKakaoScript = () => {
   }
 }
 
-const MapMetaHud = ({
+const MapStatusHud = ({
   focusCenter,
   mapLevel,
   selectedPlaceName,
@@ -143,27 +159,61 @@ const MapMetaHud = ({
   mapLevel: number
   selectedPlaceName: string | null
 }) => (
-  <div className="absolute inset-x-6 top-6 z-10 flex flex-col gap-3 rounded-3xl bg-base-100/10 p-4 text-white backdrop-blur">
-    <div>
-      <p className="text-xs uppercase tracking-[0.24em] text-emerald-200">Nurimap</p>
-      <h1 className="mt-2 text-2xl font-semibold">내부 장소 지도를 위한 앱 셸</h1>
-      <p className="mt-2 max-w-xl text-sm text-slate-200/90">
-        Plan 02에서는 Kakao Map과 목록 탐색의 기본 상호작용을 검증합니다.
-      </p>
-    </div>
-    <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-200/90">
-      <span className="rounded-full bg-white/10 px-3 py-1" data-testid="map-center">
+  <div className="pointer-events-none absolute left-4 top-4 z-10 flex max-w-[calc(100%-6.5rem)] flex-wrap gap-2 text-[11px] font-medium text-slate-100">
+    <span
+      className="rounded-full border border-white/15 bg-slate-950/65 px-3 py-1.5 shadow-lg backdrop-blur"
+      data-testid="map-center"
+    >
         중심 좌표: {focusCenter.latitude}, {focusCenter.longitude}
+    </span>
+    <span
+      className="rounded-full border border-white/15 bg-slate-950/65 px-3 py-1.5 shadow-lg backdrop-blur"
+      data-testid="map-level"
+    >
+      level {mapLevel}
+    </span>
+    {selectedPlaceName ? (
+      <span
+        className="rounded-full border border-white/15 bg-slate-950/65 px-3 py-1.5 shadow-lg backdrop-blur"
+        data-testid="map-focus-place"
+      >
+        선택된 장소: {selectedPlaceName}
       </span>
-      <span className="rounded-full bg-white/10 px-3 py-1" data-testid="map-level">
-        level {mapLevel}
-      </span>
-      {selectedPlaceName ? (
-        <span className="rounded-full bg-white/10 px-3 py-1" data-testid="map-focus-place">
-          선택된 장소: {selectedPlaceName}
-        </span>
-      ) : null}
-    </div>
+    ) : null}
+  </div>
+)
+
+const MapZoomControls = ({
+  mapLevel,
+  onZoomIn,
+  onZoomOut,
+}: {
+  mapLevel: number
+  onZoomIn: () => void
+  onZoomOut: () => void
+}) => (
+  <div
+    className="absolute right-4 top-4 z-10 flex flex-col gap-2 rounded-[24px] border border-white/15 bg-slate-950/65 p-2 shadow-xl backdrop-blur"
+    data-testid="map-zoom-controls"
+  >
+    <button
+      aria-label="지도 확대"
+      className="btn btn-circle btn-sm border-0 bg-base-100/95 text-base-content shadow-sm"
+      disabled={mapLevel <= MAP_MIN_LEVEL}
+      onClick={onZoomIn}
+      type="button"
+    >
+      ＋
+    </button>
+    <button
+      aria-label="지도 축소"
+      className="btn btn-circle btn-sm border-0 bg-base-100/95 text-base-content shadow-sm"
+      disabled={mapLevel >= MAP_MAX_LEVEL}
+      onClick={onZoomOut}
+      type="button"
+    >
+      －
+    </button>
   </div>
 )
 
@@ -171,8 +221,9 @@ const FallbackMapPane = ({
   places,
   selectedPlaceId,
   mapLevel,
+  onMapLevelChange,
   onMarkerSelect,
-}: Omit<MapPaneProps, 'onMapLevelChange'>) => {
+}: MapPaneProps) => {
   const visiblePlaces = useMemo(
     () => places.filter(hasCoordinates),
     [places],
@@ -181,15 +232,18 @@ const FallbackMapPane = ({
   const focusCenter = focusedPlace
     ? { latitude: focusedPlace.latitude, longitude: focusedPlace.longitude }
     : MAP_INITIAL_CENTER
+  const handleZoomIn = () => onMapLevelChange(clamp(mapLevel - 1, MAP_MIN_LEVEL, MAP_MAX_LEVEL))
+  const handleZoomOut = () => onMapLevelChange(clamp(mapLevel + 1, MAP_MIN_LEVEL, MAP_MAX_LEVEL))
 
   return (
     <div
       aria-label="지도 캔버스"
-      className="relative h-full min-h-screen overflow-hidden bg-slate-900"
+      className="relative z-0 h-full min-h-screen overflow-hidden bg-slate-900"
       data-testid="map-canvas"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,197,94,0.25),_transparent_25%),linear-gradient(135deg,_rgba(15,23,42,1)_0%,_rgba(30,41,59,1)_45%,_rgba(59,130,246,0.35)_100%)]" />
-      <MapMetaHud focusCenter={focusCenter} mapLevel={mapLevel} selectedPlaceName={focusedPlace?.name ?? null} />
+      <MapStatusHud focusCenter={focusCenter} mapLevel={mapLevel} selectedPlaceName={focusedPlace?.name ?? null} />
+      <MapZoomControls mapLevel={mapLevel} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
       {visiblePlaces.map((place) => {
         const palette = markerPalette[place.place_type]
         const top = clamp(
@@ -251,6 +305,7 @@ export const MapPane = ({
   const kakaoMapRef = useRef<KakaoMapInstance | null>(null)
   const markerRefs = useRef<KakaoMarkerInstance[]>([])
   const overlayRefs = useRef<KakaoOverlayInstance[]>([])
+  const zoomControlRef = useRef<unknown | null>(null)
   const visiblePlaces = useMemo(
     () => places.filter(hasCoordinates),
     [places],
@@ -270,6 +325,11 @@ export const MapPane = ({
         center: new window.kakao.maps.LatLng(MAP_INITIAL_CENTER.latitude, MAP_INITIAL_CENTER.longitude),
         level: mapLevel,
       })
+
+      if (!zoomControlRef.current) {
+        zoomControlRef.current = new window.kakao.maps.ZoomControl()
+        kakaoMapRef.current.addControl(zoomControlRef.current, window.kakao.maps.ControlPosition.RIGHT)
+      }
 
       window.kakao.maps.event.addListener(kakaoMapRef.current, 'zoom_changed', () => {
         onMapLevelChange(kakaoMapRef.current?.getLevel() ?? mapLevel)
@@ -349,6 +409,7 @@ export const MapPane = ({
     return (
       <FallbackMapPane
         mapLevel={mapLevel}
+        onMapLevelChange={onMapLevelChange}
         onMarkerSelect={onMarkerSelect}
         places={places}
         selectedPlaceId={selectedPlaceId}
@@ -357,8 +418,8 @@ export const MapPane = ({
   }
 
   return (
-    <div className="relative h-full min-h-screen overflow-hidden bg-slate-900" data-testid="map-canvas">
-      <MapMetaHud focusCenter={focusCenter} mapLevel={mapLevel} selectedPlaceName={focusedPlace?.name ?? null} />
+    <div className="relative z-0 h-full min-h-screen overflow-hidden bg-slate-900" data-testid="map-canvas">
+      <MapStatusHud focusCenter={focusCenter} mapLevel={mapLevel} selectedPlaceName={focusedPlace?.name ?? null} />
       <div className="h-full min-h-screen" ref={mapRef} />
     </div>
   )

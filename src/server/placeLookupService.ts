@@ -1,4 +1,4 @@
-import { normalizeNaverMapUrl } from '../app-shell/naverUrl'
+import { NAVER_URL_ERROR_MESSAGE, normalizeNaverMapUrl } from '../app-shell/naverUrl'
 import { GEOCODE_FIXTURES, PLACE_LOOKUP_FIXTURES } from './fixtures/placeLookupFixtures'
 import { logPlaceLookupFailure } from './opsLogger'
 import type { PlaceLookupError, PlaceLookupResult, PlaceLookupSourceRecord, PlaceLookupSuccess } from './placeLookupTypes'
@@ -7,6 +7,25 @@ const LOOKUP_FAILED_MESSAGE = '장소 정보를 가져오지 못했어요. 다�
 const COORDINATES_FAILED_MESSAGE = '좌표를 확인하지 못했어요. 다시 시도해 주세요.'
 const lookupResultCache = new Map<string, PlaceLookupResult>()
 const geocodeCache = new Map<string, { latitude: number; longitude: number } | null>()
+
+const resolveLookupUrl = async (rawUrl: string) => {
+  const parsedUrl = new URL(rawUrl)
+  if (parsedUrl.hostname !== 'naver.me') {
+    return rawUrl
+  }
+
+  const response = await fetch(rawUrl, {
+    method: 'HEAD',
+    redirect: 'manual',
+  })
+  const redirectedUrl = response.headers.get('location')
+
+  if (!redirectedUrl) {
+    throw new Error(NAVER_URL_ERROR_MESSAGE)
+  }
+
+  return new URL(redirectedUrl, rawUrl).toString()
+}
 
 const geocodeAddress = async (address: string): Promise<{ latitude: number; longitude: number } | null> => {
   if (geocodeCache.has(address)) {
@@ -90,7 +109,7 @@ const resolveCoordinates = async (record: PlaceLookupSourceRecord) => {
 }
 
 export const lookupPlaceFromRawUrl = async (rawUrl: string): Promise<PlaceLookupResult> => {
-  const normalized = normalizeNaverMapUrl(rawUrl)
+  const normalized = normalizeNaverMapUrl(await resolveLookupUrl(rawUrl))
   if (lookupResultCache.has(normalized.canonicalUrl)) {
     return lookupResultCache.get(normalized.canonicalUrl) as PlaceLookupResult
   }

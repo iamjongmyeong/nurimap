@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { NAVER_URL_ERROR_MESSAGE, normalizeNaverMapUrl } from './naverUrl'
+import { NAVER_URL_ERROR_MESSAGE } from './naverUrl'
 import { registerOrMergePlace, validateRegistrationDraft } from './placeRepository'
 import { useAppShellStore } from './appShellStore'
 import { useAuth } from '../auth/authContext'
@@ -228,7 +228,6 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 
     try {
       setLookupState('validating_url')
-      const normalized = normalizeNaverMapUrl(targetRawUrl)
       setLookupErrorMessage(null)
       setLookupState('loading')
       resetForNewLookup()
@@ -246,13 +245,19 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 
       if (!response.ok || result.status === 'error') {
         setLookupResult(null)
-        setFailureMessage(result.status === 'error' ? result.error.message : '장소 정보를 가져오지 못했어요. 다시 시도해 주세요.')
+        const errorMessage = result.status === 'error' ? result.error.message : '장소 정보를 가져오지 못했어요. 다시 시도해 주세요.'
+        if (errorMessage === NAVER_URL_ERROR_MESSAGE) {
+          setFailureMessage(null)
+          setLookupErrorMessage(errorMessage)
+        } else {
+          setFailureMessage(errorMessage)
+        }
         setLookupState('error')
         return
       }
 
       const existingPlaceWithMyReview = places.find(
-        (place) => place.naver_place_id === normalized.naverPlaceId && place.my_review !== null,
+        (place) => place.naver_place_id === result.data.naver_place_id && place.my_review !== null,
       )
 
       if (existingPlaceWithMyReview) {

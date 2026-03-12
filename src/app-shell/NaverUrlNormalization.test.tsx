@@ -6,6 +6,7 @@ import { NAVER_URL_ERROR_MESSAGE, normalizeNaverMapUrl } from './naverUrl'
 
 const validSearchUrl = 'https://map.naver.com/p/search/%EC%B9%B4%ED%8E%98/place/123456789?c=15.00,0,0,0,dh'
 const validEntryUrl = 'https://map.naver.com/p/entry/place/987654321?placePath=%2Fhome'
+const validFavoriteUrl = 'https://map.naver.com/p/favorite/myPlace/folder/52f873516c87492794d35b0f62ebe0f1/place/1648359924?c=16.00,0,0,0,dh'
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
@@ -38,6 +39,13 @@ describe('Plan 04 naver url normalization', () => {
     })
   })
 
+  it('recognizes the favorite place url shape', () => {
+    expect(normalizeNaverMapUrl(validFavoriteUrl)).toEqual({
+      canonicalUrl: 'https://map.naver.com/p/entry/place/1648359924',
+      naverPlaceId: '1648359924',
+    })
+  })
+
   it('rejects a non-naver host', () => {
     expect(() => normalizeNaverMapUrl('https://example.com/p/entry/place/123')).toThrow(
       NAVER_URL_ERROR_MESSAGE,
@@ -53,6 +61,18 @@ describe('Plan 04 naver url normalization', () => {
   it('shows the inline error for an invalid url and keeps the input value', async () => {
     const user = userEvent.setup()
     setViewport(1280)
+    globalThis.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          status: 'error',
+          error: {
+            code: 'lookup_failed',
+            message: NAVER_URL_ERROR_MESSAGE,
+          },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      ),
+    ) as typeof fetch
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: '장소 추가' }))

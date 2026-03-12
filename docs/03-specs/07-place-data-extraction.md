@@ -12,6 +12,7 @@
 
 ## Functional Requirements
 - place 조회는 서버 측에서 수행한다.
+- `naver.me` short link처럼 네트워크 해석이 필요한 URL도 서버 측에서 최종 canonical place URL로 해석한다.
 - 최소 대상 필드는 `name`, `road_address`, `land_lot_address`, `latitude`, `longitude`다.
 - 좌표 확보 우선순위는 아래와 같다.
   1. 네이버 응답의 위도/경도
@@ -31,6 +32,7 @@
 ## Acceptance Criteria
 - 네이버 좌표가 있으면 그대로 사용한다.
 - 네이버 좌표가 없으면 주소 geocoding fallback을 순차적으로 시도한다.
+- `naver.me`, `favorite`, `search`, `entry` 형태 입력이 모두 동일 canonical place 기준으로 조회된다.
 - 조회 성공 시 같은 place 추가 UI 안의 다음 단계에서 place 이름과 대표 주소 요약이 보인다.
 - 조회 성공 후 보이는 place 이름과 대표 주소는 읽기 전용이다.
 - 네이버 응답 실패 시 저장이 진행되지 않고 실패 modal이 보인다.
@@ -42,21 +44,23 @@
 ## TDD Implementation Order
 1. 네이버 조회 성공 테스트를 작성한다.
 2. 네이버 좌표 우선 사용 테스트를 작성한다.
-3. `road_address` fallback 테스트를 작성한다.
-4. `land_lot_address` fallback 테스트를 작성한다.
-5. 조회 성공 후 읽기 전용 place 요약 표시 테스트를 작성한다.
-6. 조회 중 진행 상태 테스트를 작성한다.
-7. 네이버 실패 modal 테스트를 작성한다.
-8. 좌표 실패 modal 테스트를 작성한다.
-9. 실패 후 URL 유지 테스트를 작성한다.
-10. 조회 중 중복 실행 방지 테스트를 작성한다.
-11. 실패 modal 재시도 테스트를 작성한다.
-12. 구현한다.
-13. 전체 테스트를 통과시킨다.
+3. short link / favorite / search 입력의 canonical lookup 테스트를 작성한다.
+4. `road_address` fallback 테스트를 작성한다.
+5. `land_lot_address` fallback 테스트를 작성한다.
+6. 조회 성공 후 읽기 전용 place 요약 표시 테스트를 작성한다.
+7. 조회 중 진행 상태 테스트를 작성한다.
+8. 네이버 실패 modal 테스트를 작성한다.
+9. 좌표 실패 modal 테스트를 작성한다.
+10. 실패 후 URL 유지 테스트를 작성한다.
+11. 조회 중 중복 실행 방지 테스트를 작성한다.
+12. 실패 modal 재시도 테스트를 작성한다.
+13. 구현한다.
+14. 전체 테스트를 통과시킨다.
 
 ## Required Test Cases
 - 네이버 응답 성공
 - 네이버 좌표 사용
+- short link / favorite / search 입력의 canonical lookup 성공
 - 도로명 주소 fallback 성공
 - 지번 주소 fallback 성공
 - 조회 성공 후 place 이름/대표 주소 읽기 전용 표시
