@@ -407,3 +407,19 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/01-product/user-flows/auth-and-name-entry.md
   - docs/04-design/auth-and-name-entry.md
 - Related commit: 0960939
+
+## 2026-03-13 Auth - Avoid refresh/bootstrap deadlock and bypass verify hangs
+- Context: 실제 환경의 bypass allowlist 계정으로 확인한 결과, refresh 이후 세션이 있어도 auth bootstrap이 장시간 `loading`에 머물거나, bypass 재로그인 경로에서 `verifying`가 terminal state로 수렴하지 않는 경우가 있었다. `AuthProvider`는 `onAuthStateChange`에 async callback을 등록하고 내부에서 `getUser()`를 await하고 있었고, bypass 즉시 로그인 경로는 `verifyOtp` 지연/실패를 별도로 timeout 처리하지 않았다.
+- Options considered:
+  - Option A: 기존 async `SIGNED_IN` callback 구조를 유지한 채 bootstrap timeout만 늘리거나 UI fallback만 보강한다.
+  - Option B: `SIGNED_IN`에서는 먼저 `session.user`로 동기 복원하고, 추가 `getUser()`는 callback 밖에서 비동기 보강 조회로 분리한다. 동시에 bypass 즉시 로그인 verify는 공용 timeout helper로 감싼다.
+  - Option C: browser auth persistence/auto refresh 전략 자체를 바꾸거나 Supabase client 설정을 크게 재구성한다.
+- Decision: Option B를 선택한다.
+- Rationale: Supabase auth client는 async `onAuthStateChange` callback이 deadlock을 만들 수 있다고 명시하고 있고, 실제 refresh 재현에서도 bootstrap보다 먼저 들어온 `SIGNED_IN` 이벤트와 `getUser()` 재진입이 복원 경합을 만들었다. callback을 동기화하고 bypass verify를 timeout-safe helper로 분리하면 현재 auth 설계를 유지하면서 refresh와 bypass 재로그인 두 경로 모두 가장 작은 변경 범위로 안정화할 수 있다.
+- Impact: `src/auth/AuthProvider.tsx`는 공통 `applyAuthenticatedState`로 세션 복원을 일관화하고, `SIGNED_IN` 이벤트에서는 즉시 `session.user`를 반영한 뒤 후속 `getUser()`를 queueMicrotask로 보강한다. `src/auth/authVerification.ts`는 bootstrap/bypass verify timeout helper를 담당하고, `src/auth/AuthFlow.test.tsx` / `src/auth/authVerification.test.ts`는 refresh 세션 복원 경쟁 상태와 bypass verify hang 회귀를 고정한다.
+- Revisit trigger: auth 진입 경로를 router-level route로 분리하거나, Supabase auth 이벤트 처리 전략을 다시 설계하게 되면 현재 `session.user` 우선 복원 + 후속 보강 조회 구조를 재검토한다.
+- Related docs:
+  - docs/03-specs/05-auth-email-login-link.md
+  - docs/04-design/auth-and-name-entry.md
+  - docs/05-sprints/sprint-13/planning.md
+- Related commit:

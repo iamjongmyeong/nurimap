@@ -2,12 +2,10 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { AuthContext, type AuthContextValue, type AuthPhase } from './authContext'
 import { supabaseBrowser } from './supabaseBrowser'
 import { requestTestLoginLink, setTestAuthState, signOutTestUser, submitTestName, useTestAuthState } from './testAuthState'
+import { resolveBypassVerification, withTimeout } from './authVerification'
 
 const SESSION_STARTED_AT_KEY = 'nurimap_session_started_at'
 const SESSION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
-const AUTH_BOOTSTRAP_TIMEOUT_MS = 5000
-
-
 const clearAuthQuery = () => {
   const url = new URL(window.location.href)
   url.search = ''
@@ -31,25 +29,6 @@ const markSessionStarted = () => {
 
 const clearSessionStarted = () => {
   window.localStorage.removeItem(SESSION_STARTED_AT_KEY)
-}
-
-const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = AUTH_BOOTSTRAP_TIMEOUT_MS) => {
-  let timeoutId: number | undefined
-
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timeoutId = window.setTimeout(() => {
-          reject(new Error('auth_bootstrap_timeout'))
-        }, timeoutMs)
-      }),
-    ])
-  } finally {
-    if (timeoutId !== undefined) {
-      window.clearTimeout(timeoutId)
-    }
-  }
 }
 
 const authLoginWordmarkStyle = {
@@ -273,6 +252,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const devOverrideState = useMemo(() => getDevAuthOverride(), [])
   const isTestMode = import.meta.env.MODE === 'test' || devOverrideState !== null
 
+  const applyAuthenticatedState = useCallback(({
+    accessToken,
+    user,
+  }: {
+    accessToken: string
+    user:
+      | {
+          email?: string | null
+          user_metadata?: {
+            name?: unknown
+          }
+        }
+      | null
+      | undefined
+  }) => {
+    markSessionStarted()
+    setAccessToken(accessToken)
+    setEmail(user?.email ?? '')
+    setRequestedEmail(null)
+    setMessage(null)
+    setFailureReason(null)
+    setPhase(user?.user_metadata?.name ? 'authenticated' : 'name_required')
+  }, [])
+
   const verifyAndAdoptSession = useCallback(async ({
     tokenHash,
     verificationType,
@@ -292,22 +295,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    markSessionStarted()
-    setAccessToken(data.session.access_token)
-    setEmail(data.user.email ?? '')
-    setRequestedEmail(null)
-    setMessage(null)
-    setFailureReason(null)
-    if (data.user.user_metadata?.name) {
-      setPhase('authenticated')
-    } else {
-      setPhase('name_required')
-    }
+    applyAuthenticatedState({
+      accessToken: data.session.access_token,
+      user: data.user,
+    })
 
     return {
       status: 'success' as const,
     }
-  }, [])
+  }, [applyAuthenticatedState])
 
   useEffect(() => {
     if (devOverrideState) {
@@ -345,18 +341,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return
         }
 
-        markSessionStarted()
         if (isMounted) {
-          setAccessToken(accessToken)
-          setEmail(data.user.email ?? '')
-          setRequestedEmail(null)
-          setMessage(null)
-          setFailureReason(null)
-          if (data.user.user_metadata?.name) {
-            setPhase('authenticated')
-          } else {
-            setPhase('name_required')
-          }
+          applyAuthenticatedState({
+            accessToken,
+            user: data.user,
+          })
         }
       }
 
@@ -439,21 +428,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     void bootstrap()
 
-    const { data: listener } = supabaseBrowser.auth.onAuthStateChange(async (event, session) => {
+    const { data: listener } = supabaseBrowser.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         clearSessionStarted()
         setAccessToken(null)
         setPhase('auth_required')
+        return
       }
 
       if (event === 'SIGNED_IN' && session?.access_token) {
-        markSessionStarted()
-        setAccessToken(session.access_token)
-        const { data } = await supabaseBrowser.auth.getUser()
-        const user = data.user
-        setEmail(user?.email ?? '')
-        setRequestedEmail(null)
-        setPhase(user?.user_metadata?.name ? 'authenticated' : 'name_required')
+        applyAuthenticatedState({
+          accessToken: session.access_token,
+          user: session.user,
+        })
+
+        queueMicrotask(() => {
+          void withTimeout(supabaseBrowser.auth.getUser()).then(({ data, error }) => {
+            if (!isMounted || error || !data.user) {
+              return
+            }
+
+            applyAuthenticatedState({
+              accessToken: session.access_token,
+              user: data.user,
+            })
+          }).catch(() => {})
+        })
       }
     })
 
@@ -461,7 +461,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isMounted = false
       listener.subscription.unsubscribe()
     }
-  }, [isTestMode, testState, verifyAndAdoptSession])
+  }, [applyAuthenticatedState, isTestMode, testState, verifyAndAdoptSession])
 
   const requestLink = async (nextEmail: string) => {
     if (!nextEmail.trim()) {
@@ -525,9 +525,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setPhase('verifying')
       setMessage(payload.message)
 
-      const verification = await verifyAndAdoptSession({
+      const verification = await resolveBypassVerification({
         tokenHash: payload.tokenHash,
         verificationType: payload.verificationType,
+        verifyAndAdoptSession,
       })
 
       if (verification.status === 'error') {
@@ -535,6 +536,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setFailureReason(verification.message)
         return
       }
+
       return
     }
 

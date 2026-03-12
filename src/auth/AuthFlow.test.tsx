@@ -215,6 +215,72 @@ describe('Sprint 12 auth flow', () => {
     expect(screen.queryByTestId('auth-request-button')).not.toBeInTheDocument()
   })
 
+  it('converges to auth failure instead of leaving bypass re-login stuck in verifying after logout', async () => {
+    vi.stubEnv('MODE', 'development')
+    setViewport(1280)
+
+    getSessionMock.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'existing-session-token',
+        },
+      },
+    })
+    getUserMock.mockResolvedValue({
+      data: {
+        user: {
+          email: 'bypass.named@example.com',
+          user_metadata: {
+            name: '테스트 사용자',
+          },
+        },
+      },
+      error: null,
+    })
+    verifyOtpMock.mockRejectedValue(new Error('verifyOtp stalled after logout'))
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'success',
+          mode: 'bypass',
+          message: '테스트 계정으로 바로 로그인합니다.',
+          tokenHash: 'bypass-token-hash',
+          verificationType: 'magiclink',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+
+    expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+
+    await user.clear(screen.getByLabelText('이메일'))
+    await user.type(screen.getByLabelText('이메일'), 'bypass.named@example.com')
+    await user.click(screen.getByTestId('auth-request-button'))
+
+    await waitFor(() => {
+      expect(verifyOtpMock).toHaveBeenCalledWith({
+        token_hash: 'bypass-token-hash',
+        type: 'magiclink',
+      })
+    })
+    expect(await screen.findByText('인증에 실패했어요')).toBeInTheDocument()
+    expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
+  })
+
   it('shows the verifying state while processing the login link', () => {
     setTestAuthState({ phase: 'verifying', user: null, message: null, failureReason: null })
     render(<App />)
@@ -321,6 +387,82 @@ describe('Sprint 12 auth flow', () => {
     expect(window.location.search).toBe('')
   })
 
+  it('restores an existing session on refresh even when the auth client emits a signed-in event before bootstrap finishes', async () => {
+    vi.stubEnv('MODE', 'development')
+
+    const persistedSession = {
+      access_token: 'existing-session-token',
+      user: {
+        email: 'bypass.named@example.com',
+        user_metadata: {
+          name: '테스트 사용자',
+        },
+      },
+    }
+
+    let resolveSessionBootstrap!: () => void
+    let sessionBootstrapResolved = false
+
+    getSessionMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSessionBootstrap = () => {
+            sessionBootstrapResolved = true
+            resolve({
+              data: {
+                session: {
+                  access_token: persistedSession.access_token,
+                },
+              },
+            })
+          }
+        }),
+    )
+    getUserMock.mockImplementation(() => {
+      if (!sessionBootstrapResolved) {
+        return new Promise(() => {})
+      }
+
+      return Promise.resolve({
+        data: {
+          user: persistedSession.user,
+        },
+        error: null,
+      })
+    })
+    onAuthStateChangeMock.mockImplementation((callback) => {
+      queueMicrotask(async () => {
+        await callback('SIGNED_IN', persistedSession as never)
+        resolveSessionBootstrap()
+      })
+
+      return {
+        data: {
+          subscription: {
+            unsubscribe: vi.fn(),
+          },
+        },
+      }
+    })
+
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
+
+    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('protected-child')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '이메일로 로그인 링크 전송' })).not.toBeInTheDocument()
+  })
+
   it('falls back to the login screen when session bootstrap never resolves', async () => {
     vi.stubEnv('MODE', 'development')
     vi.useFakeTimers()
@@ -392,4 +534,5 @@ describe('Sprint 12 auth flow', () => {
     expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
     expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
   })
+
 })
