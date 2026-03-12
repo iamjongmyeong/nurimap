@@ -113,6 +113,12 @@ docs/
 - Done Criteria
 - QA Plan
 
+`# QA Plan` 아래 필수 하위 섹션:
+- `## Automated Checks`
+- `## AI Agent Interactive QA`
+- `## Playwright CLI QA`
+- `## User QA Required`
+
 ### `template/planning.md`
 - `planning.md`의 기본 템플릿이다.
 - 새 Sprint를 만들 때 이 파일 구조를 먼저 복사한다.
@@ -128,6 +134,16 @@ docs/
 - QA Verdict
 - Follow-ups
 
+`# Manual QA Result` 아래 필수 하위 섹션:
+- `## AI Agent Interactive QA Result`
+- `## Playwright CLI Evidence`
+- `## User QA Required`
+
+규칙:
+- Playwright CLI를 실행했다면 `qa.md`에 목적, 실행 명령/스크립트, 판정, 스크린샷 경로를 남긴다.
+- Playwright 스크린샷은 `artifacts/qa/sprint-XX/` 아래처럼 Sprint를 식별할 수 있는 경로에 둔다.
+- 사용자 직접 QA 요청은 `qa.md`를 source of truth로 삼고, `review.md`는 blocker 요약만 남긴다.
+
 ### `template/qa.md`
 - `qa.md`의 기본 템플릿이다.
 - 검증 결과를 기록하기 전까지는 구조만 유지한다.
@@ -142,6 +158,10 @@ docs/
 - Carry-over
 - Risks
 - Retrospective
+
+규칙:
+- 사용자 직접 QA 요청의 기본 기록 위치는 `qa.md`다.
+- `review.md`에는 실제 release blocker나 carry-over만 요약한다.
 
 ### `template/review.md`
 - `review.md`의 기본 템플릿이다.

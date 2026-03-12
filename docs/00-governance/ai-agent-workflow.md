@@ -57,6 +57,7 @@
 - 구현 전에 `definition-of-ready` 기준을 점검한다.
 - 아래가 비어 있으면 현재 Sprint는 ready가 아니다.
   - `planning.md`
+- `planning.md`의 `# QA Plan`이 `Automated Checks`, `AI Agent Interactive QA`, `Playwright CLI QA`, `User QA Required`로 구분되지 않았다면 ready가 아니다.
 - 범위가 불완전하면 추정 구현 대신 필요한 문서 보강을 우선한다.
 
 ### 3. Relevant Docs 읽기
@@ -76,13 +77,21 @@
 6. `Manual QA Checklist`
 7. `QA Evidence`
 
+추가 해석 규칙:
+- `Manual QA Checklist`와 `QA Evidence`는 현재 Sprint의 `planning.md`, `qa.md`에서 `Automated Checks`, `AI Agent Interactive QA`, `Playwright CLI QA`, `User QA Required`로 재배치해 해석할 수 있다.
+- 브라우저 상호작용 검증이 필요한 항목은 가능하면 Playwright CLI를 우선 사용한다.
+
 ### 5. Verification And Sprint Docs Sync
 - spec의 acceptance criteria를 만족해야 한다.
 - `docs/00-governance/definition-of-done.md`를 통과해야 한다.
 - Sprint의 `planning.md`, `qa.md`, `review.md`는 한국어로 작성한다.
 - 단, 명령어, 파일 경로, 코드 식별자, 환경변수, 외부 서비스의 고유 메시지와 에러명은 원문을 유지할 수 있다.
-- 검증 결과는 현재 Sprint의 `qa.md`에 기록한다.
-- 완료, 미완료, carry-over, 회고는 현재 Sprint의 `review.md`에 기록한다.
+- 검증 결과와 사용자 직접 QA 요청의 source of truth는 현재 Sprint의 `qa.md`다.
+- `planning.md`의 `# QA Plan`은 `Automated Checks`, `AI Agent Interactive QA`, `Playwright CLI QA`, `User QA Required`로 나눠 유지한다.
+- `qa.md`의 `# Manual QA Result`는 `AI Agent Interactive QA Result`, `Playwright CLI Evidence`, `User QA Required`로 나눠 기록한다.
+- Playwright CLI를 실행했다면 `qa.md`에 목적, 실행 명령/스크립트, 확인한 시나리오, 판정, 스크린샷 경로를 남긴다.
+- 사용자 직접 QA 항목은 `qa.md`에 사용자 수행 절차, 기대 결과, 현재 상태를 함께 남긴다.
+- 완료, 미완료, carry-over, 회고는 현재 Sprint의 `review.md`에 기록하되, `review.md`를 사용자 QA handoff의 기본 위치로 사용하지 않는다.
 
 ### 6. Change Handling
 - 실행 중 새 요청이나 범위 변경이 생기면 바로 구현하지 않는다.
@@ -123,7 +132,7 @@
 ## Exit Criteria
 현재 Sprint의 작업을 종료하려면 아래를 모두 만족해야 한다.
 - 선택된 spec acceptance criteria 충족
-- 필요한 자동화 테스트와 수동 QA 수행
+- 필요한 자동화 테스트와 AI Agent QA를 수행했고, 사용자 직접 QA가 남아 있으면 `qa.md`에 명시적으로 handoff 상태가 기록됨
 - `docs/00-governance/definition-of-done.md` 통과
 - `docs/05-sprints/sprint-XX/planning.md`가 실제 구현 기준과 일치함
 - `docs/05-sprints/sprint-XX/qa.md` 반영
