@@ -406,4 +406,4 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/03-specs/05-auth-email-login-link.md
   - docs/01-product/user-flows/auth-and-name-entry.md
   - docs/04-design/auth-and-name-entry.md
-- Related commit:
+- Related commit: 0960939
