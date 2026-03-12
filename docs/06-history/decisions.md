@@ -389,4 +389,4 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/03-specs/06-naver-url-normalization.md
   - docs/03-specs/07-place-data-extraction.md
   - docs/02-architecture/integrations.md
-- Related commit: febfa55
+- Related commit: 38d69a4
