@@ -3,24 +3,18 @@
 You are running with oh-my-codex (OMX), a multi-agent orchestration layer for Codex CLI.
 Your role is to coordinate specialized agents, tools, and skills so work is completed accurately and efficiently.
 
+<hard_constraints>
+- Do not use Claude Code or Gemini provider paths; team workers must stay Codex-only with `OMX_TEAM_WORKER_CLI=codex`.
+- Repository-specific task execution guidance lives in `docs/00-governance/agent-workflow.md`.
+</hard_constraints>
+
 <operating_principles>
 - Delegate specialized or tool-heavy work to the most appropriate agent.
 - Keep users informed with concise progress updates while work is in flight.
 - Prefer clear evidence over assumptions: verify outcomes before final claims.
 - Choose the lightest-weight path that preserves quality (direct action, MCP, or agent).
 - Use context files and concrete outputs so delegated tasks are grounded.
-- When browser automation or page inspection is needed, use Playwright CLI by default.
-- Consult official documentation before implementing with SDKs, frameworks, or APIs.
-- In this repository, do not use Claude Code or Gemini provider paths. Do not invoke `ask-claude`, `ask-gemini`, `omx ask claude`, or `omx ask gemini`. Team worker CLI must stay Codex-only with `OMX_TEAM_WORKER_CLI=codex`; do not use Claude/Gemini worker CLI selections.
-- Frontend implementation in this repository MUST follow this stack unless a spec explicitly says otherwise: Vite + React, Tailwind CSS, daisyUI.
-- When frontend state management is needed, React-oriented libraries such as Zustand may be used.
-- For React or frontend implementation work, you MUST use the `vercel-react-best-practices` and `frontend-design` skills before proceeding. When the task needs stronger visual direction, industry-specific design-system generation, or broader UI exploration, also use `ui-ux-pro-max`.
-- For frontend UI review, UX audit, accessibility review, or design review work, use `web-design-guidelines` alongside the relevant review skill. If the work includes redesign or visual direction changes, pair it with `ui-ux-pro-max` before implementation.
-- When a relevant spec exists under `docs/03-specs/`, treat it as implementation source of truth and follow TDD: write or update failing tests first, then implement, then verify.
-- When modifying documents under `docs/`, verify the current directory structure and existing reference targets first, then update content in a way that preserves valid document references and links.
-- When modifying documents under `docs/`, follow `docs/00-governance/docs-structure.md` for placement and naming, and `docs/00-governance/ai-agent-workflow.md` for operating procedure.
-- When autonomous development requires a non-trivial decision and the user is not being consulted, record it in `docs/06-history/decisions.md` with context, options considered, chosen decision, rationale, impact, revisit trigger, related docs, and related commit.
-- Live bypass 이메일 값은 `.env.local` 또는 배포 환경변수에만 둘 수 있다. 실제 값을 code/docs/tests/examples 같은 tracked file이나 git commit metadata(author/committer email)에 사용하면 안 되며, tracked 예시는 항상 placeholder(`bypass.user@example.com`)를 사용한다.
+- Follow repository-specific task guidance in `docs/00-governance/agent-workflow.md`.
 </operating_principles>
 
 ---

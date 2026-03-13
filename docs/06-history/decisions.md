@@ -348,7 +348,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: 향후 design 문서가 다시 한 파일에 과도하게 집중되거나, flow별 문서보다 컴포넌트 시스템 문서가 더 적합해지면 design 정보 구조를 다시 조정한다.
 - Related docs:
   - docs/00-governance/docs-structure.md
-  - docs/00-governance/ai-agent-workflow.md
+  - docs/00-governance/agent-workflow.md
   - docs/04-design/foundations.md
   - docs/04-design/auth-and-name-entry.md
   - docs/04-design/browse-and-detail.md
@@ -424,6 +424,38 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/05-sprints/sprint-13/planning.md
 - Related commit:
 
+## 2026-03-13 Sprint 13 - Consolidate governance guidance into agent-workflow
+- Context: `docs/00-governance/`에 workflow 문서와 planning/design-development/QA-docs 보조 가이드가 함께 생기면서 파일 수와 라우팅 경로가 다시 늘어났다.
+- Options considered:
+  - Option A: `agent-workflow.md`와 3개의 보조 가이드를 계속 분리 유지한다.
+  - Option B: workflow 문서를 `agent-workflow.md`로 정리하고, 중복 없는 repository-specific task guidance만 그 문서에 흡수한 뒤 보조 가이드를 제거한다. `AGENTS.md`는 orchestration/hard constraint 중심으로 축약한다.
+- Decision: Option B를 선택한다.
+- Rationale: planning/QA/docs 규칙은 workflow 문서와 많이 겹쳤고, design/development guidance도 별도 파일로 둘 만큼 크지 않았다. 하나의 workflow 문서로 수렴하는 편이 `AGENTS.md` 라우팅과 유지보수 모두 더 단순하다. 반대로 provider 제한, team/state orchestration 같은 runtime 규칙은 `AGENTS.md`에 남겨야 책임 경계가 선명해진다.
+- Impact: `docs/00-governance/agent-workflow.md`가 유일한 repository-specific agent workflow 문서가 되고, planning/design-development/QA-docs 보조 가이드는 제거된다. 공식 문서 우선, Playwright 기본 사용, frontend stack 기본값, decision 기록 규칙은 `agent-workflow.md`를 source of truth로 둔다. `AGENTS.md`는 Codex-only constraint와 orchestration/runtime guidance 중심으로 축약한다.
+- Revisit trigger: `agent-workflow.md`가 다시 과도하게 비대해지거나 독립 문서가 꼭 필요한 범위가 생기면 그때만 별도 문서 분리를 재검토한다.
+- Related docs:
+  - docs/00-governance/agent-workflow.md
+  - docs/00-governance/docs-structure.md
+  - AGENTS.md
+- Related commit: TBD
+
+## 2026-03-13 Sprint 13 - Add lightweight change-card tracking inside sprint docs
+- Context: medium-sized change를 추적하기 위해 별도 packet 파일이나 `.omx` 의존 구조를 도입하는 대신, 기존 sprint canonical 문서 안에서 더 가볍게 change-level traceability를 시작하고 싶었다.
+- Options considered:
+  - Option A: 별도 change packet 파일/폴더를 도입한다.
+  - Option B: `planning.md`, `qa.md`, `review.md` 템플릿 안에 선택적 change card 섹션만 추가한다.
+- Decision: Option B를 선택한다.
+- Rationale: 현재 sprint-first 구조를 유지하면서 change 단위 추적성을 보강하는 가장 작은 변경이다. 새 artifact 위치를 만들지 않아도 되고 `.omx`나 별도 폴더 업데이트 리스크도 피할 수 있다.
+- Impact: 새 sprint부터 `planning.md`의 `# Active Changes`, `qa.md`의 `# Change Verification`, `review.md`의 `# Change Outcomes`를 선택적으로 사용할 수 있다. tiny/local fix는 제외하고, card는 요약/추적용으로만 유지한다. Sprint canonical 구조와 source-of-truth hierarchy는 유지된다.
+- Revisit trigger: change card만으로도 medium/large change의 why / scope / verification 추적이 부족하면, 그때 별도 change packet artifact를 다시 검토한다.
+- Related docs:
+  - docs/00-governance/docs-structure.md
+  - docs/00-governance/agent-workflow.md
+  - docs/05-sprints/template/planning.md
+  - docs/05-sprints/template/qa.md
+  - docs/05-sprints/template/review.md
+- Related commit: TBD
+
 ## 2026-03-13 Security - Treat live bypass emails as git-tracked and commit-metadata secrets
 - Context: bypass 이메일 값은 code diff에는 남지 않았지만, 실제 값이 git commit author metadata로 공개되면 동일한 민감도 문제를 만든다는 점이 확인됐다. 기존 문서는 tracked file에는 적지 말라고만 했고, commit metadata나 local hook / CI guard까지는 명시하지 않았다.
 - Options considered:
@@ -436,6 +468,6 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: bypass 정책이 제거되거나, 더 일반적인 secret scanning platform으로 hook/CI 역할을 통합하게 되면 현재 guard 구성을 단순화할 수 있다.
 - Related docs:
   - AGENTS.md
-  - docs/00-governance/ai-agent-workflow.md
+  - docs/00-governance/agent-workflow.md
   - scripts/guard-bypass-email.mjs
 - Related commit:

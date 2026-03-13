@@ -1,24 +1,21 @@
-# AI Agent Workflow
+# Agent Workflow
 
 ## Purpose
-이 문서는 Nurimap 프로젝트에서 AI Agent가 문서 구조를 해석하고 Sprint 단위로 실행할 때 따라야 할 운영 절차를 정의한다.
-문서 구조 자체는 `docs/00-governance/docs-structure.md`가 기준이며, 이 문서는 그 구조를 실제로 어떻게 사용하는지를 다룬다.
+이 문서는 Nurimap 프로젝트에서 AI Agent가 Sprint 단위 작업을 수행할 때 따라야 할 repository-specific execution workflow를 정의한다.
+문서 구조는 `docs/00-governance/docs-structure.md`가 기준이며, `AGENTS.md`는 runtime/orchestration 규칙과 hard constraints를 담당한다.
+구현 절차, QA 절차, 문서 갱신 절차, 기본 stack/verification 규칙은 이 문서를 따른다.
 
-## Mandatory Context
-작업 시작 전 반드시 아래 문서를 읽는다.
+## Required Reading
+작업 시작 전 아래 문서를 먼저 읽는다. `AGENTS.md`는 runtime/orchestration 규칙과 hard constraints를 확인하기 위해 포함한다.
 
 1. `AGENTS.md`
 2. `docs/00-governance/docs-structure.md`
-3. `docs/01-product/product-overview.md`
-4. `docs/01-product/product-principles.md`
-5. 현재 작업과 관련된 `docs/01-product/user-flows/*.md`
-6. 현재 작업과 관련된 `docs/04-design/*.md`
-7. 현재 작업과 관련된 `docs/02-architecture/*.md`
-8. 현재 Sprint의 `docs/05-sprints/sprint-XX/planning.md`
-9. 현재 Sprint에서 선택된 `docs/03-specs/*.md`
-10. `docs/00-governance/definition-of-ready.md`
-11. `docs/00-governance/definition-of-done.md`
-12. 필요 시 `docs/06-history/decisions.md`, `docs/06-history/change-log.md`
+3. 현재 Sprint의 `docs/05-sprints/sprint-XX/planning.md`
+4. 현재 Sprint에서 선택된 `docs/03-specs/*.md`
+5. 현재 작업과 관련된 `docs/01-product/user-flows/*.md`, `docs/04-design/*.md`, `docs/02-architecture/*.md`
+6. `docs/00-governance/definition-of-ready.md`
+7. `docs/00-governance/definition-of-done.md`
+8. 필요 시 `docs/06-history/decisions.md`, `docs/06-history/change-log.md`
 
 ## Source Of Truth Hierarchy
 문서 충돌이 없다는 가정에서 아래 순서로 해석한다.
@@ -45,8 +42,29 @@
 - `docs/99-archive/`는 역사 기록이다. 현재 구현의 source of truth로 사용하지 않는다.
 - spec, design, architecture가 정면충돌하면 추정으로 메우지 말고 문서 충돌로 보고한다.
 
-## Sprint Execution Loop
+## Task Guidance
+### Planning / Scoping
+- 범위나 selected spec이 비어 있으면 구현보다 문서 보강을 우선한다.
+- broad하거나 ambiguous한 작업은 구현 전에 먼저 plan을 만들고, 구조/거버넌스처럼 trade-off가 큰 변경은 필요하면 `$ralplan`으로 합의한다.
 
+### Design / Development
+- SDK, framework, API를 사용할 때는 먼저 공식 문서를 확인한다.
+- 프론트엔드 구현은 spec에 다른 지시가 없으면 Vite + React + Tailwind CSS + daisyUI를 따른다.
+- frontend state가 필요하면 React-oriented library로 Zustand를 사용할 수 있다.
+- React/frontend 구현 전 `vercel-react-best-practices`, `frontend-design`을 먼저 쓰고, 시각 방향 확장이 크면 `ui-ux-pro-max`를 추가한다.
+- frontend UI review, UX audit, accessibility/design review에는 `web-design-guidelines`를 함께 쓰고, redesign이 크면 `ui-ux-pro-max`를 추가한다.
+- 관련 spec이 `docs/03-specs/`에 있으면 TDD 순서로 failing test -> 구현 -> 검증을 따른다.
+
+### QA / Docs
+- 브라우저 자동화나 페이지 inspection이 필요하면 아래 순서로 진행한다.
+  - 1차: Playwright (`playwright` command)
+  - 2차: PATH에서 사용할 수 있는 `agent-browser`
+  - 둘 다 사용할 수 없거나 실행에 실패하면 사용자에게 즉시 알리고 QA blocker로 보고한다.
+- QA 결과의 canonical 기록 위치는 현재 Sprint의 `qa.md`다.
+- `docs/`를 수정할 때는 현재 디렉터리 구조와 기존 참조 경로를 먼저 확인하고, `docs/00-governance/docs-structure.md`의 placement/naming과 이 문서의 절차를 따른다.
+- 비자명한 autonomous decision은 `docs/06-history/decisions.md`에 context, options considered, decision, rationale, impact, revisit trigger, related docs, related commit 형식으로 남긴다.
+
+## Sprint Execution Loop
 ### 1. Current Sprint 확인
 - 한 번에 하나의 Sprint만 진행한다.
 - 현재 실행 단위는 `docs/05-sprints/sprint-XX/` 아래 문서로 판단한다.
@@ -57,7 +75,7 @@
 - 구현 전에 `definition-of-ready` 기준을 점검한다.
 - 아래가 비어 있으면 현재 Sprint는 ready가 아니다.
   - `planning.md`
-- `planning.md`의 `# QA Plan`이 `Automated Checks`, `AI Agent Interactive QA`, `Playwright CLI QA`, `User QA Required`로 구분되지 않았다면 ready가 아니다.
+- `planning.md`의 `# QA Plan`이 `Automated Checks`, `AI Agent Interactive QA`, `Browser Automation QA`, `User QA Required`로 구분되지 않았다면 ready가 아니다.
 - 범위가 불완전하면 추정 구현 대신 필요한 문서 보강을 우선한다.
 
 ### 3. Relevant Docs 읽기
@@ -78,24 +96,22 @@
 7. `QA Evidence`
 
 추가 해석 규칙:
-- `Manual QA Checklist`와 `QA Evidence`는 현재 Sprint의 `planning.md`, `qa.md`에서 `Automated Checks`, `AI Agent Interactive QA`, `Playwright CLI QA`, `User QA Required`로 재배치해 해석할 수 있다.
-- 브라우저 상호작용 검증이 필요한 항목은 가능하면 Playwright CLI를 우선 사용한다.
+- `Manual QA Checklist`와 `QA Evidence`는 현재 Sprint의 `planning.md`, `qa.md`에서 `Automated Checks`, `AI Agent Interactive QA`, `Browser Automation QA`, `User QA Required`로 재배치해 해석할 수 있다.
 
 ### 5. Verification And Sprint Docs Sync
 - spec의 acceptance criteria를 만족해야 한다.
 - `docs/00-governance/definition-of-done.md`를 통과해야 한다.
 - Sprint의 `planning.md`, `qa.md`, `review.md`는 한국어로 작성한다.
 - 단, 명령어, 파일 경로, 코드 식별자, 환경변수, 외부 서비스의 고유 메시지와 에러명은 원문을 유지할 수 있다.
-- 검증 결과와 사용자 직접 QA 요청의 source of truth는 현재 Sprint의 `qa.md`다.
-- `planning.md`의 `# QA Plan`은 `Automated Checks`, `AI Agent Interactive QA`, `Playwright CLI QA`, `User QA Required`로 나눠 유지한다.
-- `qa.md`의 `# Manual QA Result`는 `AI Agent Interactive QA Result`, `Playwright CLI Evidence`, `User QA Required`로 나눠 기록한다.
-- Playwright CLI를 실행했다면 `qa.md`에 목적, 실행 명령/스크립트, 확인한 시나리오, 판정, 스크린샷 경로를 남긴다.
+- `planning.md`의 `# QA Plan`은 `Automated Checks`, `AI Agent Interactive QA`, `Browser Automation QA`, `User QA Required`로 나눠 유지한다.
+- `qa.md`의 `# Manual QA Result`는 `AI Agent Interactive QA Result`, `Browser Automation QA Evidence`, `User QA Required`로 나눠 기록한다.
+- Playwright (`playwright` command) 또는 `agent-browser`를 사용했다면 `qa.md`에 목적, 실행 명령 또는 사용 도구, 확인한 시나리오, 판정, 스크린샷 경로를 남긴다.
 - 사용자 직접 QA 항목은 `qa.md`에 사용자 수행 절차, 기대 결과, 현재 상태를 함께 남긴다.
 - 완료, 미완료, carry-over, 회고는 현재 Sprint의 `review.md`에 기록하되, `review.md`를 사용자 QA handoff의 기본 위치로 사용하지 않는다.
 
 ### 6. Change Handling
 - 실행 중 새 요청이나 범위 변경이 생기면 바로 구현하지 않는다.
-- 현재 Sprint 범위 안의 작은 변경(문구, 스타일, 간격, 버튼 텍스트, 경고 메시지, 이미 합의된 UX의 미세 조정)은 `planning.md`와 관련 source of truth 문서(선택된 `docs/03-specs/*.md`, 관련 `docs/04-design/*.md`)에 직접 반영한다.
+- 현재 Sprint 범위 안의 작은 변경은 `planning.md`와 관련 source of truth 문서에 직접 반영한다.
 - 현재 Sprint 범위 안의 작은 변경은 `docs/06-history/decisions.md`나 `docs/06-history/change-log.md`에 기록하지 않는다.
 - 구조, 정책, API/상태 모델, fallback처럼 이유를 남겨야 하는 선택은 `docs/06-history/decisions.md`에 기록한다.
 - 요청 추적이 중요하거나 반영 보류/후속 후보를 남겨야 하는 변경은 `docs/06-history/change-log.md`에 기록한다.
