@@ -36,3 +36,14 @@
 - 사용자 확인 항목:
 - 기대 결과:
 - handoff 조건:
+
+<!-- Optional: uncomment only when this sprint needs change-level tracking.
+# Active Changes
+
+## CHG-01 <short title>
+- Why:
+- Outcome:
+- Touched Docs:
+- Verify:
+- Status: draft | in_progress | verifying | closed
+-->

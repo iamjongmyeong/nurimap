@@ -20,6 +20,16 @@
 - 기대 결과:
 - 상태:
 
+<!-- Optional: uncomment only when `planning.md` uses `# Active Changes`.
+# Change Verification
+
+## CHG-01 <short title>
+- Automated:
+- Manual / Browser:
+- Evidence:
+- Verdict:
+-->
+
 # Issues Found
 
 # QA Verdict

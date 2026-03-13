@@ -100,6 +100,9 @@
 - 구조, 정책, API/상태 모델, fallback처럼 이유를 남겨야 하는 선택은 `docs/06-history/decisions.md`에 기록한다.
 - 요청 추적이 중요하거나 반영 보류/후속 후보를 남겨야 하는 변경은 `docs/06-history/change-log.md`에 기록한다.
 - feature identity가 유지되면 기존 spec을 수정하고, 바뀌면 새 spec을 만든다.
+- 한 sprint 안에 medium 이상 change가 여러 개 있거나, high-risk change 하나를 별도로 추적해야 하면 `planning.md`에 선택적으로 `# Active Changes`를 두고, `qa.md` / `review.md`에서 같은 change ID로 추적할 수 있다.
+- tiny/local fix에는 change card를 만들지 않아도 된다.
+- change card는 요약/추적용으로만 쓰고, spec / sprint 본문 / QA evidence를 길게 복제하지 않는다.
 
 원칙: 작은 변경은 source of truth에 흡수하고, 큰 선택만 decision으로 남긴다.
 

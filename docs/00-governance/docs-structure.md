@@ -125,6 +125,9 @@ docs/
 규칙:
 - `## Browser Automation QA`는 기본 브라우저 QA 기록 섹션이다. Playwright (`playwright` command)를 우선 사용하고, Playwright 실행 실패 시 `agent-browser`를 다음 fallback으로 계획한다.
 - 둘 다 사용할 수 없거나 실행에 실패하면 `qa.md`에 blocker를 남기고 사용자에게 알린다.
+- 한 sprint 안에 medium 이상 change가 여러 개 있거나, high-risk change 하나를 별도로 추적해야 하면 선택적으로 `# Active Changes` 섹션을 추가해 change ID 단위 추적(`CHG-01` 등)을 할 수 있다.
+- tiny/local fix는 change card를 만들지 않아도 된다.
+- change card는 요약/추적용으로만 쓰고, spec이나 실행 순서를 길게 복제하지 않는다.
 
 ### `template/planning.md`
 - `planning.md`의 기본 템플릿이다.
@@ -151,6 +154,8 @@ docs/
 - Playwright (`playwright` command) 또는 `agent-browser`를 실행했다면 `qa.md`에 목적, 실행 명령 또는 사용 도구, 판정, 스크린샷 경로를 남긴다.
 - Playwright 스크린샷은 `artifacts/qa/sprint-XX/` 아래처럼 Sprint를 식별할 수 있는 경로에 둔다.
 - 사용자 직접 QA 요청은 `qa.md`를 source of truth로 삼고, `review.md`는 blocker 요약만 남긴다.
+- `planning.md`에서 `# Active Changes`를 사용했다면, 선택적으로 `# Change Verification` 섹션을 추가해 같은 change ID로 QA 결과를 연결할 수 있다.
+- `# Change Verification`은 change card의 짧은 결과 요약만 두고, 상세 evidence는 기존 QA 섹션에 남긴다.
 
 ### `template/qa.md`
 - `qa.md`의 기본 템플릿이다.
@@ -170,6 +175,8 @@ docs/
 규칙:
 - 사용자 직접 QA 요청의 기본 기록 위치는 `qa.md`다.
 - `review.md`에는 실제 release blocker나 carry-over만 요약한다.
+- `planning.md`에서 `# Active Changes`를 사용했다면, 선택적으로 `# Change Outcomes` 섹션을 추가해 change ID별 완료/이월 상태를 짧게 기록할 수 있다.
+- `# Change Outcomes`는 상태 요약만 두고, 상세 회고는 기존 섹션에 남긴다.
 
 ### `template/review.md`
 - `review.md`의 기본 템플릿이다.
