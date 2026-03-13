@@ -20,6 +20,7 @@ Your role is to coordinate specialized agents, tools, and skills so work is comp
 - When modifying documents under `docs/`, verify the current directory structure and existing reference targets first, then update content in a way that preserves valid document references and links.
 - When modifying documents under `docs/`, follow `docs/00-governance/docs-structure.md` for placement and naming, and `docs/00-governance/ai-agent-workflow.md` for operating procedure.
 - When autonomous development requires a non-trivial decision and the user is not being consulted, record it in `docs/06-history/decisions.md` with context, options considered, chosen decision, rationale, impact, revisit trigger, related docs, and related commit.
+- Live bypass 이메일 값은 `.env.local` 또는 배포 환경변수에만 둘 수 있다. 실제 값을 code/docs/tests/examples 같은 tracked file이나 git commit metadata(author/committer email)에 사용하면 안 되며, tracked 예시는 항상 placeholder(`bypass.user@example.com`)를 사용한다.
 </operating_principles>
 
 ---

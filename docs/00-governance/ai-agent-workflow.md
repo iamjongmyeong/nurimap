@@ -112,6 +112,14 @@
   - 이후 Sprint나 spec에도 영향을 주는 구조/상태/API/테스트 결정을 했을 때
 - 단순 이동, 이름 변경, 기계적 링크 수정은 기록하지 않아도 된다.
 
+### 8. Sensitive Bypass Email Guard
+- live bypass 이메일 값은 `.env.local` 또는 배포 환경변수에서만 관리한다.
+- 실제 bypass 이메일 값은 tracked code/docs/tests/examples에 직접 쓰지 않는다.
+- bypass 관련 tracked 예시는 항상 placeholder(`bypass.user@example.com`, `bypass.named@example.com`)를 사용한다.
+- git commit metadata(author/committer email)도 노출 surface로 간주한다. auth/security 작업 전에는 `git config user.email`, `git var GIT_AUTHOR_IDENT`, `git var GIT_COMMITTER_IDENT`를 확인한다.
+- repo-local hook path를 사용하는 경우 `git config core.hooksPath .githooks`로 고정하고, bypass denylist guard를 우회한 commit/push를 금지한다.
+- CI에서는 secure secret 기반 denylist(`BYPASS_EMAIL_DENYLIST` 등)로 tracked content와 history metadata를 함께 검사한다.
+
 ## Documentation Rules
 - 문서는 `docs/00-governance/docs-structure.md`의 경로 규칙을 따른다.
 - 새 문서는 구조 규칙에 맞는 위치에만 생성한다.

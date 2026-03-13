@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "guard:bypass": "node scripts/guard-bypass-email.mjs --metadata --tracked --source-file .env.local",
+    "guard:bypass:ci": "node scripts/guard-bypass-email.mjs --tracked --history-metadata --require-denylist --source-env BYPASS_EMAIL_DENYLIST",
     "lint": "eslint .",
     "preview": "vite preview",
+    "setup:hooks": "git config core.hooksPath .githooks && chmod +x .githooks/pre-commit .githooks/pre-push",
     "test": "vitest",
     "test:run": "vitest run"
   },

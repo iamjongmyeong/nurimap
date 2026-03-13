@@ -423,3 +423,19 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/04-design/auth-and-name-entry.md
   - docs/05-sprints/sprint-13/planning.md
 - Related commit:
+
+## 2026-03-13 Security - Treat live bypass emails as git-tracked and commit-metadata secrets
+- Context: bypass 이메일 값은 code diff에는 남지 않았지만, 실제 값이 git commit author metadata로 공개되면 동일한 민감도 문제를 만든다는 점이 확인됐다. 기존 문서는 tracked file에는 적지 말라고만 했고, commit metadata나 local hook / CI guard까지는 명시하지 않았다.
+- Options considered:
+  - Option A: 문서 규칙만 보강하고 개발자 수동 점검에 의존한다.
+  - Option B: placeholder 정책을 문서에 명시하고, repo-local hooks + CI denylist guard + git identity 고정까지 함께 도입한다.
+  - Option C: bypass 기능 자체를 제거한다.
+- Decision: Option B를 선택한다.
+- Rationale: 민감 값이 tracked file이 아니라 commit metadata로 새어도 결과는 같으므로, 예방 통제는 content와 metadata를 함께 다뤄야 한다. 문서만으로는 재발 방지가 약하고, bypass 기능을 바로 제거하는 것은 운영 유연성을 잃게 만든다.
+- Impact: repo는 `.githooks/`의 pre-commit / pre-push guard와 `scripts/guard-bypass-email.mjs`를 사용해 live bypass 이메일의 tracked-content/history-metadata 유입을 조기에 차단한다. 운영 문서와 AGENTS 지침은 live bypass 이메일을 env 전용 값으로 취급하고, tracked 예시는 placeholder만 허용한다. CI denylist workflow는 remote credential scope가 준비되는 시점에 같은 정책으로 추가할 수 있다.
+- Revisit trigger: bypass 정책이 제거되거나, 더 일반적인 secret scanning platform으로 hook/CI 역할을 통합하게 되면 현재 guard 구성을 단순화할 수 있다.
+- Related docs:
+  - AGENTS.md
+  - docs/00-governance/ai-agent-workflow.md
+  - scripts/guard-bypass-email.mjs
+- Related commit:

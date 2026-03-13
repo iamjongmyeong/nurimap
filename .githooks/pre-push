@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+node scripts/guard-bypass-email.mjs --metadata --tracked --source-file .env.local
