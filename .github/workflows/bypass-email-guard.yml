@@ -1,0 +1,33 @@
+name: bypass-email-guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    env:
+      BYPASS_EMAIL_DENYLIST: ${{ secrets.BYPASS_EMAIL_DENYLIST }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Warn when denylist secret is missing
+        if: env.BYPASS_EMAIL_DENYLIST == ''
+        run: |
+          echo "BYPASS_EMAIL_DENYLIST secret is not configured yet."
+          echo "Set it to activate tracked-content and history-metadata enforcement in CI."
+
+      - name: Enforce bypass-email denylist
+        if: env.BYPASS_EMAIL_DENYLIST != ''
+        run: node scripts/guard-bypass-email.mjs --tracked --history-metadata --require-denylist --source-env BYPASS_EMAIL_DENYLIST
