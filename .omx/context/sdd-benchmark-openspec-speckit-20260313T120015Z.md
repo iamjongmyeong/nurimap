@@ -1,0 +1,26 @@
+# Context Snapshot — SDD benchmark vs OpenSpec / Spec Kit / lightweight vibe coding
+
+- task statement: Objectively evaluate this repo's current spec-driven workflow and docs system against OpenSpec, Spec Kit, and lighter "vibe coding"/single-chat execution patterns; derive strengths, weaknesses, and concrete improvement options.
+- desired outcome: A consensus recommendation with logical explanation and prioritized improvements.
+- known facts/evidence:
+  - Current repo structure separates product flows (`docs/01-product/user-flows`), executable specs (`docs/03-specs`), design docs (`docs/04-design`), and governance (`docs/00-governance`).
+  - `docs/00-governance/agent-workflow.md` defines a source-of-truth order: sprint planning -> selected specs -> user flows -> design -> architecture.
+  - User-flow docs contain scenario steps, rules, and failure expectations.
+  - Spec docs contain functional requirements, acceptance criteria, TDD order, test cases, and QA evidence.
+  - Design docs contain screen/layout/interaction rules and link to matching flow/spec docs.
+  - OpenSpec official site/repo says it is a lightweight spec-driven framework for AI coding assistants; each change gets its own folder with proposal, design, tasks, and spec deltas; it emphasizes fluid updates, brownfield-first usage, and specs checked into code.
+  - OpenSpec also compares itself to Spec Kit as lighter/less rigid, and to built-in single-chat plan mode as better for multi-session, shareable planning.
+  - Spec Kit official repo describes a more structured workflow with constitution, specify, clarify, plan, tasks, implement; feature folders under `.specify/specs/<id>/` contain spec.md, plan.md, research.md, tasks, contracts, etc.; it uses explicit clarification, plan validation, and task decomposition.
+  - OpenAI Codex usage guide recommends starting large changes with a plan, then executing with structured, issue-like prompts and iterative refinement.
+- constraints:
+  - User wants objective comparison and logically supported improvement suggestions.
+  - Must use $ralplan-style consensus.
+  - Final answer should be concise, but reasoning should be solid.
+- unknowns/open questions:
+  - Whether the repo wants a dedicated change-proposal layer like OpenSpec, or prefers lighter governance only.
+  - Whether the team values brownfield iteration speed over stronger artifact ceremony.
+- likely touchpoints:
+  - `docs/00-governance/agent-workflow.md`
+  - `docs/00-governance/docs-structure.md`
+  - representative files in `docs/01-product/user-flows`, `docs/03-specs`, `docs/04-design`
+  - external sources: openspec.dev, Fission-AI/OpenSpec, github/spec-kit, OpenAI Codex guide

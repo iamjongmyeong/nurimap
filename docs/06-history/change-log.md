@@ -30,7 +30,7 @@
   - 기존 `user-flow.md`를 `user-flows/` 아래 개별 문서로 분해했다.
   - 기능 spec은 `03-specs/` 아래 새 번호 체계로 재정렬했다.
   - `docs/05-sprints/template/`를 만들고 `planning.md`, `qa.md`, `review.md` 템플릿을 추가했다.
-  - `ai-agent-workflow.md`, `definition-of-ready.md`, `definition-of-done.md`, `AGENTS.md`를 새 구조 기준으로 정리했다.
+  - `agent-workflow.md`, `definition-of-ready.md`, `definition-of-done.md`, `AGENTS.md`를 새 구조 기준으로 정리했다.
   - 구조 규칙과 Sprint 문서 계약을 `docs/00-governance/docs-structure.md`에 문서화했다.
   - `docs/99-archive/` 루트에 retired 문서만 남기고, legacy QA 기록은 `docs/99-archive/qa/`에 모았다.
   - archive 문서 상단에 `Status`, `Archived on`, `Reason`, `Replaced by`, `이 문서는 더 이상 현재 기준 문서가 아니다.` 표시를 추가했다.
@@ -86,7 +86,7 @@
   - user
 - Affected docs/specs:
   - `docs/00-governance/docs-structure.md`
-  - `docs/00-governance/ai-agent-workflow.md`
+  - `docs/00-governance/agent-workflow.md`
   - `docs/04-design/`
   - `docs/05-sprints/`
   - `docs/06-history/`

@@ -42,6 +42,8 @@ docs/
 ### `00-governance/`
 - 문서 구조, workflow, ready/done 같은 운영 규칙을 둔다.
 - AI Agent가 문서를 어떻게 해석하고 갱신해야 하는지 정의한다.
+- `AGENTS.md`에는 OMX runtime/orchestration 규칙과 상위 hard constraints를 둔다.
+- AI Agent task guidance는 기본적으로 `agent-workflow.md`에 통합하고, 별도 분리는 예외로 제한한다.
 
 ### `01-product/`
 - 제품의 목표, 비목표, 원칙, 핵심 사용자 흐름을 둔다.
@@ -84,6 +86,7 @@ docs/
 - 새로운 디자인 기준이나 화면 구조를 만들거나 바꿀 때는 `04-design/`을 우선 검토한다.
 - 새로운 Sprint를 시작할 때는 `05-sprints/template/`를 기준으로 `05-sprints/sprint-XX/`를 만든다.
 - 운영 규칙을 추가할 때는 `00-governance/`에 둔다.
+- runtime/orchestration 규칙은 `AGENTS.md`에 두고, repository-specific AI Agent task guidance는 기본적으로 `agent-workflow.md`에 둔다.
 - 제품 설명이나 흐름을 바꿀 때는 `01-product/`를 우선 검토한다.
 - 기술 구조나 제약을 바꿀 때는 `02-architecture/`를 우선 검토한다.
 - 변경 요청이나 비자명한 판단은 각각 `06-history/change-log.md`, `06-history/decisions.md`에 기록한다.
@@ -116,8 +119,12 @@ docs/
 `# QA Plan` 아래 필수 하위 섹션:
 - `## Automated Checks`
 - `## AI Agent Interactive QA`
-- `## Playwright CLI QA`
+- `## Browser Automation QA`
 - `## User QA Required`
+
+규칙:
+- `## Browser Automation QA`는 기본 브라우저 QA 기록 섹션이다. Playwright (`playwright` command)를 우선 사용하고, Playwright 실행 실패 시 `agent-browser`를 다음 fallback으로 계획한다.
+- 둘 다 사용할 수 없거나 실행에 실패하면 `qa.md`에 blocker를 남기고 사용자에게 알린다.
 
 ### `template/planning.md`
 - `planning.md`의 기본 템플릿이다.
@@ -136,11 +143,12 @@ docs/
 
 `# Manual QA Result` 아래 필수 하위 섹션:
 - `## AI Agent Interactive QA Result`
-- `## Playwright CLI Evidence`
+- `## Browser Automation QA Evidence`
 - `## User QA Required`
 
 규칙:
-- Playwright CLI를 실행했다면 `qa.md`에 목적, 실행 명령/스크립트, 판정, 스크린샷 경로를 남긴다.
+- `## Browser Automation QA Evidence`는 기본 브라우저 QA 증빙 섹션이다.
+- Playwright (`playwright` command) 또는 `agent-browser`를 실행했다면 `qa.md`에 목적, 실행 명령 또는 사용 도구, 판정, 스크린샷 경로를 남긴다.
 - Playwright 스크린샷은 `artifacts/qa/sprint-XX/` 아래처럼 Sprint를 식별할 수 있는 경로에 둔다.
 - 사용자 직접 QA 요청은 `qa.md`를 source of truth로 삼고, `review.md`는 blocker 요약만 남긴다.
 

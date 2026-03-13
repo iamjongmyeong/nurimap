@@ -21,12 +21,12 @@
 
 ## 5. Dependencies And Access
 - 필요한 외부 서비스, 환경 변수, fixture, 계정, 로컬 검증 방법이 준비돼 있다.
-- Playwright CLI QA나 사용자 직접 QA가 필요하다면 브라우저 진입 방법, 계정 상태, preview/local URL 같은 접근 조건이 준비돼 있다.
+- Playwright (`playwright` command) 또는 `agent-browser` 기반의 Browser Automation QA, 사용자 직접 QA가 필요하다면 브라우저 진입 방법, 계정 상태, preview/local URL 같은 접근 조건이 준비돼 있다.
 - 준비되지 않은 의존성이 있으면 회피 전략 또는 보류 결정이 문서에 적혀 있다.
 
 ## 6. Execution Brief
 - `planning.md`에 목표, 참고 문서, 제약, 완료 조건, QA 계획이 적혀 있다.
-- `planning.md`의 `# QA Plan`은 최소한 `Automated Checks`, `AI Agent Interactive QA`, `Playwright CLI QA`, `User QA Required`로 구분돼 있다.
+- `planning.md`의 `# QA Plan`은 최소한 `Automated Checks`, `AI Agent Interactive QA`, `Browser Automation QA`, `User QA Required`로 구분돼 있다.
 - 사용자 직접 QA가 필요하면 수행 절차와 기대 결과가 `planning.md`에 적혀 있다.
 - AI Agent가 별도 추정 없이 시작할 수 있을 정도로 범위가 정리돼 있다.
 

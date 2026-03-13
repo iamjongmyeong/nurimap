@@ -1,0 +1,25 @@
+# Context Snapshot — docs IA PRD/spec/design decision
+
+- task statement: Decide whether to rename `user-flows` to PRD, whether to merge PRD and specs, and whether keeping design docs under `docs/04-design/` is the right structure.
+- desired outcome: A consensus recommendation with reasoning and an actionable documentation strategy.
+- known facts/evidence:
+  - Current live structure is `01-product/user-flows`, `03-specs`, `04-design`, with governance in `00-governance` (`docs/00-governance/docs-structure.md`).
+  - `user-flows` docs describe scenario steps, rules, and failure expectations (e.g. `docs/01-product/user-flows/browse-and-detail.md`, `auth-and-name-entry.md`).
+  - `specs` define scope, functional requirements, acceptance criteria, TDD order, required tests, manual QA, and QA evidence (e.g. `docs/03-specs/02-map-rendering.md`, `03-list-browse.md`, `05-auth-email-login-link.md`).
+  - `04-design` docs define UI structure, layout, and interaction details aligned to matching flow slugs (e.g. `docs/04-design/browse-and-detail.md`, `auth-and-name-entry.md`).
+  - Existing docs governance explicitly assigns `01-product` to product goals/principles/flows, `03-specs` to feature specs, and `04-design` to design rules (`docs/00-governance/docs-structure.md`).
+  - A prior recorded decision intentionally split design docs out of architecture and aligned them with user flows (`docs/06-history/decisions.md`, 2026-03-10 entry).
+- constraints:
+  - User asked for a logical recommendation, not immediate implementation.
+  - Must use `$ralplan` style consensus planning.
+  - Prefer minimal structural churn unless it meaningfully improves clarity.
+- unknowns/open questions:
+  - Whether the team wants a true PRD layer for initiatives/epics, or just a better name for current user-flow docs.
+  - Whether current duplication between flow/spec/design should be reduced by field-level consolidation rather than folder-level renaming.
+- likely codebase touchpoints:
+  - `docs/00-governance/docs-structure.md`
+  - `docs/00-governance/agent-workflow.md`
+  - `docs/01-product/user-flows/*.md`
+  - `docs/03-specs/*.md`
+  - `docs/04-design/*.md`
+  - `docs/06-history/decisions.md`

@@ -8,7 +8,7 @@
 - 수행 내용:
 - 결과:
 
-## Playwright CLI Evidence
+## Browser Automation QA Evidence
 - 실행 목적:
 - 실행 명령 또는 스크립트:
 - 확인한 시나리오:

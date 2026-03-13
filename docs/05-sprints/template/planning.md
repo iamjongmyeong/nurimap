@@ -26,7 +26,7 @@
 - 실행 주체:
 - 종료 기준:
 
-## Playwright CLI QA
+## Browser Automation QA
 - 대상 시나리오:
 - 실행 주체:
 - 종료 기준:
