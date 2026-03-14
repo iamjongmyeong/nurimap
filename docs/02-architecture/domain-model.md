@@ -19,8 +19,6 @@ This document is the source of truth for domain rules.
 
 후보 필드:
 - `id`
-- `naver_place_id`
-- `naver_place_url`
 - `name`
 - `road_address`
 - `land_lot_address`
@@ -34,7 +32,9 @@ This document is the source of truth for domain rules.
 
 핵심 규칙:
 - 로그인 사용자만 place를 등록할 수 있다.
-- 동일 `naver_place_id`는 동일 place로 본다.
+- 현재 릴리즈의 canonical 중복 판정 기준은 정규화된 `name + road_address` 조합이다.
+- `road_address`는 필수값이다.
+- `land_lot_address`는 선택값이다.
 - place_type은 식당/카페 2종만 사용한다.
 - zeropay_status는 3상태로 관리한다.
 - 저장되는 place는 반드시 `latitude`, `longitude`를 가져야 한다.
@@ -144,13 +144,13 @@ This document is the source of truth for domain rules.
 - Place List View
   - `name`, `average_rating`, `review_count`, `zeropay_status`
 - Place Detail View
-  - `name`, 주소, `place_type`, `average_rating`, `review_count`, `my_rating_score`, `my_review`, 등록자, `recommendation_count`, `my_recommendation_active`, `naver_place_url`, review 목록
+  - `name`, 주소, `place_type`, `average_rating`, `review_count`, `my_rating_score`, `my_review`, 등록자, `recommendation_count`, `my_recommendation_active`, review 목록
   - review 목록 item: `author_name`, `created_at`, `rating_score`, `content`
 - Map Marker View
   - `latitude`, `longitude`, `place_type`, `name`
 
 ## Data Integrity Rules
-- `naver_place_id`는 canonical uniqueness 후보 키다.
+- `normalized_name + normalized_road_address`는 현재 canonical duplicate 후보 키다.
 - review는 `(place_id, author_user_id)` 조합으로 하나만 허용한다.
 - recommendation은 `(place_id, user_id)` 조합으로 하나만 허용한다.
 - 현재 도메인 규칙에서는 `review_count`를 리뷰 수와 별점 수의 canonical 집계 필드로 사용한다.
@@ -161,7 +161,7 @@ This document is the source of truth for domain rules.
 - place 저장 전 좌표를 확보해야 한다.
 - 좌표 추출 실패 시 `road_address`, 이후 `land_lot_address` 순서로 geocoding fallback을 시도한다.
 - geocoding까지 실패하면 place를 저장하지 않는다.
-- `name`, 주소, 좌표는 최신 성공한 외부 추출값을 우선한다.
+- `name`, 주소, 좌표는 최신 사용자 확인값을 우선한다.
 - `place_type`은 최신 사용자 입력값을 우선한다.
 - `zeropay_status`는 확인된 상태가 `needs_verification`보다 우선하고, 확인된 상태끼리 충돌하면 최신 사용자 입력값을 우선한다.
 - place_type과 zeropay_status는 enum으로 제한한다.

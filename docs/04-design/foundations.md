@@ -25,8 +25,8 @@
 | `auth_link_invalid` | 만료, 사용 완료, 무효화된 링크의 인증 실패 화면 상태 |
 | `name_required` | 이름 입력이 필요한 상태 |
 | `map_browse` | 지도 탐색 기본 상태 |
-| `mobile_place_list_open` | 모바일 장소 목록 페이지가 열린 상태 |
-| `place_add_open` | 장소 등록 UI가 열린 상태 |
+| `mobile_place_list_open` | 모바일 목록 화면이 열린 상태 |
+| `place_add_open` | 기존 목록 영역이 등록 화면으로 전환된 상태 |
 | `place_detail_open` | 데스크톱 상세 패널 또는 모바일 전체 화면 상세가 열린 상태 |
 
 ### Async Substate
@@ -35,8 +35,7 @@
 | `auth_request` | `idle`, `submitting`, `error` | 로그인 화면 | 로그인 링크 요청 상태 |
 | `auth_link_verify` | `idle`, `verifying`, `error` | 로그인 링크 진입 | 로그인 링크 검증 상태 |
 | `name_submit` | `idle`, `submitting`, `error` | 이름 입력 화면 | 이름 저장 상태 |
-| `place_lookup` | `idle`, `validating_url`, `loading`, `error` | 장소 추가 UI | Naver Map URL 검증, 조회, 좌표 확보 상태 |
-| `place_submit` | `idle`, `submitting`, `error` | 장소 추가 UI | 장소 저장 상태 |
+| `place_submit` | `idle`, `submitting`, `error` | 장소 등록 UI | 입력 검증, geocoding, 저장 상태 |
 | `place_list_load` | `idle`, `loading`, `empty`, `ready`, `error` | 목록 화면 | 장소 목록 로딩 상태 |
 | `place_detail_load` | `idle`, `loading`, `ready`, `error` | 상세 화면 | 장소 상세 로딩 상태 |
 | `review_submit` | `idle`, `submitting`, `error` | 리뷰 작성 UI | 리뷰와 별점 저장 상태 |

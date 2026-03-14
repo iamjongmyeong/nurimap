@@ -31,7 +31,7 @@
 
 ## 6. Contribution Must Stay Lightweight
 - 장소 등록은 가능한 한 적은 입력으로 끝나야 한다.
-- 사용자가 Naver Map URL 하나로 시작할 수 있어야 한다.
+- 필수 입력은 최소화해야 한다.
 - 입력 부담을 줄이는 방향이 우선이다.
 
 ## 7. Browsing Must Be Fast And Clear
@@ -40,7 +40,7 @@
 - 정보는 많더라도 핵심 판단에 필요한 구조가 먼저 보여야 한다.
 
 ## 8. Data Must Be Trustworthy
-- 동일 장소는 `naver_place_id` 기준으로 하나의 canonical place로 유지한다.
+- 동일 장소는 문서화된 canonical 규칙에 따라 하나의 place로 유지해야 한다.
 - 좌표, 주소, 집계 값, 리뷰 상태는 문서화된 규칙과 일치해야 한다.
 - 불확실하거나 검증되지 않은 데이터는 조용히 저장하지 않는다.
 

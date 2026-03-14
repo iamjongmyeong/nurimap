@@ -73,9 +73,8 @@ Supabase 설정 기본안:
 
 ## Map/API Abuse Prevention
 - 지도 이동 이벤트는 debounce/throttle로 제어한다.
-- 동일 `naver_place_id` 조회 결과는 캐시 우선 정책을 둔다.
+- 동일 정규화 주소 geocoding 결과는 캐시 우선 정책을 둔다.
 - place 등록 API는 rate limit을 적용한다.
-- Naver 조회는 서버 한 지점에서만 수행한다.
 
 ## Operational Rules
 - 민감한 환경변수는 Vercel 환경변수와 서버 런타임에서만 사용한다.

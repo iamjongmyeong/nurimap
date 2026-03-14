@@ -22,7 +22,7 @@
 - 프론트엔드 UI 리뷰나 UX 점검 작업인 경우 `web-design-guidelines` 기준을 참고했다.
 
 ## 4. Data And Domain Integrity
-- `place`, `place_type`, `zeropay_status`, `naver_place_id` 같은 핵심 도메인 용어를 일관되게 사용한다.
+- `place`, `place_type`, `zeropay_status`, `road_address`, `latitude`, `longitude` 같은 핵심 도메인 용어를 일관되게 사용한다.
 - 중복 병합, 상태 갱신, 집계 값 계산이 문서화된 규칙과 일치한다.
 - 저장되는 데이터는 정의된 무결성 조건을 만족한다.
 - 데이터 소스 우선순위와 fallback 정책이 문서와 구현에서 어긋나지 않는다.

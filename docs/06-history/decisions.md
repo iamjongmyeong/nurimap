@@ -129,7 +129,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Context: Plan 04는 Naver URL 정규화만 다루지만, 이후 Plan 05~06에서는 같은 진입점에서 조회 성공 후 2단계 place 등록 UI로 확장되어야 한다. 현재 앱에는 이미 `place_add_open` navigation state와 `장소 추가` 버튼이 존재한다.
 - Options considered:
   - Option A: Plan 04에서는 별도 임시 페이지나 전용 route를 만들고, 이후 Plan 06에서 다시 2단계 place add UI로 교체한다.
-  - Option B: 현재 `place_add_open` state를 그대로 활용해 데스크톱은 floating panel, 모바일은 full-screen page에서 URL 입력 1단계를 먼저 구현하고 이후 같은 surface를 2단계로 확장한다.
+  - Option B: 현재 `place_add_open` state를 그대로 활용해 데스크톱은 floating panel, 모바일은 full-screen page에서 URL 입력 1단계를 먼저 구현하고 이후 같은 영역을 2단계로 확장한다.
 - Decision: Option B를 선택한다.
 - Rationale: design 문서와 user-flow 문서가 place add를 같은 화면 안의 progressive disclosure로 정의하고 있어, 지금부터 동일 surface를 쓰는 편이 later refactor를 줄인다.
 - Impact: Plan 04의 URL 입력 UI는 이후 Plan 05/06에서 동일한 state와 surface 위에 place 요약/등록 입력 단계가 추가될 예정이다.
@@ -501,4 +501,26 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - src/auth/AuthProvider.tsx
   - src/auth/AuthFlow.test.tsx
   - docs/03-specs/05-auth-email-login-link.md
+- Related commit:
+
+## 2026-03-14 Sprint 14 - Prefer user-entered place name/address over URL-dependent place ingestion
+- Context: place 등록의 기본 경로를 네이버 지도 URL 기반 외부 조회에 두면 anti-bot, rate-limit, fixture 의존성 때문에 현재 place id 변화에 취약해질 수 있다는 점이 확인됐다. 반면 사용자에게 장소명과 주소를 직접 입력받고 geocoding으로 위치를 확인하는 흐름은 외부 place 페이지 조회를 등록의 필수 전제로 삼지 않아도 된다.
+- Options considered:
+  - Option A: 네이버 지도 URL 기반 등록을 계속 기본 경로로 유지하고 외부 조회 경로를 더 hardening 한다.
+  - Option B: 장소 등록의 기본 경로를 사용자 직접 입력(`name`, `road_address`) + geocoding 확인으로 전환한다.
+  - Option C: 외부 crawler/browser automation을 핵심 사용자 요청 경로에 포함해 place 상세를 계속 자동 추출한다.
+- Decision: Option B를 선택한다.
+- Rationale: 직접 입력 + geocoding 경로는 anti-bot과 외부 페이지 구조 변화에 덜 취약하고, 등록 성공 여부를 내부 입력/검증 규칙으로 통제할 수 있다. 또한 제품의 기본 등록 경로를 사용자와 시스템이 함께 확인 가능한 데이터로 단순화해, 이후 UX/UI 개선과 구현 범위를 더 명확하게 고정할 수 있다.
+- Impact: place 등록의 source of truth는 `네이버 지도 URL 입력`에서 `장소명 + 주소 직접 입력`으로 이동한다. geocoding이 좌표 확보의 1차 경로가 된다. 관련 user flow / design / spec / architecture 문서는 이 기본 전환만 반영하고, UXUI 상세 변경은 별도 history 항목으로 남기지 않는다.
+- Revisit trigger: 안정적인 공식 place detail API나 같은 수준의 신뢰 가능한 외부 place 데이터 계약이 확보되어, 직접 입력보다 더 낮은 사용자 부담과 운영 리스크로 등록을 단순화할 수 있게 되면 기본 등록 경로를 다시 검토한다.
+- Related docs:
+  - docs/01-product/product-overview.md
+  - docs/01-product/user-flows/place-submission.md
+  - docs/02-architecture/system-context.md
+  - docs/02-architecture/integrations.md
+  - docs/02-architecture/domain-model.md
+  - docs/03-specs/07-place-data-extraction.md
+  - docs/03-specs/08-place-registration.md
+  - docs/03-specs/09-place-merge.md
+  - docs/05-sprints/sprint-14/planning.md
 - Related commit:
