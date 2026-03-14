@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AuthContext, type AuthContextValue, type AuthPhase } from './authContext'
 import { supabaseBrowser } from './supabaseBrowser'
 import { requestTestLoginLink, setTestAuthState, signOutTestUser, submitTestName, useTestAuthState } from './testAuthState'
 import { resolveBypassVerification, withTimeout } from './authVerification'
 
+declare global {
+  interface ImportMetaEnv {
+    readonly VITE_LOCAL_AUTO_LOGIN?: string
+    readonly VITE_LOCAL_AUTO_LOGIN_EMAIL?: string
+  }
+}
+
 const SESSION_STARTED_AT_KEY = 'nurimap_session_started_at'
 const SESSION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
+const LOCAL_AUTO_LOGIN_REQUIRES_BYPASS_MESSAGE = '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.'
 const clearAuthQuery = () => {
   const url = new URL(window.location.href)
   url.search = ''
@@ -83,6 +91,19 @@ const getDevAuthOverride = () => {
     message: null,
     failureReason: null,
   }
+}
+
+const getLocalAutoLoginEmail = () => {
+  if (!import.meta.env.DEV) {
+    return null
+  }
+
+  if (import.meta.env.VITE_LOCAL_AUTO_LOGIN !== 'true') {
+    return null
+  }
+
+  const email = import.meta.env.VITE_LOCAL_AUTO_LOGIN_EMAIL?.trim()
+  return email ? email : null
 }
 
 const AuthSurface = ({ children }: { children: ReactNode }) => (
@@ -248,8 +269,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [requestedEmail, setRequestedEmail] = useState<string | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const hasAttemptedLocalAutoLoginRef = useRef(false)
 
   const devOverrideState = useMemo(() => getDevAuthOverride(), [])
+  const localAutoLoginEmail = useMemo(() => getLocalAutoLoginEmail(), [])
   const isTestMode = import.meta.env.MODE === 'test' || devOverrideState !== null
 
   const applyAuthenticatedState = useCallback(({
@@ -463,7 +486,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [applyAuthenticatedState, isTestMode, testState, verifyAndAdoptSession])
 
-  const requestLink = async (nextEmail: string) => {
+  const requestLink = useCallback(async (
+    nextEmail: string,
+    options?: {
+      requireBypass?: boolean
+    },
+  ) => {
     if (!nextEmail.trim()) {
       setRequestedEmail(null)
       if (isTestMode) {
@@ -481,10 +509,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     setSubmitting(true)
     setMessage(null)
+    setEmail(nextEmail)
 
     if (isTestMode) {
       const result = await requestTestLoginLink(nextEmail)
-      setEmail(nextEmail)
       setSubmitting(false)
       if (result.status === 'error') {
         setRequestedEmail(null)
@@ -495,55 +523,94 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return
     }
 
-    const response = await fetch('/api/auth/request-link', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: nextEmail }),
-    })
-    const payload = (await response.json()) as
-      | { status: 'success'; mode: 'link'; message: string }
-      | {
-          status: 'success'
-          mode: 'bypass'
-          message: string
-          tokenHash: string
-          verificationType: 'magiclink' | 'signup' | 'invite'
-        }
-      | { status: 'error'; message: string }
-    setSubmitting(false)
-    setEmail(nextEmail)
-
-    if (!response.ok || payload.status === 'error') {
-      setRequestedEmail(null)
-      setMessage(payload.message)
-      setPhase('auth_required')
-      return
-    }
-
-    if (payload.mode === 'bypass') {
-      setRequestedEmail(null)
-      setPhase('verifying')
-      setMessage(payload.message)
-
-      const verification = await resolveBypassVerification({
-        tokenHash: payload.tokenHash,
-        verificationType: payload.verificationType,
-        verifyAndAdoptSession,
+    try {
+      const response = await fetch('/api/auth/request-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: nextEmail,
+          requireBypass: options?.requireBypass === true,
+        }),
       })
+      const payload = (await response.json()) as
+        | { status: 'success'; mode: 'link'; message: string }
+        | {
+            status: 'success'
+            mode: 'bypass'
+            message: string
+            tokenHash: string
+            verificationType: 'magiclink' | 'signup' | 'invite'
+          }
+        | { status: 'error'; message: string }
 
-      if (verification.status === 'error') {
-        setPhase('auth_failure')
-        setFailureReason(verification.message)
+      if (!response.ok || payload.status === 'error') {
+        setRequestedEmail(null)
+        setMessage(payload.message)
+        setPhase('auth_required')
         return
       }
 
+      if (payload.mode !== 'bypass' && options?.requireBypass) {
+        setRequestedEmail(null)
+        setMessage(LOCAL_AUTO_LOGIN_REQUIRES_BYPASS_MESSAGE)
+        setPhase('auth_required')
+        return
+      }
+
+      if (payload.mode === 'bypass') {
+        setRequestedEmail(null)
+        setPhase('verifying')
+        setMessage(payload.message)
+
+        const verification = await resolveBypassVerification({
+          tokenHash: payload.tokenHash,
+          verificationType: payload.verificationType,
+          verifyAndAdoptSession,
+        })
+
+        if (verification.status === 'error') {
+          setPhase('auth_failure')
+          setFailureReason(verification.message)
+          return
+        }
+
+        return
+      }
+
+      setMessage(payload.message)
+      setRequestedEmail(nextEmail)
+      setPhase('auth_link_sent')
+    } catch {
+      setRequestedEmail(null)
+      setMessage('로그인 링크를 보내지 못했어요. 다시 시도해 주세요.')
+      setPhase('auth_required')
+    } finally {
+      setSubmitting(false)
+    }
+  }, [isTestMode, verifyAndAdoptSession])
+
+  useEffect(() => {
+    if (!localAutoLoginEmail || isTestMode) {
       return
     }
 
-    setMessage(payload.message)
-    setRequestedEmail(nextEmail)
-    setPhase('auth_link_sent')
-  }
+    if (phase !== 'auth_required' || submitting || requestedEmail) {
+      return
+    }
+
+    if (hasAttemptedLocalAutoLoginRef.current) {
+      return
+    }
+
+    hasAttemptedLocalAutoLoginRef.current = true
+    const autoLoginTimer = window.setTimeout(() => {
+      void requestLink(localAutoLoginEmail, { requireBypass: true })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(autoLoginTimer)
+    }
+  }, [isTestMode, localAutoLoginEmail, phase, requestLink, requestedEmail, submitting])
 
   const saveName = async (name: string) => {
     setSubmitting(true)
@@ -569,6 +636,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const signOut = async () => {
+    hasAttemptedLocalAutoLoginRef.current = true
+
     if (isTestMode) {
       await signOutTestUser()
       return

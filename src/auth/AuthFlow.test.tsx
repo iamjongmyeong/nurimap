@@ -281,6 +281,183 @@ describe('Sprint 12 auth flow', () => {
     expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
   })
 
+  it('automatically signs in with the local bypass account in development', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
+    setViewport(1280)
+
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'bypass-session-token',
+        },
+        user: {
+          email: 'bypass.named@example.com',
+          user_metadata: {
+            name: '테스트 사용자',
+          },
+        },
+      },
+      error: null,
+    })
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'success',
+          mode: 'bypass',
+          message: '테스트 계정으로 바로 로그인합니다.',
+          tokenHash: 'auto-login-token-hash',
+          verificationType: 'magiclink',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/request-link',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      email: 'bypass.named@example.com',
+      requireBypass: true,
+    })
+    expect(verifyOtpMock).toHaveBeenCalledWith({
+      token_hash: 'auto-login-token-hash',
+      type: 'magiclink',
+    })
+    expect(screen.queryByRole('button', { name: '이메일로 로그인 링크 전송' })).not.toBeInTheDocument()
+  })
+
+  it('recovers to the auth form when local auto-login request fails', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
+    setViewport(1280)
+
+    const fetchMock = vi.fn().mockRejectedValue(new Error('network down'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    expect(await screen.findByText('로그인 링크를 보내지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeEnabled()
+    expect(screen.getByLabelText('이메일')).toHaveValue('bypass.named@example.com')
+  })
+
+  it('fails closed when local auto-login requires bypass-only server support', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
+    setViewport(1280)
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'error',
+          message: '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    verifyOtpMock.mockClear()
+
+    render(<App />)
+
+    expect(await screen.findByText('로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeEnabled()
+    expect(screen.queryByText('로그인 링크를 보냈어요.')).not.toBeInTheDocument()
+    expect(verifyOtpMock).not.toHaveBeenCalled()
+  })
+
+  it('does not auto-login again after logout during the same local dev session', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
+    setViewport(1280)
+
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'bypass-session-token',
+        },
+        user: {
+          email: 'bypass.named@example.com',
+          user_metadata: {
+            name: '테스트 사용자',
+          },
+        },
+      },
+      error: null,
+    })
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'success',
+          mode: 'bypass',
+          message: '테스트 계정으로 바로 로그인합니다.',
+          tokenHash: 'auto-login-token-hash',
+          verificationType: 'magiclink',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+
+    expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('keeps auth_test_state dev overrides ahead of local auto-login', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
+    window.history.replaceState({}, '', '/?auth_test_state=auth_required')
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('shows the verifying state while processing the login link', () => {
     setTestAuthState({ phase: 'verifying', user: null, message: null, failureReason: null })
     render(<App />)

@@ -63,7 +63,7 @@ describe('allowlisted bypass auth request flow', () => {
     })
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const result = await requestLoginLink('bypass.user@example.com')
+    const result = await requestLoginLink('bypass.user@example.com', { requireBypass: true })
 
     expect(result).toEqual({
       status: 'success',
@@ -91,6 +91,23 @@ describe('allowlisted bypass auth request flow', () => {
       code: 'invalid_domain',
       message: '누리미디어 구성원만 사용할 수 있어요.',
     })
+  })
+
+  it('fails closed before sending a normal link when bypass-only mode is requested', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.vercel.app'
+    process.env.RESEND_API_KEY = 'resend-test-key'
+    process.env.RESEND_FROM_EMAIL = 'login@nurimap.app'
+
+    const result = await requestLoginLink('tester@nurimedia.co.kr', { requireBypass: true })
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 'bypass_required',
+      message: '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.',
+    })
+    expect(generateLinkMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('does not bypass when bypass is disabled', async () => {

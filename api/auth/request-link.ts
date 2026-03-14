@@ -8,10 +8,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const email = typeof req.body?.email === 'string' ? req.body.email : ''
-  const result = await requestLoginLink(email)
+  const requireBypass = req.body?.requireBypass === true
+  const result = await requestLoginLink(email, { requireBypass })
 
   if (result.status === 'error') {
-    const statusCode = result.code === 'invalid_domain' ? 400 : result.code === 'delivery_failed' ? 502 : 429
+    const statusCode = result.code === 'delivery_failed'
+      ? 502
+      : result.code === 'cooldown' || result.code === 'daily_limit'
+        ? 429
+        : 400
     res.status(statusCode).json(result)
     return
   }

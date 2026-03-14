@@ -487,3 +487,18 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - pnpm-workspace.yaml
   - Makefile
 - Related commit:
+
+## 2026-03-14 Local auth - Prefer DEV-only bypass auto-login over fake authenticated UI
+- Context: 로컬에서 지도 화면으로 바로 들어가고 싶지만, 기존 `?auth_test_state=authenticated` override는 fake access token만 제공해서 보호된 API(`place-lookup` 등)까지는 실제처럼 검증할 수 없었다. 목표는 이메일 입력/클릭 없이도 로컬에서 실제 세션에 가까운 흐름으로 진입하는 것이다.
+- Options considered:
+  - Option A: `auth_test_state=authenticated` 같은 클라이언트 fake auth override를 기본 로컬 진입 경로로 쓴다.
+  - Option B: DEV 전용 env flag로만 auto-login을 켜고, 내부적으로는 기존 `requestLink -> bypass verify -> session adopt` 흐름을 자동 트리거한다.
+- Decision: Option B를 선택한다.
+- Rationale: fake auth는 UI spot-check에는 빠르지만 보호 API 검증에서는 실제 auth 계약과 어긋난다. 반면 기존 bypass 흐름을 재사용하면 local-only 편의성과 real session 기반 검증을 동시에 얻을 수 있고, query override는 기존처럼 별도 QA 도구로 유지할 수 있다.
+- Impact: `VITE_LOCAL_AUTO_LOGIN=true` 와 `VITE_LOCAL_AUTO_LOGIN_EMAIL`이 설정된 DEV 환경에서는 `AuthProvider`가 최초 `auth_required` 진입 시 한 번만 bypass-only 로그인 요청을 자동 시작한다. 서버 bypass 조건이 맞지 않으면 일반 로그인 링크를 보내지 않고 로그인 폼으로 복귀시켜 오류를 보여준다. `auth_test_state` override가 있을 때는 기존 dev/test override가 우선하며, 로그아웃 후에는 같은 페이지 세션에서 auto-login loop가 다시 돌지 않는다. 실제 bypass 이메일 값은 계속 `.env.local` 등 비추적 env에만 둔다.
+- Revisit trigger: 로컬 dev에서도 bypass 없이 preview/prod와 동일한 auth만 강제하기로 팀 정책이 바뀌거나, 보호 API를 포함한 더 정식한 local auth harness가 도입되면 현재 auto-login 편의 계층을 재검토한다.
+- Related docs:
+  - src/auth/AuthProvider.tsx
+  - src/auth/AuthFlow.test.tsx
+  - docs/03-specs/05-auth-email-login-link.md
+- Related commit:

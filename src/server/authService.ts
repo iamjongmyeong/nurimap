@@ -11,9 +11,12 @@ import {
 import { logAuthBypassLogin, logAuthRequestFailure } from './opsLogger.js'
 import { createSupabaseAdminClient, createSupabaseBrowserlessClient } from './supabaseAdmin.js'
 
-type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'daily_limit' | 'delivery_failed'
+type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'daily_limit' | 'delivery_failed' | 'bypass_required'
 type AuthVerifyErrorReason = 'expired' | 'used' | 'invalidated'
 type AuthVerifyType = 'magiclink' | 'signup' | 'invite'
+type RequestLoginLinkOptions = {
+  requireBypass?: boolean
+}
 type AuthRequestSuccess =
   | {
       status: 'success'
@@ -93,6 +96,15 @@ const buildLoginEmailHtml = (loginUrl: string) => `
 
 const buildLoginEmailText = (loginUrl: string) =>
   ['[NURIMAP] 로그인 링크', '', loginUrl, '', '5분 동안만 유효합니다.'].join('\n')
+
+const bypassRequiredResult = (email: string) => {
+  logAuthRequestFailure({ code: 'bypass_required', email })
+  return {
+    status: 'error' as const,
+    code: 'bypass_required' as AuthRequestErrorCode,
+    message: '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.',
+  }
+}
 
 const deliveryFailedResult = (email: string) => {
   logAuthRequestFailure({ code: 'delivery_failed', email })
@@ -202,12 +214,17 @@ const sendLoginEmail = async ({ email, loginUrl }: { email: string; loginUrl: st
   }
 }
 
-export const requestLoginLink = async (email: string) => {
+export const requestLoginLink = async (email: string, options: RequestLoginLinkOptions = {}) => {
   const allowedDomain = process.env.AUTH_ALLOWED_EMAIL_DOMAIN ?? ''
   const normalizedEmail = email.trim().toLowerCase()
   const publicAppUrl = getPublicAppUrl()
+  const bypassLoginEmail = isBypassLoginEmail(normalizedEmail)
 
-  if (isBypassLoginEmail(normalizedEmail)) {
+  if (options.requireBypass && !bypassLoginEmail) {
+    return bypassRequiredResult(normalizedEmail)
+  }
+
+  if (bypassLoginEmail) {
     if (!publicAppUrl) {
       return deliveryFailedResult(normalizedEmail)
     }
