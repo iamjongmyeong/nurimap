@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  confirmPlaceRegistration,
   createInitialPlaces,
+  preparePlaceRegistration,
   registerOrMergePlace,
   toggleRecommendationForPlace,
   submitReviewForPlace,
@@ -101,6 +103,113 @@ describe('Plan 06 place repository', () => {
     })
 
     expect(result.place.zeropay_status).toBe('available')
+  })
+
+  it('requires a single confirm when a duplicate place is found by canonical name and address', () => {
+    const result = preparePlaceRegistration({
+      places: createInitialPlaces(),
+      lookupData: {
+        ...baseLookupData,
+        naver_place_id: '99999',
+        canonical_url: 'https://map.naver.com/p/entry/place/99999',
+        name: ' 양화로   카페 ',
+        road_address: '서울 마포구 양화로19길 20 2층',
+      },
+    })
+
+    expect(result.status).toBe('confirm_required')
+    if (result.status !== 'confirm_required') {
+      throw new Error('expected confirm_required result')
+    }
+
+    expect(result.reason).toBe('merge_place')
+    expect(result.place.id).toBe('place-cafe-1')
+    expect(result.confirmMessage).toBe('이미 등록된 장소예요. 새로 만들지 않고 지금 입력한 평가와 후기, 장소 정보를 이 장소에 반영할까요?')
+  })
+
+  it('requires an overwrite confirm when my review already exists on the duplicate place', () => {
+    const result = preparePlaceRegistration({
+      places: createInitialPlaces(),
+      lookupData: {
+        ...baseLookupData,
+        naver_place_id: '10001',
+        canonical_url: 'https://map.naver.com/p/entry/place/10001',
+        name: '누리 식당',
+        road_address: '서울 마포구 양화로19길 22-16 1층',
+      },
+    })
+
+    expect(result.status).toBe('confirm_required')
+    if (result.status !== 'confirm_required') {
+      throw new Error('expected confirm_required result')
+    }
+
+    expect(result.reason).toBe('overwrite_review')
+    expect(result.place.id).toBe('place-restaurant-1')
+    expect(result.confirmMessage).toBe('이미 내가 리뷰를 남긴 장소예요. 지금 입력한 평가와 후기, 장소 정보를 반영할까요? 후기를 비워 두면 기존 후기는 그대로 두고 평가만 바꿔요.')
+  })
+
+  it('applies a confirmed duplicate merge and keeps review uniqueness when my review is absent', () => {
+    const result = confirmPlaceRegistration({
+      places: createInitialPlaces(),
+      lookupData: {
+        ...baseLookupData,
+        naver_place_id: '10002',
+        canonical_url: 'https://map.naver.com/p/entry/place/10002',
+        name: '양화로 카페 리프레시',
+        road_address: '서울 마포구 양화로19길 20 2층',
+        latitude: 35.1,
+        longitude: 128.1,
+      },
+      draft: {
+        place_type: 'restaurant',
+        zeropay_status: 'available',
+        rating_score: 4,
+        review_content: '중복 병합 리뷰',
+      },
+    })
+
+    expect(result.status).toBe('merged')
+    expect(result.place.id).toBe('place-cafe-1')
+    expect(result.place.review_count).toBe(9)
+    expect(result.place.my_review?.content).toBe('중복 병합 리뷰')
+    expect(result.place.place_type).toBe('restaurant')
+    expect(result.place.zeropay_status).toBe('available')
+    expect(result.place.latitude).toBe(35.1)
+    expect(result.place.reviews[0]?.content).toBe('중복 병합 리뷰')
+  })
+
+  it('overwrites my existing review after confirm and preserves old review text when the new text is blank', () => {
+    const result = confirmPlaceRegistration({
+      places: createInitialPlaces(),
+      lookupData: {
+        ...baseLookupData,
+        naver_place_id: '10001',
+        canonical_url: 'https://map.naver.com/p/entry/place/10001',
+        name: '누리 식당 리프레시',
+        road_address: '서울 마포구 양화로19길 22-16 1층',
+        latitude: 37.561,
+        longitude: 126.924,
+      },
+      draft: {
+        place_type: 'cafe',
+        zeropay_status: 'needs_verification',
+        rating_score: 4,
+        review_content: '   ',
+      },
+    })
+
+    expect(result.status).toBe('updated')
+    expect(result.place.id).toBe('place-restaurant-1')
+    expect(result.place.review_count).toBe(12)
+    expect(result.place.my_review?.content).toBe('점심 모임으로 가기 좋은 식당이에요.')
+    expect(result.place.my_review?.rating_score).toBe(4)
+    expect(result.place.average_rating).toBe(4.6)
+    expect(result.place.place_type).toBe('cafe')
+    expect(result.place.zeropay_status).toBe('available')
+    expect(result.place.name).toBe('누리 식당 리프레시')
+    expect(result.place.latitude).toBe(37.561)
+    expect(result.place.reviews[0]?.rating_score).toBe(4)
   })
 
 

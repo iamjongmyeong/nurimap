@@ -5,6 +5,7 @@ import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
 import { createInitialReviewDraft, validateReviewDraft, type ReviewDraft } from './placeRepository'
 import {
   useAppShellStore,
+  type NavigationState,
   type PlaceDetailLoadState,
   type PlaceListLoadState,
 } from './appShellStore'
@@ -449,55 +450,65 @@ const DetailBody = ({
 }
 
 const DesktopSidebar = ({
+  navigationState,
   places,
   selectedPlaceId,
 }: {
+  navigationState: NavigationState
   places: PlaceSummary[]
   selectedPlaceId: string | null
 }) => {
   const { signOut } = useAuth()
+  const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
   const openPlaceAdd = useAppShellStore((state) => state.openPlaceAdd)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
   const retryPlaceList = useAppShellStore((state) => state.retryPlaceList)
+  const isPlaceAddOpen = navigationState === 'place_add_open'
 
   return (
     <aside className="flex h-screen w-[390px] flex-col border-r border-base-300 bg-base-200 px-6 py-6" data-testid="desktop-sidebar">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold text-primary">Nurimap</p>
-          <h2 className="mt-1 text-2xl font-bold text-base-content">장소 탐색</h2>
-          <p className="mt-2 text-sm text-base-content/70">목록과 지도에서 같은 장소를 비교하며 탐색할 수 있습니다.</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="btn btn-ghost btn-sm rounded-2xl" onClick={() => { void signOut() }} type="button">
-            로그아웃
-          </button>
-          <button aria-label="사이드바 접기 또는 펼치기" className="btn btn-ghost btn-square btn-sm" type="button">
-            ☰
-          </button>
-        </div>
-      </div>
+      {isPlaceAddOpen ? (
+        <DesktopPlaceAddPanel onClose={closePlaceAdd} />
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-primary">Nurimap</p>
+              <h2 className="mt-1 text-2xl font-bold text-base-content">장소 탐색</h2>
+              <p className="mt-2 text-sm text-base-content/70">목록과 지도에서 같은 장소를 비교하며 탐색할 수 있습니다.</p>
+            </div>
+            <div className="flex gap-2">
+              <button className="btn btn-ghost btn-sm rounded-2xl" onClick={() => { void signOut() }} type="button">
+                로그아웃
+              </button>
+              <button aria-label="사이드바 접기 또는 펼치기" className="btn btn-ghost btn-square btn-sm" type="button">
+                ☰
+              </button>
+            </div>
+          </div>
 
-      <button
-        className="btn btn-primary mt-6 self-center rounded-2xl text-base font-semibold"
-        data-testid="desktop-add-button"
-        onClick={openPlaceAdd}
-        style={addButtonSizeStyle}
-        type="button"
-      >
-        장소 추가
-      </button>
+          <button
+            className="btn btn-primary mt-6 self-center rounded-2xl text-base font-semibold"
+            data-testid="desktop-add-button"
+            onClick={openPlaceAdd}
+            style={addButtonSizeStyle}
+            type="button"
+          >
+            장소 추가
+          </button>
 
-      <div className="mt-6 flex-1 overflow-auto">
-        <PlaceListPanel
-          onRetry={retryPlaceList}
-          onSelect={openPlaceDetail}
-          places={placeListLoad === 'ready' ? places : []}
-          selectedPlaceId={selectedPlaceId}
-          status={placeListLoad}
-        />
-      </div>
+          <div className="mt-6 flex-1 overflow-auto">
+            <PlaceListPanel
+              onRetry={retryPlaceList}
+              onSelect={openPlaceDetail}
+              places={placeListLoad === 'ready' ? places : []}
+              selectedPlaceId={selectedPlaceId}
+              status={placeListLoad}
+            />
+          </div>
+        </>
+      )}
     </aside>
   )
 }
@@ -619,7 +630,6 @@ const DesktopAppShell = ({
   mapPlaces: PlaceSummary[]
   selectedPlace: PlaceSummary | undefined
 }) => {
-  const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
   const closePlaceDetail = useAppShellStore((state) => state.closePlaceDetail)
   const navigationState = useAppShellStore((state) => state.navigationState)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
@@ -631,7 +641,7 @@ const DesktopAppShell = ({
 
   return (
     <main className="hidden md:flex" data-testid="desktop-shell">
-      <DesktopSidebar places={mapPlaces} selectedPlaceId={selectedPlaceId} />
+      <DesktopSidebar navigationState={navigationState} places={mapPlaces} selectedPlaceId={selectedPlaceId} />
       <section className="relative isolate flex-1 min-h-screen">
         <MapPane
           mapLevel={mapLevel}
@@ -643,7 +653,6 @@ const DesktopAppShell = ({
         {navigationState === 'place_detail_open' ? (
           <DesktopDetailPanel onClose={closePlaceDetail} place={selectedPlace} registrationMessage={registrationMessage} status={placeDetailLoad} />
         ) : null}
-        {navigationState === 'place_add_open' ? <DesktopPlaceAddPanel onClose={closePlaceAdd} /> : null}
       </section>
     </main>
   )
@@ -691,7 +700,7 @@ const MobileAppShell = ({
         <MobileDetailPage onBack={handleBack} place={selectedPlace} registrationMessage={registrationMessage} status={placeDetailLoad} />
       ) : null}
       {navigationState === 'place_add_open' ? <MobilePlaceAddPage onClose={closePlaceAdd} /> : null}
-      {navigationState !== 'place_detail_open' ? <MobileFloatingActions /> : null}
+      {navigationState === 'map_browse' ? <MobileFloatingActions /> : null}
     </main>
   )
 }

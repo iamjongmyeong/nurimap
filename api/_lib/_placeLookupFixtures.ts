@@ -78,6 +78,22 @@ export const PLACE_LOOKUP_FIXTURES: Record<string, PlaceLookupSourceRecord> = {
 }
 
 export const GEOCODE_FIXTURES: Record<string, { latitude: number; longitude: number }> = {
+  '서울 마포구 등록로 1': {
+    latitude: 37.558721,
+    longitude: 126.92444,
+  },
+  '서울 마포구 양화로19길 22-16 1층': {
+    latitude: 37.55918,
+    longitude: 126.92374,
+  },
+  '서울 마포구 양화로19길 20 2층': {
+    latitude: 37.55831,
+    longitude: 126.92518,
+  },
+  '서울 마포구 실패로 5': {
+    latitude: 37.55651,
+    longitude: 126.92641,
+  },
   '서울 마포구 테스트로 10': {
     latitude: 37.557812,
     longitude: 126.925301,
