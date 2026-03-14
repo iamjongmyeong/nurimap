@@ -10,14 +10,14 @@ check:
 		[ -f ./.env ] && source ./.env; \
 		[ -f ./.env.local ] && source ./.env.local; \
 		set +a; \
-		npm run test:run && npm run lint && npm run build
+		pnpm test:run && pnpm lint && pnpm build
 
 dev: check
 	@set -a; \
 		[ -f ./.env ] && source ./.env; \
 		[ -f ./.env.local ] && source ./.env.local; \
 		set +a; \
-		npm run dev -- --host $(HOST) --port $(PORT) --strictPort
+		pnpm dev -- --host $(HOST) --port $(PORT) --strictPort
 
 dev-run: check
 	@(for _ in $$(seq 1 60); do \
@@ -31,7 +31,7 @@ dev-run: check
 		[ -f ./.env ] && source ./.env; \
 		[ -f ./.env.local ] && source ./.env.local; \
 		set +a; \
-		npm run dev -- --host $(HOST) --port $(PORT) --strictPort
+		pnpm dev -- --host $(HOST) --port $(PORT) --strictPort
 
 agentation: check
 	@printf '%s\n' "Starting Nurimap with Agentation enabled in development mode."
@@ -54,4 +54,4 @@ agentation: check
 		[ -f ./.env ] && source ./.env; \
 		[ -f ./.env.local ] && source ./.env.local; \
 		set +a; \
-		npm run dev -- --host $(HOST) --port $(PORT) --strictPort
+		pnpm dev -- --host $(HOST) --port $(PORT) --strictPort

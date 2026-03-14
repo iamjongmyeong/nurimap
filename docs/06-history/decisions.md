@@ -471,3 +471,19 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/00-governance/agent-workflow.md
   - scripts/guard-bypass-email.mjs
 - Related commit:
+
+## 2026-03-14 Tooling - Standardize local package management on pnpm
+- Context: repo는 `package-lock.json`과 npm 기반 실행 예시를 사용하고 있었지만, 현재 로컬 설치 상태는 pnpm 기반으로 전환되었고 Vercel CLI도 다시 설치됐다. 이 상태에서 lockfile과 실행 엔트리가 혼재하면 협업자/CI가 서로 다른 package manager를 쓰게 될 위험이 있었다.
+- Options considered:
+  - Option A: npm lockfile과 실행 엔트리를 유지하고 pnpm 전환은 로컬 관행으로만 둔다.
+  - Option B: repo의 canonical lockfile과 로컬 실행 엔트리를 pnpm 기준으로 정리하고, `packageManager` 필드로 사용 버전을 명시한다.
+- Decision: Option B를 선택한다.
+- Rationale: 단일 lockfile과 명시적 package manager 선언이 dependency drift를 줄이고, 현재 로컬/배포 준비 상태와 가장 잘 맞는다. Makefile까지 함께 맞추면 반복 실행 경로도 동일한 도구 체인으로 수렴한다.
+- Impact: `package-lock.json`을 제거하고 `pnpm-lock.yaml` / `pnpm-workspace.yaml`을 추적한다. `package.json`에 `packageManager`를 명시하고, `Makefile`의 검증/개발 명령은 pnpm 기준으로 실행된다. Vercel CLI 설치 상태는 pnpm lockfile에 반영된다.
+- Revisit trigger: CI, 배포 환경, 또는 팀 표준이 npm/yarn 등 다른 package manager로 바뀌면 lockfile/실행 엔트리 표준을 다시 검토한다.
+- Related docs:
+  - package.json
+  - pnpm-lock.yaml
+  - pnpm-workspace.yaml
+  - Makefile
+- Related commit:
