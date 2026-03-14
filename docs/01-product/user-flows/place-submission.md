@@ -18,7 +18,7 @@
 6. 사용자가 `등록`을 누르면 시스템은 입력값을 검증하고 geocoding으로 좌표를 확보한다.
    - 1순위: `road_address` geocoding
    - 2순위: `land_lot_address` geocoding
-7. 좌표 확보에 실패하면 시스템은 browser alert으로 `주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.`를 보여주고, 주소 입력 필드에 inline error를 표시한 채 같은 화면에 머문다.
+7. 좌표 확보에 실패하면 시스템은 browser alert으로 `주소를 찾지 못했어요.\n\n입력한 주소를 다시 확인해 주세요.`를 보여주고, 주소 입력 필드에 inline error를 표시한 채 같은 화면에 머문다.
 8. 좌표 확보에 성공하면 시스템이 중복 장소와 현재 사용자의 기존 review 여부를 확인한다.
 9. 중복 장소가 발견되면 시스템은 browser confirm 한 번으로 기존 장소에 입력한 평가/후기와 장소 정보를 반영할지 묻는다.
 10. 현재 사용자가 같은 장소에 review를 이미 작성한 상태라면 confirm 문구는 내 리뷰를 업데이트하는 의미를 분명히 해야 한다.
@@ -34,17 +34,20 @@
 - 이름과 도로명 주소는 필수 입력이다.
 - `land_lot_address`와 후기는 선택 입력이다.
 - 평가 기본값은 5점이다.
-- 저장 중에는 제출 버튼을 비활성화한다.
+- 데스크톱에서는 별 icon hover 또는 클릭으로 평가를 진행한다.
+- 모바일에서는 별 icon 클릭/터치로만 평가를 진행한다.
+- 후기 입력에 500자를 넘겨 붙여넣거나 입력하면 초과분은 버리고 500자까지만 유지한다.
+- 저장 중에는 제출 버튼을 비활성화하고 버튼 안에 `등록 중` 텍스트와 spinner를 함께 표시한다.
 - 좌표 확보 실패 시 사용자가 입력한 값은 유지한다.
-- geocoding 실패는 browser alert + 주소 필드 inline error를 함께 사용한다.
+- geocoding 실패는 browser alert(`주소를 찾지 못했어요.\n\n입력한 주소를 다시 확인해 주세요.`) + 주소 필드 inline error를 함께 사용한다.
 - 중복 장소 관련 확인은 browser confirm 한 번으로 처리한다.
 - 현재 사용자가 이미 같은 장소에 review를 작성한 경우 confirm 이후 입력한 평가/후기로 내 리뷰를 덮어쓸 수 있다. 후기가 비어 있으면 기존 후기는 유지하고 평가만 변경한다.
 - 중복 장소 confirm을 취소하면 등록 화면에 그대로 머문다.
-- dirty state에서 뒤로가기/닫기를 누르면 browser alert이 아니라 browser confirm으로 `작성 중인 내용이 사라져요. 나갈까요?`를 보여준다.
+- dirty state에서 뒤로가기/닫기를 누르면 browser alert이 아니라 browser confirm으로 `작성 중인 내용이 사라져요.\n\n나갈까요?`를 보여준다.
 - 장소 등록 성공 시 별도 완료 화면은 두지 않는다.
 
 ## Failure Expectations
 - geocoding 실패 시 browser alert으로 주소 확인을 요청하고 주소 입력 필드에 inline error를 함께 보여야 한다.
 - 중복 장소 발견 시 browser confirm으로 기존 장소에 반영 여부를 물어야 한다.
-- 저장 실패 시 browser alert으로 `등록하지 못했어요. 잠시 후 다시 시도해 주세요.`를 보여야 한다.
+- 저장 실패 시 browser alert으로 `등록하지 못했어요.\n\n잠시 후 다시 시도해 주세요.`를 보여야 한다.
 - 실패 시 `name`, `road_address`, `land_lot_address`, `place_type`, `zeropay_status`, 별점, 후기 입력값을 유지해야 한다.

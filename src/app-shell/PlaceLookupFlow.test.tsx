@@ -115,7 +115,9 @@ describe('Plan 05 direct place entry shell flow', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(1)
-      expect(screen.getByTestId('place-submit-loading')).toBeInTheDocument()
+      expect(submitButton).toHaveTextContent('등록 중')
+      expect(screen.getByTestId('place-submit-spinner')).toBeInTheDocument()
+      expect(screen.queryByTestId('place-submit-loading')).not.toBeInTheDocument()
       expect(submitButton).toBeDisabled()
     })
 

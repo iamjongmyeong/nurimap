@@ -5,9 +5,11 @@ import { resetAppShellStore } from './appShellStore'
 
 const originalFetch = globalThis.fetch
 const GEOCODE_FAILURE_MESSAGE = '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.'
-const DUPLICATE_CONFIRM_MESSAGE = '이미 등록된 장소예요. 새로 만들지 않고 지금 입력한 평가와 후기, 장소 정보를 이 장소에 반영할까요?'
-const OVERWRITE_CONFIRM_MESSAGE = '이미 내가 리뷰를 남긴 장소예요. 지금 입력한 평가와 후기, 장소 정보를 반영할까요? 후기를 비워 두면 기존 후기는 그대로 두고 평가만 바꿔요.'
-const DIRTY_CLOSE_MESSAGE = '작성 중인 내용이 사라져요. 나갈까요?'
+const GEOCODE_FAILURE_ALERT_MESSAGE = '주소를 찾지 못했어요.\n\n입력한 주소를 다시 확인해 주세요.'
+const GENERIC_SAVE_FAILURE_ALERT_MESSAGE = '등록하지 못했어요.\n\n잠시 후 다시 시도해 주세요.'
+const DUPLICATE_CONFIRM_MESSAGE = '이미 등록된 장소예요.\n\n새로 만들지 않고 지금 입력한 평가와 후기, 장소 정보를 이 장소에 반영할까요?'
+const OVERWRITE_CONFIRM_MESSAGE = '이미 내가 리뷰를 남긴 장소예요.\n\n지금 입력한 평가와 후기, 장소 정보를 반영할까요?\n\n후기를 비워 두면 기존 후기는 그대로 두고 평가만 바꿔요.'
+const DIRTY_CLOSE_MESSAGE = '작성 중인 내용이 사라져요.\n\n나갈까요?'
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
@@ -79,17 +81,119 @@ describe('Plan 06 place registration flow', () => {
     expect(screen.getByTestId('rating-star-1')).toHaveClass('text-red-500')
   })
 
-  it('fails when the review length exceeds 500 characters', async () => {
+  it('updates the desktop rating when hovering a lower star', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openDirectEntryForm(user)
+
+    expect(screen.getByTestId('rating-star-5')).toHaveClass('text-red-500')
+
+    await user.hover(screen.getByTestId('rating-star-4'))
+
+    expect(screen.getByTestId('rating-star-4')).toHaveClass('text-red-500')
+    expect(screen.getByTestId('rating-star-5')).toHaveClass('text-slate-300')
+  })
+
+  it('keeps mobile rating click-only even if hover is fired in tests', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openDirectEntryForm(user)
+
+    expect(screen.getByTestId('rating-star-5')).toHaveClass('text-red-500')
+
+    await user.hover(screen.getByTestId('rating-star-4'))
+
+    expect(screen.getByTestId('rating-star-5')).toHaveClass('text-red-500')
+
+    await user.click(screen.getByTestId('rating-star-4'))
+
+    expect(screen.getByTestId('rating-star-4')).toHaveClass('text-red-500')
+    expect(screen.getByTestId('rating-star-5')).toHaveClass('text-slate-300')
+  })
+
+  it('applies the updated place-add field styles and back-only header affordance', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openDirectEntryForm(user)
+
+    const backButton = screen.getByTestId('place-add-back-button')
+    expect(backButton).toHaveAccessibleName('뒤로가기')
+    expect(backButton).toHaveClass('place-add-back-button', 'h-6', 'w-6')
+
+    const nameInput = screen.getByLabelText('이름')
+    const addressInput = screen.getByLabelText('주소')
+    const reviewInput = screen.getByTestId('review-content-input')
+    const placeTypeCafeButton = screen.getByTestId('place-type-option-cafe')
+    const zeropayUnavailableButton = screen.getByTestId('zeropay-option-unavailable')
+    const zeropayNeedsVerificationButton = screen.getByTestId('zeropay-option-needs-verification')
+
+    expect(screen.getByTestId('desktop-sidebar')).toHaveClass('place-add-surface')
+    expect(nameInput).toHaveClass('border-[#EBEBEB]', 'focus:border-[#5862FB]')
+    expect(nameInput).toHaveClass('text-base', 'placeholder:text-[#C9C9C9]')
+    expect(addressInput).toHaveClass('border-[#EBEBEB]', 'focus:border-[#5862FB]')
+    expect(addressInput).toHaveClass('text-base', 'placeholder:text-[#C9C9C9]')
+    expect(screen.getByTestId('place-type-option-restaurant')).toHaveClass('cursor-pointer')
+    expect(screen.getByTestId('place-type-field')).toHaveClass('space-y-2')
+    expect(placeTypeCafeButton).toHaveClass('text-base', 'text-[#C9C9C9]')
+    expect(screen.getByTestId('zeropay-option-available')).toHaveClass('cursor-pointer')
+    expect(screen.getByTestId('zeropay-field')).toHaveClass('space-y-2')
+    expect(zeropayUnavailableButton).toHaveClass('text-base', 'text-[#C9C9C9]')
+    expect(zeropayNeedsVerificationButton).toHaveClass('text-base', 'text-[#C9C9C9]')
+    expect(screen.getByTestId('rating-field')).toHaveClass('space-y-3')
+    expect(screen.getByTestId('rating-star-3')).toHaveClass('cursor-pointer', 'hover:scale-110')
+    expect(reviewInput).toHaveClass('w-full', 'min-h-[88px]', 'resize-none')
+    expect(screen.queryByText('0 / 500')).not.toBeInTheDocument()
+    const submitButton = screen.getByTestId('place-submit-button')
+    expect(submitButton).toHaveClass('mt-6')
+    expect(submitButton).toHaveAttribute('data-required-fields', 'incomplete')
+
+    await user.type(nameInput, '누리미디어')
+    await user.type(addressInput, '서울 마포구 양화로19길 22-16')
+
+    expect(submitButton).toHaveAttribute('data-required-fields', 'complete')
+  })
+
+  it('grows the review textarea height when the entered content exceeds the minimum height', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openDirectEntryForm(user)
+
+    const reviewInput = screen.getByTestId('review-content-input') as HTMLTextAreaElement
+
+    Object.defineProperty(reviewInput, 'scrollHeight', {
+      configurable: true,
+      value: 164,
+    })
+
+    await user.type(reviewInput, '첫 줄\\n둘째 줄\\n셋째 줄\\n넷째 줄\\n다섯째 줄\\n여섯째 줄')
+
+    expect(reviewInput.style.height).toBe('164px')
+  })
+
+  it('clamps pasted review content to 500 characters and discards the overflow', async () => {
     globalThis.fetch = vi.fn(async () => mockPlaceEntrySuccess()) as typeof fetch
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
 
     await fillDirectEntryForm({ user })
-    fireEvent.change(screen.getByTestId('review-content-input'), { target: { value: 'a'.repeat(501) } })
+    const pastedReview = 'a'.repeat(501)
+    fireEvent.change(screen.getByTestId('review-content-input'), { target: { value: pastedReview } })
+
+    expect(screen.getByTestId('review-content-input')).toHaveValue('a'.repeat(500))
+
     await user.click(screen.getByTestId('place-submit-button'))
 
-    expect(screen.getByText('리뷰는 500자 이하로 입력해주세요.')).toBeInTheDocument()
+    expect(screen.queryByText('리뷰는 500자 이하로 입력해주세요.')).not.toBeInTheDocument()
+    expect(await screen.findByTestId('detail-my-review')).toHaveTextContent('a'.repeat(500))
   })
 
   it('shows browser alert plus inline address error and keeps values on geocode failure', async () => {
@@ -113,7 +217,7 @@ describe('Plan 06 place registration flow', () => {
     await fillDirectEntryForm({ user })
     await user.click(screen.getByTestId('place-submit-button'))
 
-    expect(alertSpy).toHaveBeenCalledWith(GEOCODE_FAILURE_MESSAGE)
+    expect(alertSpy).toHaveBeenCalledWith(GEOCODE_FAILURE_ALERT_MESSAGE)
     expect(screen.getByText(GEOCODE_FAILURE_MESSAGE)).toBeInTheDocument()
     expect(screen.getByLabelText('이름')).toHaveValue('등록 테스트 장소')
     expect(screen.getByLabelText('주소')).toHaveValue('서울 마포구 등록로 1')
@@ -228,7 +332,7 @@ describe('Plan 06 place registration flow', () => {
 
     await openDirectEntryForm(user)
     await user.type(screen.getByLabelText('이름'), '작성 중인 장소')
-    await user.click(screen.getByRole('button', { name: '장소 등록 닫기' }))
+    await user.click(screen.getByRole('button', { name: '뒤로가기' }))
 
     expect(confirmSpy).toHaveBeenCalledWith(DIRTY_CLOSE_MESSAGE)
     expect(screen.getByTestId('desktop-place-add-panel')).toBeInTheDocument()
@@ -253,7 +357,9 @@ describe('Plan 06 place registration flow', () => {
     const clickPromise = user.click(submitButton)
 
     await waitFor(() => {
-      expect(screen.getByTestId('place-submit-loading')).toBeInTheDocument()
+      expect(submitButton).toHaveTextContent('등록 중')
+      expect(screen.getByTestId('place-submit-spinner')).toBeInTheDocument()
+      expect(screen.queryByTestId('place-submit-loading')).not.toBeInTheDocument()
       expect(submitButton).toBeDisabled()
     })
 
@@ -263,7 +369,25 @@ describe('Plan 06 place registration flow', () => {
     await screen.findByTestId('desktop-detail-panel')
   })
 
+  it('shows a spinner next to the submitting label while the request is in progress', async () => {
+    globalThis.fetch = vi.fn(() => new Promise<Response>(() => {})) as typeof fetch
+    setViewport(1280)
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: '장소 추가' }))
+    await screen.findByRole('heading', { name: '직접 장소 등록' })
+    fireEvent.change(screen.getByLabelText('이름'), { target: { value: '등록 테스트 장소' } })
+    fireEvent.change(screen.getByLabelText('주소'), { target: { value: '서울 마포구 등록로 1' } })
+
+    const submitButton = screen.getByTestId('place-submit-button')
+    fireEvent.click(submitButton)
+
+    expect(submitButton).toHaveTextContent('등록 중')
+    expect(screen.getByTestId('place-submit-spinner')).toBeInTheDocument()
+  })
+
   it('keeps the entered values after a save failure', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
     globalThis.fetch = vi.fn(async () => mockPlaceEntrySuccess({ name: '저장 실패 장소' })) as typeof fetch
     setViewport(1280)
     const user = userEvent.setup()
@@ -276,6 +400,7 @@ describe('Plan 06 place registration flow', () => {
     await user.click(screen.getByTestId('place-submit-button'))
 
     expect(await screen.findByText('등록하지 못했어요. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(alertSpy).toHaveBeenCalledWith(GENERIC_SAVE_FAILURE_ALERT_MESSAGE)
     expect(screen.getByLabelText('이름')).toHaveValue('등록 테스트 장소')
     expect(screen.getByLabelText('주소')).toHaveValue('서울 마포구 등록로 1')
     expect(screen.getByTestId('review-content-input')).toHaveValue('입력 유지 테스트')

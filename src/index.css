@@ -68,3 +68,50 @@ body {
 button {
   font: inherit;
 }
+
+.place-submit-button[data-required-fields="incomplete"] {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+.place-submit-button[data-required-fields="complete"] {
+  opacity: 1 !important;
+  cursor: pointer !important;
+}
+
+.place-submit-button,
+.place-submit-button:hover,
+.place-submit-button:focus-visible,
+.place-submit-button:active {
+  box-shadow: none !important;
+}
+
+.place-submit-button:active {
+  transform: none !important;
+  translate: 0 0 !important;
+}
+
+.place-add-back-button {
+  cursor: pointer !important;
+  border: none !important;
+}
+
+.place-add-back-button:hover,
+.place-add-back-button:focus-visible,
+.place-add-back-button:active {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  translate: 0 0 !important;
+}
+
+.place-add-surface {
+  font-family:
+    Pretendard,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}

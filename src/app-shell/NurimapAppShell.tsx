@@ -467,7 +467,7 @@ const DesktopSidebar = ({
   const isPlaceAddOpen = navigationState === 'place_add_open'
 
   return (
-    <aside className="flex h-screen w-[390px] flex-col border-r border-base-300 bg-base-200 px-6 py-6" data-testid="desktop-sidebar">
+    <aside className="place-add-surface flex h-screen w-[390px] flex-col border-r border-base-300 bg-[#fff] px-6 py-6" data-testid="desktop-sidebar">
       {isPlaceAddOpen ? (
         <DesktopPlaceAddPanel onClose={closePlaceAdd} />
       ) : (

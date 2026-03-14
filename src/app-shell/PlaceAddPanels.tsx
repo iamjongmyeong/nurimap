@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   confirmPlaceRegistration,
   preparePlaceRegistration,
@@ -6,6 +6,7 @@ import {
 } from './placeRepository'
 import { useAppShellStore } from './appShellStore'
 import { useAuth } from '../auth/authContext'
+import { useViewportMode } from './useViewportMode'
 import type { PlaceLookupResult, PlaceLookupSuccess } from '../server/placeLookupTypes'
 import type { PlaceType, ZeropayStatus } from './types'
 
@@ -32,10 +33,14 @@ type SegmentedOption<T extends string> = {
   value: T
 }
 
-const REVIEW_LIMIT = 500
 const GENERIC_SUBMIT_ERROR_MESSAGE = '등록하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const GEOCODE_ERROR_MESSAGE = '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.'
 const DIRTY_EXIT_CONFIRM_MESSAGE = '작성 중인 내용이 사라져요. 나갈까요?'
+const REVIEW_LIMIT = 500
+const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-base-100 px-3 text-base text-base-content placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
+const INPUT_CLASSES = `input h-10 ${BASE_TEXT_FIELD_CLASSES}`
+const TEXTAREA_CLASSES = `textarea min-h-[88px] resize-none overflow-hidden ${BASE_TEXT_FIELD_CLASSES}`
+const REVIEW_TEXTAREA_MIN_HEIGHT = 88
 
 const PLACE_TYPE_OPTIONS: SegmentedOption<PlaceType>[] = [
   { value: 'restaurant', label: '음식점', testId: 'place-type-option-restaurant' },
@@ -47,6 +52,15 @@ const ZEROPAY_OPTIONS: SegmentedOption<ZeropayStatus>[] = [
   { value: 'unavailable', label: '불가능', testId: 'zeropay-option-unavailable' },
   { value: 'needs_verification', label: '확인 필요', testId: 'zeropay-option-needs-verification' },
 ]
+
+const BackArrowIcon = () => (
+  <svg aria-hidden="true" height="24" viewBox="0 0 24 24" width="24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M19 11H7.83L12.71 6.12C13.1 5.73 13.1 5.09 12.71 4.7C12.6175 4.60729 12.5076 4.53375 12.3866 4.48357C12.2657 4.43338 12.136 4.40755 12.005 4.40755C11.874 4.40755 11.7443 4.43338 11.6234 4.48357C11.5024 4.53375 11.3925 4.60729 11.3 4.7L4.71 11.29C4.6173 11.3825 4.54375 11.4924 4.49357 11.6134C4.44339 11.7343 4.41756 11.864 4.41756 11.995C4.41756 12.126 4.44339 12.2556 4.49357 12.3766C4.54375 12.4976 4.6173 12.6075 4.71 12.7L11.3 19.29C11.3926 19.3826 11.5025 19.456 11.6235 19.5061C11.7444 19.5562 11.8741 19.582 12.005 19.582C12.1359 19.582 12.2656 19.5562 12.3865 19.5061C12.5075 19.456 12.6174 19.3826 12.71 19.29C12.8026 19.1974 12.876 19.0875 12.9261 18.9665C12.9762 18.8456 13.002 18.7159 13.002 18.585C13.002 18.4541 12.9762 18.3244 12.9261 18.2035C12.876 18.0825 12.8026 17.9726 12.71 17.88L7.83 13H19C19.55 13 20 12.55 20 12C20 11.45 19.55 11 19 11Z"
+      fill="#1C1C1C"
+    />
+  </svg>
+)
 
 const SegmentedField = <T extends string>({
   label,
@@ -61,14 +75,14 @@ const SegmentedField = <T extends string>({
   testId: string
   value: T
 }) => (
-  <div className="space-y-3" data-testid={testId}>
+  <div className="space-y-2" data-testid={testId}>
     <p className="text-xs font-medium text-base-content">{label}</p>
     <div className="flex flex-wrap gap-3">
       {options.map((option) => {
         const isSelected = option.value === value
         return (
           <button
-            className={`h-10 min-w-[101px] rounded-xl border px-4 text-base ${
+            className={`h-10 min-w-[101px] cursor-pointer rounded-xl border px-4 text-base transition-colors ${
               isSelected
                 ? 'border-[#5862FB] bg-[#EEF] font-medium text-[#5862FB]'
                 : 'border-[#EBEBEB] bg-base-100 text-[#C9C9C9]'
@@ -87,13 +101,15 @@ const SegmentedField = <T extends string>({
 )
 
 const StarRatingField = ({
+  isDesktop,
   rating,
   onChange,
 }: {
+  isDesktop: boolean
   rating: number
   onChange: (value: number) => void
 }) => (
-  <div className="space-y-4" data-testid="rating-field">
+  <div className="space-y-3" data-testid="rating-field">
     <p className="text-xs font-medium text-base-content">평가</p>
     <div className="flex gap-2">
       {[1, 2, 3, 4, 5].map((value) => {
@@ -101,9 +117,12 @@ const StarRatingField = ({
         return (
           <button
             aria-label={`${value}점`}
-            className={`flex h-6 w-6 items-center justify-center ${active ? 'text-red-500' : 'text-slate-300'}`}
+            className={`flex h-6 w-6 cursor-pointer items-center justify-center ${
+              isDesktop ? 'transition-transform duration-150 hover:scale-110' : ''
+            } ${active ? 'text-red-500' : 'text-slate-300'}`}
             data-testid={`rating-star-${value}`}
             key={value}
+            onMouseEnter={isDesktop ? () => onChange(value) : undefined}
             onClick={() => onChange(value)}
             type="button"
           >
@@ -158,8 +177,21 @@ const isDraftDirty = (draft: RegistrationDraft) =>
   || draft.rating_score !== 5
   || draft.review_content.trim() !== ''
 
+const hasCompletedRequiredFields = (draft: RegistrationDraft) =>
+  draft.name.trim() !== ''
+  && draft.road_address.trim() !== ''
+
+const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
+const formatDialogMessage = (message: string) => message.replace(/([.!?])\s+/g, '$1\n\n')
+
+const resizeReviewTextarea = (textarea: HTMLTextAreaElement) => {
+  textarea.style.height = `${REVIEW_TEXTAREA_MIN_HEIGHT}px`
+  textarea.style.height = `${Math.max(textarea.scrollHeight, REVIEW_TEXTAREA_MIN_HEIGHT)}px`
+}
+
 const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   const { accessToken } = useAuth()
+  const { isDesktop } = useViewportMode()
   const applyRegistrationResult = useAppShellStore((state) => state.applyRegistrationResult)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
   const places = useAppShellStore((state) => state.places)
@@ -167,6 +199,13 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   const [draft, setDraft] = useState<RegistrationDraft>(createInitialDraft)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitState, setSubmitState] = useState<PlaceSubmitState>('idle')
+  const hasRequiredFields = hasCompletedRequiredFields(draft)
+  const reviewTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    if (!reviewTextareaRef.current) return
+    resizeReviewTextarea(reviewTextareaRef.current)
+  }, [draft.review_content])
 
   const updateDraft = (patch: Partial<RegistrationDraft>) => {
     setDraft((current) => ({ ...current, ...patch }))
@@ -182,7 +221,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   }
 
   const handleClose = () => {
-    if (isDraftDirty(draft) && !window.confirm(DIRTY_EXIT_CONFIRM_MESSAGE)) {
+    if (isDraftDirty(draft) && !window.confirm(formatDialogMessage(DIRTY_EXIT_CONFIRM_MESSAGE))) {
       return
     }
     onClose()
@@ -218,7 +257,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 
       if ('status' in result && result.status === 'error') {
         const message = result.error.message || GEOCODE_ERROR_MESSAGE
-        window.alert(message)
+        window.alert(formatDialogMessage(message))
         setFieldErrors({ road_address: message })
         setSubmitState('error')
         return
@@ -229,7 +268,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
           !('status' in result) && result.error?.message
             ? result.error.message
             : GENERIC_SUBMIT_ERROR_MESSAGE
-        window.alert(message)
+        window.alert(formatDialogMessage(message))
         setFieldErrors({ form: message })
         setSubmitState('error')
         return
@@ -237,7 +276,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 
       const preparedPlace = ('status' in result ? result.data : null) as PlaceLookupSuccess['data'] | null
       if (!preparedPlace) {
-        window.alert(GENERIC_SUBMIT_ERROR_MESSAGE)
+        window.alert(formatDialogMessage(GENERIC_SUBMIT_ERROR_MESSAGE))
         setFieldErrors({ form: GENERIC_SUBMIT_ERROR_MESSAGE })
         setSubmitState('error')
         return
@@ -256,7 +295,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
       await new Promise((resolve) => setTimeout(resolve, 50))
 
       if (preparedPlace.name === '저장 실패 장소') {
-        window.alert(GENERIC_SUBMIT_ERROR_MESSAGE)
+        window.alert(formatDialogMessage(GENERIC_SUBMIT_ERROR_MESSAGE))
         setFieldErrors({ form: GENERIC_SUBMIT_ERROR_MESSAGE })
         setSubmitState('error')
         return
@@ -266,7 +305,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
       const preparation = preparePlaceRegistration({ lookupData: preparedPlace, places })
 
       if (preparation.status === 'confirm_required') {
-        const confirmed = window.confirm(preparation.confirmMessage)
+        const confirmed = window.confirm(formatDialogMessage(preparation.confirmMessage))
         if (!confirmed) {
           setSubmitState('idle')
           return
@@ -287,7 +326,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
       setSubmitState('idle')
     } catch (error) {
       const message = error instanceof Error && error.message ? error.message : GENERIC_SUBMIT_ERROR_MESSAGE
-      window.alert(message)
+      window.alert(formatDialogMessage(message))
       setFieldErrors({ form: message })
       setSubmitState('error')
     }
@@ -295,72 +334,98 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 
   return (
     <div className="flex h-full flex-col" data-testid="place-add-form">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Place Add</p>
-          <h2 className="mt-2 text-xl font-bold text-base-content">직접 장소 등록</h2>
-        </div>
-        <button aria-label="장소 등록 닫기" className="btn btn-ghost btn-circle btn-sm" onClick={handleClose} type="button">
-          ✕
+      <div className="flex items-center">
+        <button
+          aria-label="뒤로가기"
+          className="place-add-back-button flex h-6 w-6 items-center justify-center"
+          data-testid="place-add-back-button"
+          onClick={handleClose}
+          type="button"
+        >
+          <BackArrowIcon />
         </button>
       </div>
+      <h2 className="sr-only">직접 장소 등록</h2>
 
-      <div className="mt-6 flex-1 overflow-auto pr-1">
-        <div className="space-y-5" data-testid="place-add-form-fields">
-          <label className="form-control w-full gap-2" data-testid="place-name-field">
-            <span className="label-text text-xs font-medium text-base-content">이름</span>
-            <input
-              aria-label="이름"
-              className={`input input-bordered h-10 w-full rounded-xl ${fieldErrors.name ? 'input-error' : ''}`}
-              onChange={(event) => updateDraft({ name: event.target.value })}
-              placeholder="누리미디어"
-              type="text"
-              value={draft.name}
-            />
-            {fieldErrors.name ? <span className="label-text-alt text-error">{fieldErrors.name}</span> : null}
-          </label>
+      <div className="mt-6 flex-1 overflow-auto">
+        <div data-testid="place-add-form-content">
+          <div className="space-y-6" data-testid="place-add-form-fields">
+            <div className="w-full" data-testid="place-name-field">
+              <label className="block" htmlFor="place-name-input">
+                <span className="block text-xs font-medium leading-none text-base-content">이름</span>
+              </label>
+              <input
+                aria-label="이름"
+                className={`${INPUT_CLASSES} mt-2 ${fieldErrors.name ? 'border-error focus:border-error' : ''}`}
+                id="place-name-input"
+                onChange={(event) => updateDraft({ name: event.target.value })}
+                placeholder="누리미디어"
+                type="text"
+                value={draft.name}
+              />
+              {fieldErrors.name ? <span className="mt-2 block text-xs text-error">{fieldErrors.name}</span> : null}
+            </div>
 
-          <label className="form-control w-full gap-2" data-testid="place-address-field">
-            <span className="label-text text-xs font-medium text-base-content">주소</span>
-            <input
-              aria-label="주소"
-              className={`input input-bordered h-10 w-full rounded-xl ${fieldErrors.road_address ? 'input-error' : ''}`}
-              onChange={(event) => updateDraft({ road_address: event.target.value })}
-              placeholder="서울 마포구 양화로19길 22-16"
-              type="text"
-              value={draft.road_address}
-            />
-            {fieldErrors.road_address ? <span className="label-text-alt text-error">{fieldErrors.road_address}</span> : null}
-          </label>
+            <div className="w-full" data-testid="place-address-field">
+              <label className="block" htmlFor="place-address-input">
+                <span className="block text-xs font-medium leading-none text-base-content">주소</span>
+              </label>
+              <input
+                aria-label="주소"
+                className={`${INPUT_CLASSES} mt-2 ${fieldErrors.road_address ? 'border-error focus:border-error' : ''}`}
+                id="place-address-input"
+                onChange={(event) => updateDraft({ road_address: event.target.value })}
+                placeholder="서울 마포구 양화로19길 22-16"
+                type="text"
+                value={draft.road_address}
+              />
+              {fieldErrors.road_address ? <span className="mt-2 block text-xs text-error">{fieldErrors.road_address}</span> : null}
+            </div>
 
-          <SegmentedField label="장소 구분" onChange={(place_type) => updateDraft({ place_type })} options={PLACE_TYPE_OPTIONS} testId="place-type-field" value={draft.place_type} />
-          <SegmentedField label="제로페이" onChange={(zeropay_status) => updateDraft({ zeropay_status })} options={ZEROPAY_OPTIONS} testId="zeropay-field" value={draft.zeropay_status} />
-          <StarRatingField rating={draft.rating_score} onChange={(rating_score) => updateDraft({ rating_score })} />
+            <SegmentedField label="장소 구분" onChange={(place_type) => updateDraft({ place_type })} options={PLACE_TYPE_OPTIONS} testId="place-type-field" value={draft.place_type} />
+            <SegmentedField label="제로페이" onChange={(zeropay_status) => updateDraft({ zeropay_status })} options={ZEROPAY_OPTIONS} testId="zeropay-field" value={draft.zeropay_status} />
+            <StarRatingField isDesktop={isDesktop} rating={draft.rating_score} onChange={(rating_score) => updateDraft({ rating_score })} />
 
-          <label className="form-control w-full gap-2" data-testid="review-field">
-            <span className="label-text text-xs font-medium text-base-content">후기(선택)</span>
-            <textarea
-              className="textarea textarea-bordered min-h-[88px] rounded-xl"
-              data-testid="review-content-input"
-              onChange={(event) => updateDraft({ review_content: event.target.value })}
-              value={draft.review_content}
-            />
-            <span className="label-text-alt text-base-content/60">{draft.review_content.length} / {REVIEW_LIMIT}</span>
-          </label>
+            <div className="w-full" data-testid="review-field">
+              <label className="block" htmlFor="place-review-input">
+                <span className="block text-xs font-medium leading-none text-base-content">후기(선택)</span>
+              </label>
+              <textarea
+                className={`${TEXTAREA_CLASSES} mt-2`}
+                data-testid="review-content-input"
+                id="place-review-input"
+                onChange={(event) => {
+                  const nextReviewContent = clampReviewContent(event.target.value)
+                  event.currentTarget.value = nextReviewContent
+                  updateDraft({ review_content: nextReviewContent })
+                  resizeReviewTextarea(event.currentTarget)
+                }}
+                maxLength={REVIEW_LIMIT}
+                ref={reviewTextareaRef}
+                value={draft.review_content}
+              />
+            </div>
+          </div>
+
+          {fieldErrors.form ? <p className="mt-4 text-sm text-error">{fieldErrors.form}</p> : null}
+
+          <button
+            className="btn btn-primary place-submit-button mt-6 h-10 w-full rounded-xl"
+            data-required-fields={hasRequiredFields ? 'complete' : 'incomplete'}
+            data-testid="place-submit-button"
+            disabled={submitState === 'submitting'}
+            onClick={() => { void handleSubmit() }}
+            type="button"
+          >
+            {submitState === 'submitting' ? (
+              <span className="inline-flex items-center gap-2">
+                <span>등록 중</span>
+                <span aria-hidden="true" className="loading loading-spinner loading-xs" data-testid="place-submit-spinner" />
+              </span>
+            ) : '등록'}
+          </button>
         </div>
       </div>
-
-      {fieldErrors.form ? <p className="mt-4 text-sm text-error">{fieldErrors.form}</p> : null}
-
-      <button className="btn btn-primary mt-6 h-10 rounded-xl" data-testid="place-submit-button" disabled={submitState === 'submitting'} onClick={() => { void handleSubmit() }} type="button">
-        {submitState === 'submitting' ? '등록 중...' : '등록'}
-      </button>
-
-      {submitState === 'submitting' ? (
-        <div className="mt-4 rounded-2xl bg-base-200 p-4 text-sm text-base-content/80" data-testid="place-submit-loading">
-          주소를 확인하고 장소를 등록하는 중입니다.
-        </div>
-      ) : null}
     </div>
   )
 }

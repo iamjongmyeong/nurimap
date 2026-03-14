@@ -20,11 +20,11 @@ describe('Nurimap app shell', () => {
     resetAppShellStore()
   })
 
-  it('renders the desktop sidebar', () => {
+  it('renders the desktop sidebar with the white surface background', () => {
     setViewport(1280)
     render(<App />)
 
-    expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+    expect(screen.getByTestId('desktop-sidebar')).toHaveClass('bg-[#fff]')
   })
 
   it('renders the desktop floating detail panel when detail is open', () => {

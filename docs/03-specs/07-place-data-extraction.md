@@ -19,7 +19,7 @@
   2. `land_lot_address` geocoding
 - 사용자가 `등록`을 실행하면 시스템은 저장 전에 좌표 확보를 시도한다.
 - geocoding 실패 시 place는 저장되지 않는다.
-- geocoding 실패 시 browser alert으로 `주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.`를 보여준다.
+- geocoding 실패 시 browser alert으로 `주소를 찾지 못했어요.\n\n입력한 주소를 다시 확인해 주세요.`를 보여준다.
 - geocoding 실패 시 주소 입력 필드에 inline error를 표시한다.
 - geocoding 실패 시 사용자가 입력한 값은 유지한다.
 - `place_submit = submitting` 동안 같은 등록 요청을 다시 실행할 수 없다.
@@ -58,7 +58,7 @@
 - 등록 시 geocoding이 성공하면 place가 저장된다.
 - 지번 주소 fallback이 필요한 경우 정상 진행된다.
 - geocoding 실패 시 저장되지 않는다.
-- geocoding 실패 시 browser alert이 보인다.
+- geocoding 실패 시 browser alert(`주소를 찾지 못했어요.\n\n입력한 주소를 다시 확인해 주세요.`)이 보인다.
 - geocoding 실패 후 입력한 값이 유지된다.
 - 저장 중 진행 상태가 보인다.
 - 저장 중 같은 요청을 다시 실행할 수 없다.
