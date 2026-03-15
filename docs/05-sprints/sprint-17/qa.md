@@ -24,7 +24,8 @@
   - `pnpm lint`
   - `pnpm build`
 - 결과:
-  - PASS — `8 files passed`, `98 tests passed`
+  - PASS — initial Sprint 17 regression set: `8 files passed`, `98 tests passed`
+  - PASS — post-release auth/place-entry focused set: `8 files passed`, `66 tests passed`
   - PASS — lint 통과
   - PASS — production build 통과
 - 핵심 확인 항목:
@@ -32,8 +33,12 @@
   - place add는 internal state로 유지되고 등록 성공 후 canonical detail route로 이동하는 테스트 통과
   - `/auth/verify` canonical entry + legacy root verify query 병행 지원 테스트 통과
   - auth request/verify timeout convergence 테스트 통과
+  - verify-link와 consume-link 분리 및 fresh nonce non-consumption 테스트 통과
   - `expired`, `used`, `invalidated` 한국어 failure copy 테스트 통과
   - burst 5회 후 cooldown 정책 및 countdown formatting 테스트 통과
+  - `/api/place-entry` JSON 500 fallback + Vercel api import boundary 테스트 통과
+  - request-link accepted/failure observability 로그 테스트 통과
+  - consume-link 분리 이후 fresh nonce non-consumption 및 finalize flow 테스트 통과
   - 지도 loading / failure fallback UI 테스트 통과
 
 # Manual QA Result
@@ -107,7 +112,7 @@
   - AI Agent Interactive QA PASS
   - Browser Automation PASS
 - Evidence:
-  - `/auth/verify` canonical parsing, legacy root query support, timeout convergence, localized failure copy 관련 테스트 통과
+  - `/auth/verify` canonical parsing, legacy root query support, timeout convergence, localized failure copy, verify/consume 분리 관련 테스트 통과
   - preview build 기준 canonical/legacy auth verify failure screenshots 확보
 - Verdict:
   - PASS
@@ -119,7 +124,7 @@
   - AI Agent Interactive QA PASS
   - User QA PENDING
 - Evidence:
-  - burst 5회 허용, 6번째 cooldown, `MM분 SS초` / `SS초` formatting, exact Korean failure copy 관련 테스트 통과
+  - burst 5회 허용, 6번째 cooldown, `MM분 SS초` / `SS초` formatting, exact Korean failure copy, request-link delivery observability 관련 테스트 통과
 - Verdict:
   - CONDITIONAL PASS
 

@@ -581,6 +581,134 @@ describe('Sprint 12 auth flow', () => {
     expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
   }, 10000)
 
+  it('finalizes nonce consumption after a refresh-time verify succeeds', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'verified-session-token',
+        },
+        user: {
+          email: 'tester@nurimedia.co.kr',
+          user_metadata: {
+            name: '테스트 사용자',
+          },
+        },
+      },
+      error: null,
+    })
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: 'success',
+            tokenHash: 'token-hash-1',
+            verificationType: 'magiclink',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: 'success',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+    window.history.replaceState({}, '', '/auth/verify?email=tester%40nurimedia.co.kr&nonce=nonce-success')
+
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('protected-child')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/auth/verify-link',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      email: 'tester@nurimedia.co.kr',
+      nonce: 'nonce-success',
+    })
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/auth/consume-link',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+      }),
+    )
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      email: 'tester@nurimedia.co.kr',
+      nonce: 'nonce-success',
+    })
+    expect(verifyOtpMock).toHaveBeenCalledWith({
+      token_hash: 'token-hash-1',
+      type: 'magiclink',
+    })
+  })
+
+  it('does not finalize nonce consumption when verifyOtp fails after verify-link succeeds', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    verifyOtpMock.mockRejectedValue(new Error('used token'))
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'success',
+          tokenHash: 'token-hash-1',
+          verificationType: 'magiclink',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    window.history.replaceState({}, '', '/auth/verify?email=tester%40nurimedia.co.kr&nonce=nonce-failed')
+
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
+
+    expect(await screen.findByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/verify-link',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+  })
+
   it('shows the localized invalidated message when the refresh-time verify request is rejected as stale', async () => {
     vi.stubEnv('MODE', 'development')
     vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')

@@ -3,6 +3,7 @@ import {
   AUTH_REQUEST_BURST_LIMIT,
   AUTH_REQUEST_COOLDOWN_SECONDS,
   buildIssuedLoginLinkState,
+  consumeVerificationState,
   createEmptyLoginLinkState,
   evaluateRequestPolicy,
   evaluateVerificationState,
@@ -64,7 +65,7 @@ describe('Plan 08 auth policy', () => {
     }
   })
 
-  it('marks a valid link as consumed after verification', () => {
+  it('keeps a fresh link reusable until consumption is finalized', () => {
     const now = new Date('2026-03-08T10:00:00.000Z')
     const state = buildIssuedLoginLinkState({
       baseState: createEmptyLoginLinkState(),
@@ -75,11 +76,35 @@ describe('Plan 08 auth policy', () => {
       verificationType: 'magiclink',
     })
 
-    const result = evaluateVerificationState({ nonce: 'nonce-1', now, state })
-    expect(result.status).toBe('valid')
-    if (result.status === 'valid') {
-      expect(result.tokenHash).toBe('token-hash')
+    const firstResult = evaluateVerificationState({ nonce: 'nonce-1', now, state })
+    const secondResult = evaluateVerificationState({ nonce: 'nonce-1', now, state })
+
+    expect(firstResult.status).toBe('valid')
+    expect(secondResult.status).toBe('valid')
+    if (secondResult.status === 'valid') {
+      expect(secondResult.tokenHash).toBe('token-hash')
+      expect(secondResult.verificationType).toBe('magiclink')
+    }
+  })
+
+  it('marks a valid link as consumed only after finalization', () => {
+    const now = new Date('2026-03-08T10:00:00.000Z')
+    const state = buildIssuedLoginLinkState({
+      baseState: createEmptyLoginLinkState(),
+      now,
+      expiresAt: new Date(now.getTime() + 5 * 60 * 1000),
+      nonce: 'nonce-1',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })
+
+    const result = consumeVerificationState({ nonce: 'nonce-1', state })
+
+    expect(result.status).toBe('consumed')
+    if (result.status === 'consumed') {
       expect(result.nextState.last_consumed_nonce).toBe('nonce-1')
+      expect(result.nextState.active_nonce).toBeNull()
+      expect(result.nextState.active_token_hash).toBeNull()
     }
   })
 

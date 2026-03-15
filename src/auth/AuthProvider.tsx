@@ -478,7 +478,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setPhase('auth_failure')
                 setFailureReason(verification.message)
               }
+              return
             }
+
+            void withTimeout(fetch('/api/auth/consume-link', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: authEmail, nonce }),
+              keepalive: true,
+            }))
+              .then(async (consumeResponse) => {
+                const payload = (await withTimeout(consumeResponse.json())) as
+                  | { status: 'error'; reason: string }
+                  | { status: 'success' }
+
+                if (!consumeResponse.ok || payload.status === 'error') {
+                  throw new Error('consume_link_failed')
+                }
+              })
+              .catch(() => {
+                console.warn('[auth] consume-link failed after verifyOtp success')
+              })
           } catch {
             if (isMounted) {
               setPhase('auth_failure')

@@ -611,3 +611,35 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/04-design/browse-and-detail.md
   - docs/06-history/decisions.md
 - Related commit: TBD
+
+
+## 2026-03-15 Sprint 17 - Defer login-link consumption until session adoption succeeds
+- Context: deployed 환경에서 새로 발급한 로그인 링크가 시크릿 창이나 다른 세션에서 곧바로 `used`로 처리되는 사례가 발견됐다. 현재 구조는 `/api/auth/verify-link`가 nonce를 유효하다고 판단하는 즉시 `last_consumed_nonce`를 기록해, 실제 로그인 세션 채택 전에도 링크가 소모될 수 있었다.
+- Options considered:
+  - Option A: 현재처럼 `verify-link` 단계에서 즉시 nonce를 consumed 처리한다.
+  - Option B: `verify-link`는 read-only 검증만 수행하고, 실제 `verifyOtp` 성공 뒤 별도 `consume-link` 단계에서만 nonce를 consumed 처리한다.
+- Decision: Option B를 선택한다.
+- Rationale: 링크가 사용자보다 먼저 접근되는 환경(메일 미리보기/링크 스캐너/다른 세션)에서는, 실제 세션 채택 전에 nonce를 소모하면 fresh link가 곧바로 `used`가 되는 UX 문제가 생긴다. `consume-link`를 분리하면 서버의 단일 사용 상태는 유지하면서도 premature consumption을 줄일 수 있다.
+- Impact: `/api/auth/verify-link`는 tokenHash와 verificationType만 반환하고, `consume-link`가 실제 소모를 담당한다. 클라이언트는 `verifyOtp` 성공 후 best-effort로 `consume-link`를 호출한다. fresh nonce는 세션 채택 전까지는 계속 검증 가능하고, 사용 완료 표시는 finalize 이후에만 남는다.
+- Revisit trigger: 메일 스캐너가 `verifyOtp`까지 실제로 수행하는 사례가 확인되거나, consume-link 실패 telemetry가 자주 보이면 code-based login 또는 더 강한 claimed/finalized 2단계 구조를 재검토한다.
+- Related docs:
+  - docs/05-sprints/sprint-17/planning.md
+  - docs/03-specs/05-auth-email-login-link.md
+  - docs/01-product/user-flows/auth-and-name-entry.md
+  - docs/04-design/auth-and-name-entry.md
+- Related commit: TBD
+
+## 2026-03-15 Sprint 17 - Enforce explicit `.js` specifiers in Vercel API helper imports
+- Context: deployed `/api/place-entry`가 JSON 대신 generic HTML server error를 반환하는 문제가 발생했고, `api/_lib/_placeEntryService.ts`는 다른 Vercel boundary helper와 달리 상대 import에 `.js` specifier를 쓰지 않고 있었다. 저장소에는 이미 Vercel 함수 경계에서 `.js` specifier를 강제해야 한다는 prior decision이 있었다.
+- Options considered:
+  - Option A: `place-entry` route에서 예외만 JSON으로 감싸고 helper import 규칙은 그대로 둔다.
+  - Option B: helper import를 `.js` specifier로 고치고, route는 fallback JSON 500을 유지하며, api boundary regression test로 규칙을 고정한다.
+- Decision: Option B를 선택한다.
+- Rationale: 런타임 import 경계를 바로잡지 않으면 같은 계열의 장애가 다른 API에서도 다시 날 수 있다. JSON fallback만으로는 사용자는 보호되지만, 원인 자체를 막지 못한다. explicit `.js` specifier 규칙과 regression test를 함께 두는 편이 재발 방지에 유리하다.
+- Impact: `api/_lib/_placeEntryService.ts`는 explicit `.js` import를 사용하고, `api/place-entry.ts`는 unexpected error를 JSON 500으로 감싼다. `src/server/apiImportBoundary.test.ts`는 `api/**`의 상대 import에 `.js` 확장자를 강제한다.
+- Revisit trigger: Vercel 함수 번들링 계약이 바뀌거나 API helper import 규칙을 더 상위 shared abstraction으로 통합하게 되면 현재 regression guard를 조정할 수 있다.
+- Related docs:
+  - docs/05-sprints/sprint-17/planning.md
+  - docs/05-sprints/sprint-17/qa.md
+  - docs/06-history/decisions.md
+- Related commit: TBD

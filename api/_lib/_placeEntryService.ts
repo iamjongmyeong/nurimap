@@ -1,5 +1,5 @@
-import { GEOCODE_FIXTURES } from './_placeLookupFixtures'
-import type { PlaceLookupResult, PlaceLookupSuccess } from './_placeLookupTypes'
+import { GEOCODE_FIXTURES } from './_placeLookupFixtures.js'
+import type { PlaceLookupResult, PlaceLookupSuccess } from './_placeLookupTypes.js'
 
 const COORDINATES_FAILED_MESSAGE = '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.'
 const INVALID_ENTRY_MESSAGE = '장소명과 주소를 다시 확인해 주세요.'

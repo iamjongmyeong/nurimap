@@ -21,6 +21,7 @@
   - 등록 성공 후에는 결과 place의 canonical detail route(`/places/:placeId`)로 이동한다.
 - auth bootstrap hardening
   - `request-link`, `verify-link` 네트워크 요청에 실제 timeout을 적용한다.
+  - login link는 `verify-link` 단계에서 즉시 consumed 처리하지 않고, 실제 session adoption 성공 후 `consume-link` 단계에서 consumed 처리한다.
   - refresh, logout 후 재로그인, stale verify entry, hard refresh 유사 상황에서도 `loading`/`verifying`가 무한 지속되지 않고 terminal auth state로 수렴하게 한다.
   - `expired`는 `로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.`로, `used`는 `이미 사용한 로그인 링크예요. 새 로그인 링크를 받아주세요.`로, `invalidated`는 `최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.`로 표시한다.
 - auth verify route migration
@@ -35,6 +36,11 @@
 - auth UX writing 변경
   - cooldown 남은 시간은 `MM분 SS초 후에 다시 시도해주세요.` 형식을 사용한다.
   - 분이 0이면 `SS초 후에 다시 시도해주세요.`만 표시한다.
+- deployed place-entry API hardening
+  - Vercel `/api/place-entry` 경계에서 unexpected error가 HTML server error 대신 JSON 500 payload로 반환되도록 정리한다.
+  - `api/**` 상대 import는 explicit `.js` specifier 규칙을 지키도록 regression guard를 추가한다.
+- request-link delivery observability 보강
+  - request-link 단계별 timing과 Resend accepted/delivery_failed metadata를 운영 로그에 남겨 mailbox arrival delay를 구분 가능하게 만든다.
 - 지도 runtime fallback UX 정리
   - Kakao SDK loading 상태에서는 약한 placeholder 배경 위에 spinner와 `지도를 불러오는 중이에요.` 문구를 표시한다.
   - Kakao SDK load failure 또는 runtime unavailable 상태에서는 현재 맥락 안에서 `지도를 불러오지 못했어요.` 제목, `네트워크 상태를 확인한 뒤 다시 시도해주세요.` 설명, `다시 시도` 버튼을 표시한다.

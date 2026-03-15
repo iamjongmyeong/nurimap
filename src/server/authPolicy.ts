@@ -118,6 +118,26 @@ export const evaluateVerificationState = ({
     status: 'valid' as const,
     tokenHash: state.active_token_hash,
     verificationType: state.active_verification_type,
+  }
+}
+
+export const consumeVerificationState = ({
+  nonce,
+  state,
+}: {
+  nonce: string
+  state: LoginLinkState
+}) => {
+  if (state.last_consumed_nonce === nonce) {
+    return { status: 'used' as const }
+  }
+
+  if (!state.active_nonce || state.active_nonce !== nonce) {
+    return { status: 'invalidated' as const }
+  }
+
+  return {
+    status: 'consumed' as const,
     nextState: {
       ...state,
       last_consumed_nonce: nonce,

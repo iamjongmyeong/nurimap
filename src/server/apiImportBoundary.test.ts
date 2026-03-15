@@ -66,4 +66,19 @@ describe('api import boundary', () => {
       }
     }
   })
+
+  it('uses explicit .js extensions for all relative imports', () => {
+    for (const file of apiFiles) {
+      const source = readFileSync(file, 'utf8')
+      const imports = extractImportSpecifiers(source)
+
+      for (const specifier of imports) {
+        if (!specifier.startsWith('.')) {
+          continue
+        }
+
+        expect(specifier, `${path.relative(apiRoot, file)} should use explicit .js extensions`).toMatch(/\.js$/)
+      }
+    }
+  })
 })

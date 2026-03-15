@@ -24,9 +24,23 @@ vi.mock('./supabaseAdmin.js', () => ({
   }),
 }))
 
-import { requestLoginLink } from './authService'
+import { consumeLoginLink, requestLoginLink, verifyLoginLink } from './authService'
 
 const originalEnv = { ...process.env }
+
+const createFetchResponse = ({
+  ok = true,
+  status = 200,
+  body = { id: 'resend-message-123' },
+}: {
+  ok?: boolean
+  status?: number
+  body?: unknown
+} = {}) => ({
+  ok,
+  status,
+  text: vi.fn().mockResolvedValue(typeof body === 'string' ? body : JSON.stringify(body)),
+})
 
 describe('allowlisted bypass auth request flow', () => {
   beforeEach(() => {
@@ -40,7 +54,7 @@ describe('allowlisted bypass auth request flow', () => {
     fetchMock.mockReset()
     listUsersMock.mockResolvedValue({ data: { users: [] }, error: null })
     updateUserByIdMock.mockResolvedValue({ error: null })
-    fetchMock.mockResolvedValue({ ok: true })
+    fetchMock.mockResolvedValue(createFetchResponse())
   })
 
   afterEach(() => {
@@ -179,6 +193,111 @@ describe('allowlisted bypass auth request flow', () => {
     expect(payload.text).toContain(loginUrl)
   })
 
+  it('logs resend acceptance timings with the provider message id', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.vercel.app'
+    process.env.RESEND_API_KEY = 'resend-test-key'
+    process.env.RESEND_FROM_EMAIL = 'login@nurimap.app'
+
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000000')
+    generateLinkMock.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          user_metadata: {},
+        },
+        properties: {
+          hashed_token: 'magic-hash',
+          verification_type: 'magiclink',
+        },
+      },
+      error: null,
+    })
+    fetchMock.mockResolvedValue(
+      createFetchResponse({
+        ok: true,
+        status: 202,
+        body: { id: 'resend-message-789' },
+      }),
+    )
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+
+    const result = await requestLoginLink('tester@nurimedia.co.kr')
+
+    expect(result).toEqual({
+      status: 'success',
+      mode: 'link',
+      message: '로그인 링크를 보냈어요.',
+    })
+    expect(infoSpy).toHaveBeenCalledWith(
+      '[ops] auth.request_link.accepted',
+      expect.objectContaining({
+        email: expect.stringContaining('@nurimedia.co.kr'),
+        provider: 'resend',
+        provider_message_id: 'resend-message-789',
+        provider_status_code: 202,
+        find_user_ms: expect.any(Number),
+        generate_link_ms: expect.any(Number),
+        persist_state_ms: expect.any(Number),
+        send_email_ms: expect.any(Number),
+        total_ms: expect.any(Number),
+      }),
+    )
+  })
+
+  it('logs resend rejection details when delivery fails after link generation', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.vercel.app'
+    process.env.RESEND_API_KEY = 'resend-test-key'
+    process.env.RESEND_FROM_EMAIL = 'login@nurimap.app'
+
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000000')
+    generateLinkMock.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          user_metadata: {},
+        },
+        properties: {
+          hashed_token: 'magic-hash',
+          verification_type: 'magiclink',
+        },
+      },
+      error: null,
+    })
+    fetchMock.mockResolvedValue(
+      createFetchResponse({
+        ok: false,
+        status: 429,
+        body: {
+          name: 'rate_limit_exceeded',
+          message: 'Daily provider limit reached',
+        },
+      }),
+    )
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const result = await requestLoginLink('tester@nurimedia.co.kr')
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 'delivery_failed',
+      message: '로그인 링크를 보내지 못했어요. 다시 시도해 주세요.',
+    })
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[ops] auth.request_link.delivery_failed',
+      expect.objectContaining({
+        email: expect.stringContaining('@nurimedia.co.kr'),
+        failure_stage: 'send_email',
+        provider: 'resend',
+        provider_status_code: 429,
+        provider_error_code: 'rate_limit_exceeded',
+        provider_error_message: 'Daily provider limit reached',
+        total_ms: expect.any(Number),
+      }),
+    )
+  })
+
   it('fails instead of sending an undefined login URL when PUBLIC_APP_URL is missing', async () => {
     process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
     process.env.PUBLIC_APP_URL = ''
@@ -276,5 +395,133 @@ describe('allowlisted bypass auth request flow', () => {
     })
     expect(generateLinkMock).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('does not consume a fresh login nonce before session adoption succeeds', async () => {
+    const loginState = {
+      day_key: '',
+      day_count: 0,
+      last_requested_at: '2026-03-15T07:30:00.000Z',
+      active_nonce: 'nonce-1',
+      active_token_hash: 'token-hash-1',
+      active_verification_type: 'magiclink',
+      active_expires_at: '2099-03-15T07:35:00.000Z',
+      last_consumed_nonce: null,
+    }
+
+    listUsersMock.mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: 'user-1',
+            email: 'tester@nurimedia.co.kr',
+            app_metadata: {
+              nurimap_auth: loginState,
+            },
+            user_metadata: {},
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const firstResult = await verifyLoginLink({
+      email: 'tester@nurimedia.co.kr',
+      nonce: 'nonce-1',
+    })
+    const secondResult = await verifyLoginLink({
+      email: 'tester@nurimedia.co.kr',
+      nonce: 'nonce-1',
+    })
+
+    expect(firstResult).toEqual({
+      status: 'success',
+      tokenHash: 'token-hash-1',
+      verificationType: 'magiclink',
+    })
+    expect(secondResult).toEqual(firstResult)
+    expect(updateUserByIdMock).not.toHaveBeenCalled()
+  })
+
+  it('marks a login nonce as used only after consumption is finalized', async () => {
+    const activeLoginState = {
+      day_key: '',
+      day_count: 0,
+      last_requested_at: '2026-03-15T07:30:00.000Z',
+      active_nonce: 'nonce-1',
+      active_token_hash: 'token-hash-1',
+      active_verification_type: 'magiclink',
+      active_expires_at: '2099-03-15T07:35:00.000Z',
+      last_consumed_nonce: null,
+    }
+
+    listUsersMock
+      .mockResolvedValueOnce({
+        data: {
+          users: [
+            {
+              id: 'user-1',
+              email: 'tester@nurimedia.co.kr',
+              app_metadata: {
+                nurimap_auth: activeLoginState,
+              },
+              user_metadata: {},
+            },
+          ],
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          users: [
+            {
+              id: 'user-1',
+              email: 'tester@nurimedia.co.kr',
+              app_metadata: {
+                nurimap_auth: {
+                  ...activeLoginState,
+                  active_nonce: null,
+                  active_token_hash: null,
+                  active_verification_type: null,
+                  active_expires_at: null,
+                  last_consumed_nonce: 'nonce-1',
+                },
+              },
+              user_metadata: {},
+            },
+          ],
+        },
+        error: null,
+      })
+
+    const consumeResult = await consumeLoginLink({
+      email: 'tester@nurimedia.co.kr',
+      nonce: 'nonce-1',
+    })
+    const verifyResult = await verifyLoginLink({
+      email: 'tester@nurimedia.co.kr',
+      nonce: 'nonce-1',
+    })
+
+    expect(consumeResult).toEqual({
+      status: 'success',
+    })
+    expect(updateUserByIdMock).toHaveBeenCalledWith('user-1', {
+      app_metadata: {
+        nurimap_auth: {
+          ...activeLoginState,
+          active_nonce: null,
+          active_token_hash: null,
+          active_verification_type: null,
+          active_expires_at: null,
+          last_consumed_nonce: 'nonce-1',
+        },
+      },
+      user_metadata: {},
+    })
+    expect(verifyResult).toEqual({
+      status: 'error',
+      reason: 'used',
+    })
   })
 })

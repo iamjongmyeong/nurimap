@@ -10,6 +10,7 @@
 - desktop에서는 sidebar detail, mobile에서는 full-screen detail contract를 유지했다.
 - `place_add_open`과 `mobile_place_list_open`은 계속 internal UI state로 유지했고, 장소 등록 성공 후에는 canonical detail path로 이동하도록 정리했다.
 - auth flow에 `request-link`, `verify-link` timeout 보호를 추가해 `loading` / `verifying` 무한 지속 가능성을 줄였다.
+- auth nonce 소비 시점을 `verify-link` 즉시 소모가 아니라 session adoption 성공 뒤 `consume-link` 단계로 분리해, fresh link가 미리 `used`로 처리되는 문제를 줄였다.
 - `/auth/verify` canonical entry와 legacy `/?auth_mode=verify...` query를 병행 지원하도록 구현했다.
 - auth verify failure reason을 아래 한국어 문구로 고정했다.
   - `expired` → `로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.`
@@ -21,6 +22,9 @@
   - loading: 약한 placeholder 배경 + spinner + `지도를 불러오는 중이에요.`
   - failure/unavailable: `지도를 불러오지 못했어요.`, `네트워크 상태를 확인한 뒤 다시 시도해주세요.`, `다시 시도`
 - test/JSDOM용 deterministic fallback renderer는 유지하되, runtime user-facing fallback과 역할을 분리했다.
+- deployed `/api/place-entry`가 unexpected error 시 HTML server error 대신 JSON 500을 반환하도록 hardening했고, `api/**` 상대 import의 explicit `.js` specifier regression guard를 추가했다.
+- auth nonce 소비 시점은 `verify-link` 즉시 소모가 아니라 `consume-link` finalize 단계로 분리해, fresh link가 다른 세션에서 곧바로 `used`가 되는 문제를 줄였다.
+- request-link 단계별 timing, Resend acceptance metadata, delivery failure details를 운영 로그에 남기도록 관측성을 보강했다.
 - Sprint 17 source-of-truth 문서와 decision log를 갱신했다.
 - Browser Automation QA를 수행하고 `artifacts/qa/sprint-17/`에 증빙을 남겼다.
 
