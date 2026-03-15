@@ -13,10 +13,11 @@
 - auth nonce 소비 시점을 `verify-link` 즉시 소모가 아니라 session adoption 성공 뒤 `consume-link` 단계로 분리해, fresh link가 미리 `used`로 처리되는 문제를 줄였다.
 - `/auth/verify` canonical entry와 legacy `/?auth_mode=verify...` query를 병행 지원하도록 구현했다.
 - auth verify failure reason을 아래 한국어 문구로 고정했다.
-  - `expired` → `로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.`
-  - `used` → `이미 사용한 로그인 링크예요. 새 로그인 링크를 받아주세요.`
-  - `invalidated` → `최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.`
-- generic auth failure 문구를 `인증에 실패했어요. 새 로그인 링크를 다시 받아주세요.`로 통일했다.
+  - `expired` → `로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.`
+  - `used` → `이미 사용한 링크예요.\n새 로그인 링크를 받아주세요.`
+  - `invalidated` → `로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.`
+- auth failure screen은 브랜드 영역 + `인증에 실패했어요 🥲` 제목 + 2줄 본문 + 세로 CTA(`새 링크 받기`, `이메일 다시 입력`) 기준으로 다시 정렬했다.
+- generic auth failure 문구를 `인증에 실패했어요. 로그인 링크를 다시 받아주세요.`로 통일했다.
 - 로그인 링크 재전송 정책을 `burst 5회 허용 -> 6번째부터 5분 cooldown`으로 변경했고, cooldown 문구를 `MM분 SS초 후에 다시 시도해주세요.` / `SS초 후에 다시 시도해주세요.` 형식으로 정리했다.
 - runtime map loading/failure UX를 아래 기준으로 정리했다.
   - loading: 약한 placeholder 배경 + spinner + `지도를 불러오는 중이에요.`

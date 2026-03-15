@@ -112,8 +112,8 @@ This document is the source of truth for domain rules.
 - 발급 후 5분 동안만 유효하다.
 - 새 login_link를 발급하면 같은 이메일의 이전 미사용 login_link는 무효화한다.
 - 한 번 사용한 login_link는 다시 사용할 수 없다.
-- 동일 이메일은 5분 cooldown 안에 다시 요청할 수 없다.
-- 동일 이메일은 하루 최대 5회까지만 login_link를 요청할 수 있다.
+- 동일 이메일은 active cooldown cycle 안에서 최대 5회까지 대기 시간 없이 login_link를 다시 요청할 수 있다.
+- 동일 이메일의 6번째 요청부터는 5분 cooldown을 적용하고, cooldown이 끝나면 resend burst count를 reset한다.
 - 만료, 사용 완료, 무효화된 login_link는 session을 생성할 수 없다.
 
 ### Session

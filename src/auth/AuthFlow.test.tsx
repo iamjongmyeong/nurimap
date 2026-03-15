@@ -593,7 +593,7 @@ describe('Sprint 12 auth flow', () => {
       </AuthProvider>,
     )
 
-    expect(await screen.findByText('최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.')).toBeInTheDocument()
+    expect(await screen.findByTestId('auth-failure-body')).toHaveTextContent('로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.')
     expect(screen.queryByRole('button', { name: '로그인 링크 전송' })).not.toBeInTheDocument()
   })
 
@@ -799,7 +799,7 @@ describe('Sprint 12 auth flow', () => {
       expect(window.location.search).toBe('')
     })
 
-    expect(await screen.findByText('최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.')).toBeInTheDocument()
+    expect(await screen.findByTestId('auth-failure-body')).toHaveTextContent('로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.')
   })
 
   it('restores an existing session instead of re-verifying a stale refresh query', async () => {
@@ -973,11 +973,25 @@ describe('Sprint 12 auth flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.getByText('로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '새 로그인 링크 받기' })).toBeInTheDocument()
+    expect(screen.getByTestId('auth-failure-screen')).toBeInTheDocument()
+    expect(screen.getByText('누리맵')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-failure-title')).toHaveTextContent('인증에 실패했어요 🥲')
+    expect(screen.getByTestId('auth-failure-body')).toHaveTextContent(/로그인 링크가 만료됐어요\.\s*새 로그인 링크를 받아주세요\./)
+    expect(screen.getByTestId('auth-failure-body')).toHaveClass('whitespace-pre-line', 'text-[14px]')
+    expect(screen.getByRole('button', { name: '새 링크 받기' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '이메일 다시 입력' })).toHaveClass('text-[14px]')
     await user.click(screen.getByRole('button', { name: '이메일 다시 입력' }))
 
     expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
+  })
+
+  it('shows the redesigned used-link copy on the auth failure screen', () => {
+    setTestAuthState({ phase: 'auth_failure', user: null, message: null, failureReason: 'used' })
+    render(<App />)
+
+    expect(screen.getByTestId('auth-failure-title')).toHaveTextContent('인증에 실패했어요 🥲')
+    expect(screen.getByTestId('auth-failure-body')).toHaveTextContent(/이미 사용한 링크예요\.\s*새 로그인 링크를 받아주세요\./)
+    expect(screen.getByRole('button', { name: '새 링크 받기' })).toBeInTheDocument()
   })
 
   it('shows the name capture screen for users without a name and requires at least one character', async () => {

@@ -16,9 +16,9 @@ const SESSION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
 const LOCAL_AUTO_LOGIN_REQUIRES_BYPASS_MESSAGE = '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.'
 const VERIFY_PATH_SUFFIX = '/auth/verify'
 const VERIFY_FAILURE_MESSAGES = {
-  expired: '로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.',
-  invalidated: '최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.',
-  used: '이미 사용한 로그인 링크예요. 새 로그인 링크를 받아주세요.',
+  expired: '로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.',
+  invalidated: '로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.',
+  used: '이미 사용한 링크예요.\n새 로그인 링크를 받아주세요.',
 } as const
 
 const buildBasePathFromVerifyPath = (pathname: string) => {
@@ -293,16 +293,41 @@ const AuthFailureScreen = ({
   reason: string | null
 }) => (
   <AuthSurface>
-    <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-primary/80">NURIMAP LOGIN</p>
-    <h1 className="mt-8 text-center text-2xl font-bold text-base-content">인증에 실패했어요. 새 로그인 링크를 받아주세요.</h1>
-    <p className="mt-3 text-center text-sm text-base-content/70">{reason ?? GENERIC_AUTH_FAILURE_MESSAGE}</p>
-    <div className="mt-6 flex gap-3">
-      <button className="btn btn-primary flex-1 rounded-2xl" onClick={onRetry} type="button">
-        새 로그인 링크 받기
-      </button>
-      <button className="btn btn-ghost flex-1 rounded-2xl" onClick={onReset} type="button">
-        이메일 다시 입력
-      </button>
+    <div className="mx-auto flex w-full max-w-[248px] flex-col items-center gap-6" data-testid="auth-failure-screen">
+      <AuthBrand />
+      <div className="flex w-full flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-3">
+          <h1
+            className="text-center text-xl font-semibold leading-8 text-zinc-900"
+            data-testid="auth-failure-title"
+          >
+            인증에 실패했어요 🥲
+          </h1>
+          <p
+            className="w-full text-center text-[14px] leading-5 whitespace-pre-line text-zinc-900"
+            data-testid="auth-failure-body"
+          >
+            {reason ?? GENERIC_AUTH_FAILURE_MESSAGE}
+          </p>
+        </div>
+        <div className="flex w-full flex-col items-center gap-4">
+          <button
+            className="inline-flex h-10 w-40 cursor-pointer items-center justify-center rounded-xl bg-indigo-500 text-base font-semibold leading-6 text-white"
+            onClick={onRetry}
+            type="button"
+          >
+            새 링크 받기
+          </button>
+          <button
+            className="cursor-pointer text-center text-[14px] font-normal leading-5 text-neutral-500"
+            onClick={onReset}
+            style={{ fontSize: '14px' }}
+            type="button"
+          >
+            이메일 다시 입력
+          </button>
+        </div>
+      </div>
     </div>
   </AuthSurface>
 )
@@ -331,7 +356,7 @@ const NameCaptureScreen = ({
           <span className="sr-only">이름</span>
           <input
             aria-label="이름"
-            className={`input h-12 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${errorMessage ? 'border-error focus:border-error' : ''}`}
+            className={`input h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${errorMessage ? 'border-error focus:border-error' : ''}`}
             onChange={(event) => setName(clampedName(event.target.value))}
             placeholder="김누리"
             value={name}

@@ -643,3 +643,22 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/05-sprints/sprint-17/qa.md
   - docs/06-history/decisions.md
 - Related commit: TBD
+
+## 2026-03-15 Sprint 17 - Reapply the redesigned auth failure screen as the live UI contract
+- Context: auth failure 화면은 `d2b4ef0`에서 brand-first, 세로 CTA, compact body 중심의 리디자인이 한 번 적용됐다가 `741c534`에서 revert되었다. 이후 사용자 피드백과 reference screenshot 기준으로, 되돌려진 리디자인이 실제 원하는 auth failure 화면이라는 점이 다시 확인됐다.
+- Options considered:
+  - Option A: 현재 main의 구형 failure screen(`NURIMAP LOGIN` + 가로 CTA 2개)을 유지하고 copy만 조정한다.
+  - Option B: `d2b4ef0`의 auth failure 리디자인을 기준으로 화면 구조와 CTA를 되살리되, 이후 확정된 40px controls / AuthSurface padding 제거 / cooldown countdown 변경은 유지한다.
+- Decision: Option B를 선택한다.
+- Rationale: 사용자가 제공한 reference screenshot은 revert 이전 리디자인과 거의 같은 구조를 요구한다. 동시에 이후 반영된 auth shell sizing/padding/cooldown 개선은 별도 가치가 있으므로, 과거 commit 전체를 복원하는 대신 failure screen slice만 선택 재적용하는 편이 현재 요구와 최신 코드 상태를 함께 만족한다.
+- Impact: auth failure screen의 title/본문/CTA 구조는 brand-first stacked layout으로 바뀌고, source-of-truth 문서와 sprint-17 문서도 같은 계약으로 갱신한다. `invalidated`는 별도 stale 안내 대신 reference screenshot과 동일한 만료형 문구를 사용한다.
+- Revisit trigger: verify failure reason을 `invalidated`와 `expired`로 다시 명확히 구분해야 한다는 사용자 피드백이나 운영 혼란이 생기면, copy는 별도 재검토한다.
+- Related docs:
+  - docs/03-specs/05-auth-email-login-link.md
+  - docs/04-design/auth-and-name-entry.md
+  - docs/01-product/user-flows/auth-and-name-entry.md
+  - docs/05-sprints/sprint-17/planning.md
+  - docs/05-sprints/sprint-17/review.md
+  - docs/05-sprints/sprint-17/qa.md
+  - docs/06-history/decisions.md
+- Related commit: TBD

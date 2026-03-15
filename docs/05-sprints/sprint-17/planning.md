@@ -23,7 +23,8 @@
   - `request-link`, `verify-link` 네트워크 요청에 실제 timeout을 적용한다.
   - login link는 `verify-link` 단계에서 즉시 consumed 처리하지 않고, 실제 session adoption 성공 후 `consume-link` 단계에서 consumed 처리한다.
   - refresh, logout 후 재로그인, stale verify entry, hard refresh 유사 상황에서도 `loading`/`verifying`가 무한 지속되지 않고 terminal auth state로 수렴하게 한다.
-  - `expired`는 `로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.`로, `used`는 `이미 사용한 로그인 링크예요. 새 로그인 링크를 받아주세요.`로, `invalidated`는 `최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.`로 표시한다.
+  - auth failure screen은 브랜드 영역 + `인증에 실패했어요 🥲` 제목 + 2줄 centered body + 세로 CTA(`새 링크 받기`, `이메일 다시 입력`)를 사용한다.
+  - `expired`는 `로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.`로, `used`는 `이미 사용한 링크예요.\n새 로그인 링크를 받아주세요.`로, `invalidated`는 `로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.`로 표시한다.
 - auth verify route migration
   - 신규 canonical auth entry는 `/auth/verify?email=...&nonce=...`를 사용한다.
   - migration 동안 legacy `/?auth_mode=verify&email=...&nonce=...` query도 계속 지원한다.
@@ -127,7 +128,8 @@
 - place 등록 성공 후에는 결과 place의 `/places/:placeId` route로 이동한다.
 - auth refresh / hard refresh / logout 후 재로그인 경로에서 `loading` 또는 `verifying` 무한 지속이 재현되지 않는다.
 - `/auth/verify`와 legacy root verify query가 migration 동안 모두 동작한다.
-- auth verify failure는 각각 `로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.`, `이미 사용한 로그인 링크예요. 새 로그인 링크를 받아주세요.`, `최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.`로 표시되고 raw code가 화면에 드러나지 않는다.
+- auth failure screen은 reference-aligned redesign layout(`인증에 실패했어요 🥲`, 2줄 body, 세로 CTA)을 사용한다.
+- auth verify failure는 각각 `로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.`, `이미 사용한 링크예요.\n새 로그인 링크를 받아주세요.`, `로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.`로 표시되고 raw code가 화면에 드러나지 않는다.
 - 동일 이메일 재전송은 burst 5회까지 즉시 허용되고, 6번째부터 cooldown이 적용되며, 남은 시간 카피가 요청한 형식으로 표시된다.
 - 지도 loading 상태에서는 약한 placeholder 배경 위에 spinner와 `지도를 불러오는 중이에요.` 문구가 보이고, 가짜 마커/가짜 지도 화면은 보이지 않는다. 지도 failure/unavailable 상태에서는 `지도를 불러오지 못했어요.`, `네트워크 상태를 확인한 뒤 다시 시도해주세요.`, `다시 시도`가 보이며, 현재 navy fake-map 화면이 user-facing loading/failure UI로 남지 않는다.
 - selected specs, user flows, design docs, Sprint 문서, 테스트가 실제 구현 기준과 일치한다.
@@ -154,7 +156,7 @@
 ## AI Agent Interactive QA
 - 대상 시나리오:
   - route/store sync 후 desktop sidebar detail / mobile full-screen detail contract 유지 여부 확인
-  - auth failure screen에서 raw code 노출 없이 한국어 failure copy만 보이고, generic failure는 `인증에 실패했어요. 새 로그인 링크를 다시 받아주세요.`로 보이는지 확인
+  - auth failure screen에서 raw code 노출 없이 리디자인된 한국어 failure copy만 보이고, generic failure는 `인증에 실패했어요. 로그인 링크를 다시 받아주세요.`로 보이는지 확인
   - hard refresh / refresh / logout -> relogin 경로에서 auth terminal-state convergence 확인
   - map loading placeholder와 failure UI가 기존 browse/detail 맥락을 깨지 않는지 확인
 - 실행 주체:

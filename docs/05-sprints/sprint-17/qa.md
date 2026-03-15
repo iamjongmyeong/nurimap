@@ -24,8 +24,8 @@
   - `pnpm lint`
   - `pnpm build`
 - 결과:
-  - PASS — initial Sprint 17 regression set: `8 files passed`, `98 tests passed`
-  - PASS — post-release auth/place-entry focused set: `8 files passed`, `66 tests passed`
+- PASS — initial Sprint 17 regression set: `8 files passed`, `110 tests passed`
+- PASS — post-release auth/place-entry focused set: `8 files passed`, `59 tests passed`
   - PASS — lint 통과
   - PASS — production build 통과
 - 핵심 확인 항목:
@@ -51,7 +51,7 @@
 - 결과:
   - PASS — 구현된 behavior는 Sprint 17 planning과 갱신된 spec/user-flow/design 문서의 핵심 acceptance를 충족한다.
   - PASS — native history 기반 최소 routing은 `/places/:placeId`, `/auth/verify`, direct entry, refresh, browser back behavior를 만족해 현재 source-of-truth 행동 계약과 충돌하지 않는다.
-  - PASS — auth failure raw code 미노출, generic failure copy, map loading/failure exact copy가 코드와 문서에 함께 반영되었다.
+- PASS — auth failure raw code 미노출, 리디자인된 failure layout/CTA/copy, generic failure copy, map loading/failure exact copy가 코드와 문서에 함께 반영되었다.
 
 ## Browser Automation QA Evidence
 - 실행 목적:
@@ -112,7 +112,7 @@
   - AI Agent Interactive QA PASS
   - Browser Automation PASS
 - Evidence:
-  - `/auth/verify` canonical parsing, legacy root query support, timeout convergence, localized failure copy, verify/consume 분리 관련 테스트 통과
+- `/auth/verify` canonical parsing, legacy root query support, timeout convergence, 리디자인된 localized failure layout/copy, verify/consume 분리 관련 테스트 통과
   - preview build 기준 canonical/legacy auth verify failure screenshots 확보
 - Verdict:
   - PASS
