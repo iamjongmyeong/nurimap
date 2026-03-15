@@ -169,7 +169,7 @@ const AuthSurface = ({ children }: { children: ReactNode }) => (
 )
 
 const AuthBrand = () => (
-  <div className="inline-flex items-center gap-3">
+  <div className="mx-auto inline-flex items-center justify-center gap-3">
     <img
       alt="누리맵 로고"
       className="h-9 w-9 object-contain"
