@@ -64,6 +64,8 @@
   - 둘 다 사용할 수 없거나 실행에 실패하면 사용자에게 즉시 알리고 QA blocker로 보고한다.
 - QA 결과의 canonical 기록 위치는 현재 Sprint의 `qa.md`다.
 - `docs/`를 수정할 때는 현재 디렉터리 구조와 기존 참조 경로를 먼저 확인하고, `docs/00-governance/docs-structure.md`의 placement/naming과 이 문서의 절차를 따른다.
+- `docs/06-history/` 아래 문서에 새 내용을 추가하거나 기존 entry의 의미를 바꾸는 수정이 필요하면, 먼저 사용자에게 추가 목적과 대상 문서를 짧게 설명하고 확인을 받는다.
+- 단, 오탈자 수정, 깨진 링크 수정, 관련 commit hash 보강처럼 의미를 바꾸지 않는 기계적 갱신은 사용자 확인 없이 진행할 수 있다.
 - 비자명한 autonomous decision은 `docs/06-history/decisions.md`에 context, options considered, decision, rationale, impact, revisit trigger, related docs, related commit 형식으로 남긴다.
 
 ## Sprint Execution Loop
