@@ -16,5 +16,7 @@ coverage/
 .omx/metrics.json
 .omx/notepad.md
 .omx/project-memory.json
+.omx/context/
+.omx/plans/
 .omx/state/
 .omx/tmux-hook.json
