@@ -63,7 +63,8 @@ describe('Sprint 15 place detail refresh', () => {
     await user.click(screen.getByRole('button', { name: '목록으로 돌아가기' }))
 
     expect(screen.queryByTestId('desktop-detail-panel')).not.toBeInTheDocument()
-    expect(screen.getByText('오늘 둘러볼 장소')).toBeInTheDocument()
+    expect(screen.getByTestId('desktop-browse-topbar')).toBeInTheDocument()
+    expect(screen.getByTestId('desktop-browse-footer')).toBeInTheDocument()
   })
 
   it('keeps the map visible while desktop detail is shown in the sidebar', async () => {
