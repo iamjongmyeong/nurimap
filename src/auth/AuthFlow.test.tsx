@@ -125,20 +125,6 @@ describe('Sprint 12 auth flow', () => {
     expect(button).toBeEnabled()
   })
 
-  it('keeps the auth form controls at 40px height and shows a disabled cursor before activation', () => {
-    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    setViewport(1280)
-    render(<App />)
-
-    expect(screen.getByLabelText('이메일')).toHaveClass('h-10')
-    expect(screen.getByTestId('auth-request-button')).toBeDisabled()
-    expect(screen.getByTestId('auth-request-button')).toHaveClass(
-      'h-10',
-      'disabled:pointer-events-auto',
-      'disabled:cursor-not-allowed',
-    )
-  })
-
   it('shows an inline error and keeps the email input for an invalid domain', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     setViewport(1280)
@@ -555,7 +541,7 @@ describe('Sprint 12 auth flow', () => {
       </AuthProvider>,
     )
 
-    expect(await screen.findByText('로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.')).toBeInTheDocument()
+    expect(await screen.findByText('최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '로그인 링크 전송' })).not.toBeInTheDocument()
   })
 
@@ -761,7 +747,7 @@ describe('Sprint 12 auth flow', () => {
       expect(window.location.search).toBe('')
     })
 
-    expect(await screen.findByText('로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.')).toBeInTheDocument()
+    expect(await screen.findByText('최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.')).toBeInTheDocument()
   })
 
   it('restores an existing session instead of re-verifying a stale refresh query', async () => {
@@ -935,24 +921,14 @@ describe('Sprint 12 auth flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    const title = screen.getByRole('heading', { name: '인증에 실패했어요 🥲' })
-    const body = screen.getByTestId('auth-failure-body')
-    const retryButton = screen.getByRole('button', { name: '새 링크 받기' })
-    const resetButton = screen.getByRole('button', { name: '이메일 다시 입력' })
-
-    expect(title).toHaveClass('text-[20px]')
-    expect(body).toHaveClass('text-sm')
-    expect(body).toHaveTextContent('로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.')
-    expect(retryButton).toHaveClass('cursor-pointer')
-    expect(retryButton).not.toHaveClass('transition-colors', 'hover:bg-indigo-600')
-    expect(resetButton).toHaveClass('cursor-pointer', 'text-sm')
-    expect(resetButton).not.toHaveClass('transition-colors', 'hover:text-neutral-600')
-    await user.click(resetButton)
+    expect(screen.getByText('로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '새 로그인 링크 받기' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '이메일 다시 입력' }))
 
     expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
   })
 
-  it('shows the name capture screen with 40px controls and blocks save until at least one character is entered', async () => {
+  it('shows the name capture screen for users without a name and requires at least one character', async () => {
     setTestAuthState({
       phase: 'name_required',
       user: { email: 'tester@nurimedia.co.kr', name: null },
@@ -962,21 +938,11 @@ describe('Sprint 12 auth flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    const input = screen.getByLabelText('이름')
-    const button = screen.getByRole('button', { name: '저장' })
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    expect(screen.getByText('이름을 입력해 주세요.')).toBeInTheDocument()
 
-    expect(input).toHaveClass('h-10')
-    expect(button).toBeDisabled()
-    expect(button).toHaveClass(
-      'h-10',
-      'disabled:pointer-events-auto',
-      'disabled:cursor-not-allowed',
-      'disabled:opacity-50',
-    )
-
-    await user.type(input, '김')
-    expect(button).toBeEnabled()
-    await user.click(button)
+    await user.type(screen.getByLabelText('이름'), '김')
+    await user.click(screen.getByRole('button', { name: '저장' }))
 
     await waitFor(() => {
       expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()

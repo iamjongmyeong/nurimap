@@ -35,7 +35,7 @@ type SegmentedOption<T extends string> = {
 
 const GENERIC_SUBMIT_ERROR_MESSAGE = '등록하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const GEOCODE_ERROR_MESSAGE = '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.'
-const DIRTY_EXIT_CONFIRM_MESSAGE = '입력을 그만하시겠어요?\n입력한 내용은 저장되지 않아요.'
+const DIRTY_EXIT_CONFIRM_MESSAGE = '작성 중인 내용이 사라져요. 나갈까요?'
 const REVIEW_LIMIT = 500
 const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-base-100 px-3 text-base text-base-content placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
 const INPUT_CLASSES = `input h-10 ${BASE_TEXT_FIELD_CLASSES}`

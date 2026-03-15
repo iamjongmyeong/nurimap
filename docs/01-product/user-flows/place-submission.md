@@ -43,7 +43,7 @@
 - 중복 장소 관련 확인은 browser confirm 한 번으로 처리한다.
 - 현재 사용자가 이미 같은 장소에 review를 작성한 경우 confirm 이후 입력한 평가/후기로 내 리뷰를 덮어쓸 수 있다. 후기가 비어 있으면 기존 후기는 유지하고 평가만 변경한다.
 - 중복 장소 confirm을 취소하면 등록 화면에 그대로 머문다.
-- dirty state에서 뒤로가기/닫기를 누르면 browser alert이 아니라 browser confirm으로 `입력을 그만하시겠어요?\n입력한 내용은 저장되지 않아요.`를 보여준다.
+- dirty state에서 뒤로가기/닫기를 누르면 browser alert이 아니라 browser confirm으로 `작성 중인 내용이 사라져요.\n\n나갈까요?`를 보여준다.
 - 장소 등록 성공 시 별도 완료 화면은 두지 않는다.
 
 ## Failure Expectations
