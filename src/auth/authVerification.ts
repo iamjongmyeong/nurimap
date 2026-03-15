@@ -1,5 +1,5 @@
 export const AUTH_BOOTSTRAP_TIMEOUT_MS = 5000
-export const GENERIC_AUTH_FAILURE_MESSAGE = '인증에 실패했어요. 새 로그인 링크를 다시 받아주세요.'
+export const GENERIC_AUTH_FAILURE_MESSAGE = '인증에 실패했어요. 로그인 링크를 다시 받아주세요.'
 
 export type AuthVerificationType = 'magiclink' | 'signup' | 'invite'
 

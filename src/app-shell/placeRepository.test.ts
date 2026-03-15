@@ -124,7 +124,7 @@ describe('Plan 06 place repository', () => {
 
     expect(result.reason).toBe('merge_place')
     expect(result.place.id).toBe('place-cafe-1')
-    expect(result.confirmMessage).toBe('이미 등록된 장소예요. 새로 만들지 않고 지금 입력한 평가와 후기, 장소 정보를 이 장소에 반영할까요?')
+    expect(result.confirmMessage).toBe('이미 등록된 장소예요. 지금 입력한 정보를 이 장소에 반영할까요?')
   })
 
   it('requires an overwrite confirm when my review already exists on the duplicate place', () => {
@@ -146,7 +146,7 @@ describe('Plan 06 place repository', () => {
 
     expect(result.reason).toBe('overwrite_review')
     expect(result.place.id).toBe('place-restaurant-1')
-    expect(result.confirmMessage).toBe('이미 내가 리뷰를 남긴 장소예요. 지금 입력한 평가와 후기, 장소 정보를 반영할까요? 후기를 비워 두면 기존 후기는 그대로 두고 평가만 바꿔요.')
+    expect(result.confirmMessage).toBe('이미 내가 리뷰를 남긴 장소예요. 지금 입력한 정보를 반영할까요?')
   })
 
   it('applies a confirmed duplicate merge and keeps review uniqueness when my review is absent', () => {

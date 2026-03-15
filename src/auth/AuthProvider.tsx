@@ -92,8 +92,9 @@ const clearSessionStarted = () => {
   window.localStorage.removeItem(SESSION_STARTED_AT_KEY)
 }
 
-const authLoginWordmarkStyle = {
-  fontFamily: 'Rota, Pretendard, system-ui, sans-serif',
+const AUTH_BRAND_ICON_SRC = '/assets/branding/brand-nurimap-logo.jpeg'
+const authBrandTextStyle = {
+  fontFamily: '"BM Jua", Pretendard, system-ui, sans-serif',
 } as const
 
 const getDevAuthOverride = () => {
@@ -160,12 +161,31 @@ const getLocalAutoLoginEmail = () => {
 }
 
 const AuthSurface = ({ children }: { children: ReactNode }) => (
-  <main className="min-h-screen bg-base-200 px-4 py-10">
-    <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl items-center justify-center">
+  <main className="min-h-screen bg-white px-4 py-10">
+    <div className="mx-auto flex min-h-screen max-w-5xl items-center justify-center">
       <div className="w-full max-w-md px-8 py-8 sm:px-10 sm:py-10">{children}</div>
     </div>
   </main>
 )
+
+const AuthBrand = () => (
+  <div className="inline-flex items-center gap-3">
+    <img
+      alt="누리맵 로고"
+      className="h-9 w-9 object-contain"
+      src={AUTH_BRAND_ICON_SRC}
+    />
+    <p
+      className="text-2xl font-normal leading-9 text-zinc-900"
+      style={authBrandTextStyle}
+    >
+      누리맵
+    </p>
+  </div>
+)
+
+const LOGIN_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MAX_NAME_LENGTH = 10
 
 const AuthShell = ({
   email,
@@ -179,57 +199,74 @@ const AuthShell = ({
   email: string
   message: string | null
   onEmailChange: (value: string) => void
-  onSubmit: () => void
+  onSubmit: (email: string) => void
   requestedEmail: string | null
   showLinkSentState: boolean
   submitting: boolean
 }) => {
   const hasInlineError = !showLinkSentState && Boolean(message)
   const deliveredEmail = requestedEmail ?? email
+  const submitEmail = showLinkSentState ? deliveredEmail : email
+  const emailFormatValid = LOGIN_EMAIL_PATTERN.test(submitEmail.trim())
+  const buttonDisabled = submitting || !emailFormatValid
+  const buttonLabel = showLinkSentState ? '로그인 링크 다시 전송' : '로그인 링크 전송'
+  const helperCopy = showLinkSentState
+    ? '로그인 링크를 보냈어요. 메일함을 확인해 주세요.'
+    : '누리미디어에서 사용 중인 이메일을 입력해주세요.'
 
   return (
     <AuthSurface>
-      <p
-        className="text-center text-[20px] font-bold uppercase leading-none tracking-[0.16em] text-base-content"
-        style={authLoginWordmarkStyle}
-      >
-        NURIMAP LOGIN
-      </p>
+      <div className="flex flex-col items-center gap-6">
+        <AuthBrand />
+        <p className="text-center text-base font-medium leading-6 text-zinc-900">
+          {helperCopy}
+        </p>
+      </div>
       <form
-        className="mt-8"
+        className="mt-6 flex flex-col items-center gap-3"
         onSubmit={(event) => {
           event.preventDefault()
-          void onSubmit()
+          void onSubmit(submitEmail)
         }}
       >
-        <label className="form-control w-full gap-2">
-          <span className="sr-only">이메일</span>
-          <input
-            className={`input input-bordered h-13 w-full rounded-2xl focus:border-primary focus:outline-none focus:ring-0 focus:shadow-none ${hasInlineError ? 'input-error' : ''}`}
-            onChange={(event) => onEmailChange(event.target.value)}
-            placeholder="example@nurimedia.co.kr"
-            type="email"
-            value={email}
-          />
-        </label>
-
         {showLinkSentState ? (
-          <div className="mt-4 rounded-[24px] border border-primary/15 bg-primary/5 px-4 py-4 text-center">
-            <p className="text-sm font-semibold text-base-content">{message ?? '로그인 링크를 보냈어요.'}</p>
-            <p className="mt-2 break-all text-sm text-base-content">{deliveredEmail}</p>
-            <p className="mt-2 text-sm text-base-content/70">메일함에서 로그인 링크를 확인해 주세요.</p>
+          <div
+            className="flex h-12 w-full max-w-[320px] items-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-base leading-6 text-zinc-900"
+            data-testid="auth-requested-email"
+          >
+            {deliveredEmail}
           </div>
+        ) : (
+          <label className="form-control w-full max-w-[320px] gap-2">
+            <span className="sr-only">이메일</span>
+            <input
+              className={`input h-12 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${hasInlineError ? 'border-error focus:border-error' : ''}`}
+              onChange={(event) => onEmailChange(event.target.value)}
+              placeholder="example@nurimedia.co.kr"
+              type="email"
+              value={email}
+            />
+          </label>
+        )}
+
+        {hasInlineError ? (
+          <p className="w-full max-w-[320px] text-sm text-error">{message}</p>
         ) : null}
 
-        {hasInlineError ? <p className="mt-4 text-sm text-error">{message}</p> : null}
-
         <button
-          className="btn btn-primary mt-6 h-13 w-full rounded-2xl"
+          aria-label={buttonLabel}
+          className={`btn h-10 w-full max-w-[320px] rounded-xl border-none bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none ${
+            buttonDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+          }`}
           data-testid="auth-request-button"
-          disabled={submitting}
+          disabled={buttonDisabled}
           type="submit"
         >
-          {submitting ? '요청 중...' : '이메일로 로그인 링크 전송'}
+          {submitting ? (
+            <span aria-hidden="true" className="loading loading-spinner loading-sm" data-testid="auth-request-spinner" />
+          ) : (
+            buttonLabel
+          )}
         </button>
       </form>
     </AuthSurface>
@@ -247,7 +284,7 @@ const AuthFailureScreen = ({
 }) => (
   <AuthSurface>
     <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-primary/80">NURIMAP LOGIN</p>
-    <h1 className="mt-8 text-center text-2xl font-bold text-base-content">인증에 실패했어요</h1>
+    <h1 className="mt-8 text-center text-2xl font-bold text-base-content">인증에 실패했어요. 새 로그인 링크를 받아주세요.</h1>
     <p className="mt-3 text-center text-sm text-base-content/70">{reason ?? GENERIC_AUTH_FAILURE_MESSAGE}</p>
     <div className="mt-6 flex gap-3">
       <button className="btn btn-primary flex-1 rounded-2xl" onClick={onRetry} type="button">
@@ -269,23 +306,31 @@ const NameCaptureScreen = ({
 }) => {
   const [name, setName] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const clampedName = (value: string) => Array.from(value).slice(0, MAX_NAME_LENGTH).join('')
 
   return (
     <AuthSurface>
-      <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-primary/80">NURIMAP LOGIN</p>
-      <div className="mt-8">
-        <h1 className="text-2xl font-bold text-base-content">이름 입력</h1>
-        <label className="form-control mt-6 gap-2">
-          <span className="label-text font-semibold text-base-content">이름</span>
+      <div className="flex flex-col items-center gap-6">
+        <AuthBrand />
+        <p className="text-center text-base font-medium leading-6 text-zinc-900">
+          누리맵에서 사용할 이름을 입력해주세요.
+        </p>
+      </div>
+      <div className="mt-6 flex flex-col items-center gap-3">
+        <label className="form-control w-full max-w-[276px] gap-2">
+          <span className="sr-only">이름</span>
           <input
-            className={`input input-bordered ${errorMessage ? 'input-error' : ''}`}
-            onChange={(event) => setName(event.target.value)}
+            aria-label="이름"
+            className={`input h-12 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${errorMessage ? 'border-error focus:border-error' : ''}`}
+            onChange={(event) => setName(clampedName(event.target.value))}
+            placeholder="김누리"
             value={name}
           />
         </label>
-        {errorMessage ? <p className="mt-3 text-sm text-error">{errorMessage}</p> : null}
+        {errorMessage ? <p className="w-full max-w-[276px] text-sm text-error">{errorMessage}</p> : null}
         <button
-          className="btn btn-primary mt-6 w-full rounded-2xl"
+          aria-label="저장"
+          className="btn h-10 w-full max-w-[276px] rounded-xl border-none bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none"
           disabled={submitting}
           onClick={() => {
             if (!name.trim()) {
@@ -297,7 +342,7 @@ const NameCaptureScreen = ({
           }}
           type="button"
         >
-          {submitting ? '저장 중...' : '이름 저장'}
+          {submitting ? <span aria-hidden="true" className="loading loading-spinner loading-sm" data-testid="name-submit-spinner" /> : '저장'}
         </button>
       </div>
     </AuthSurface>
@@ -308,7 +353,9 @@ const VerifyingScreen = () => (
   <AuthSurface>
     <div className="flex flex-col items-center justify-center py-6 text-center">
       <span className="loading loading-spinner loading-lg text-primary" />
-      <p className="mt-4 text-sm font-medium text-base-content">로그인 링크를 확인하는 중입니다.</p>
+      <div data-testid="auth-verifying-spinner">
+        <span className="sr-only">로그인 링크 검증 중</span>
+      </div>
     </div>
   </AuthSurface>
 )

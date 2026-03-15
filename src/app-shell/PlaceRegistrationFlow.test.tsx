@@ -5,11 +5,11 @@ import { resetAppShellStore } from './appShellStore'
 
 const originalFetch = globalThis.fetch
 const GEOCODE_FAILURE_MESSAGE = '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.'
-const GEOCODE_FAILURE_ALERT_MESSAGE = '주소를 찾지 못했어요.\n\n입력한 주소를 다시 확인해 주세요.'
-const GENERIC_SAVE_FAILURE_ALERT_MESSAGE = '등록하지 못했어요.\n\n잠시 후 다시 시도해 주세요.'
-const DUPLICATE_CONFIRM_MESSAGE = '이미 등록된 장소예요.\n\n새로 만들지 않고 지금 입력한 평가와 후기, 장소 정보를 이 장소에 반영할까요?'
-const OVERWRITE_CONFIRM_MESSAGE = '이미 내가 리뷰를 남긴 장소예요.\n\n지금 입력한 평가와 후기, 장소 정보를 반영할까요?\n\n후기를 비워 두면 기존 후기는 그대로 두고 평가만 바꿔요.'
-const DIRTY_CLOSE_MESSAGE = '작성 중인 내용이 사라져요.\n\n나갈까요?'
+const GEOCODE_FAILURE_ALERT_MESSAGE = '주소를 찾지 못했어요.\n입력한 주소를 다시 확인해 주세요.'
+const GENERIC_SAVE_FAILURE_ALERT_MESSAGE = '등록하지 못했어요.\n잠시 후 다시 시도해 주세요.'
+const DUPLICATE_CONFIRM_MESSAGE = '이미 등록된 장소예요.\n지금 입력한 정보를 이 장소에 반영할까요?'
+const OVERWRITE_CONFIRM_MESSAGE = '이미 내가 리뷰를 남긴 장소예요.\n지금 입력한 정보를 반영할까요?'
+const DIRTY_CLOSE_MESSAGE = '작성 중인 내용이 사라져요.\n나갈까요?'
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {

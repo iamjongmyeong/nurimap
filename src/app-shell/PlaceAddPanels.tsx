@@ -178,7 +178,7 @@ const hasCompletedRequiredFields = (draft: RegistrationDraft) =>
   && draft.road_address.trim() !== ''
 
 const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
-const formatDialogMessage = (message: string) => message.replace(/([.!?])\s+/g, '$1\n\n')
+const formatDialogMessage = (message: string) => message.replace(/([.!?])\s+/g, '$1\n')
 const getDetailRoutePath = (placeId: string) => `/places/${encodeURIComponent(placeId)}`
 
 const resizeReviewTextarea = (textarea: HTMLTextAreaElement) => {

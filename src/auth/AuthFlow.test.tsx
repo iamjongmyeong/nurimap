@@ -89,8 +89,9 @@ describe('Sprint 12 auth flow', () => {
     setViewport(1280)
     render(<App />)
 
-    expect(screen.getByText('NURIMAP LOGIN')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+    expect(screen.getByText('누리맵')).toBeInTheDocument()
+    expect(screen.getByText('누리미디어에서 사용 중인 이메일을 입력해주세요.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('example@nurimedia.co.kr')).toBeInTheDocument()
     expect(screen.queryByText('@nurimedia.co.kr 이메일로 로그인 링크를 요청할 수 있습니다.')).not.toBeInTheDocument()
     expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
@@ -105,16 +106,23 @@ describe('Sprint 12 auth flow', () => {
     expect(screen.getByText('이메일')).toHaveClass('sr-only')
   })
 
-  it('shows the empty-email warning when submitted without input', async () => {
+  it('keeps the submit button disabled until the email format is valid', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
+    const input = screen.getByLabelText('이메일')
+    const button = screen.getByRole('button', { name: '로그인 링크 전송' })
 
-    expect(await screen.findByText('이메일을 입력해 주세요.')).toBeInTheDocument()
-    expect(screen.getByLabelText('이메일')).toHaveValue('')
+    expect(button).toBeDisabled()
+
+    await user.type(input, 'invalid-email')
+    expect(button).toBeDisabled()
+
+    await user.clear(input)
+    await user.type(input, 'tester@nurimedia.co.kr')
+    expect(button).toBeEnabled()
   })
 
   it('shows an inline error and keeps the email input for an invalid domain', async () => {
@@ -125,7 +133,7 @@ describe('Sprint 12 auth flow', () => {
 
     const input = screen.getByLabelText('이메일')
     await user.type(input, 'user@example.com')
-    await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
+    await user.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
 
     expect(await screen.findByText('누리미디어 구성원만 사용할 수 있어요.')).toBeInTheDocument()
     expect(input).toHaveValue('user@example.com')
@@ -153,7 +161,7 @@ describe('Sprint 12 auth flow', () => {
 
     const input = await screen.findByLabelText('이메일')
     await user.type(input, 'cooldown@nurimedia.co.kr')
-    await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
+    await user.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
 
     expect(await screen.findByText('1분 07초 후에 다시 시도해주세요.')).toBeInTheDocument()
     expect(input).toHaveValue('cooldown@nurimedia.co.kr')
@@ -181,7 +189,7 @@ describe('Sprint 12 auth flow', () => {
 
     const input = await screen.findByLabelText('이메일')
     await user.type(input, 'cooldown@nurimedia.co.kr')
-    await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
+    await user.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
 
     expect(await screen.findByText('42초 후에 다시 시도해주세요.')).toBeInTheDocument()
     expect(input).toHaveValue('cooldown@nurimedia.co.kr')
@@ -194,7 +202,7 @@ describe('Sprint 12 auth flow', () => {
     render(<App />)
 
     await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
-    const button = screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })
+    const button = screen.getByRole('button', { name: '로그인 링크 전송' })
     const clickPromise = user.click(button)
 
     await waitFor(() => {
@@ -202,7 +210,7 @@ describe('Sprint 12 auth flow', () => {
     })
 
     await clickPromise
-    expect(await screen.findByText('로그인 링크를 보냈어요.')).toBeInTheDocument()
+    expect(await screen.findByText('로그인 링크를 보냈어요. 메일함을 확인해 주세요.')).toBeInTheDocument()
   })
 
   it('shows the link-sent state inside the same auth shell with the requested email', async () => {
@@ -212,11 +220,12 @@ describe('Sprint 12 auth flow', () => {
     render(<App />)
 
     await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
-    await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
+    await user.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
 
-    expect(await screen.findByText('로그인 링크를 보냈어요.')).toBeInTheDocument()
-    expect(screen.getByText('tester@nurimedia.co.kr')).toBeInTheDocument()
-    expect(screen.getByText('NURIMAP LOGIN')).toBeInTheDocument()
+    expect(await screen.findByText('로그인 링크를 보냈어요. 메일함을 확인해 주세요.')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-requested-email')).toHaveTextContent('tester@nurimedia.co.kr')
+    expect(screen.getByText('누리맵')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '로그인 링크 다시 전송' })).toBeInTheDocument()
     expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
   })
 
@@ -228,8 +237,8 @@ describe('Sprint 12 auth flow', () => {
 
     await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr{enter}')
 
-    expect(await screen.findByText('로그인 링크를 보냈어요.')).toBeInTheDocument()
-    expect(screen.getByText('tester@nurimedia.co.kr')).toBeInTheDocument()
+    expect(await screen.findByText('로그인 링크를 보냈어요. 메일함을 확인해 주세요.')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-requested-email')).toHaveTextContent('tester@nurimedia.co.kr')
   })
 
   it('immediately enters the onboarding flow for a bypass test account', async () => {
@@ -241,7 +250,7 @@ describe('Sprint 12 auth flow', () => {
     await user.type(screen.getByLabelText('이메일'), 'bypass.user@example.com')
     await user.click(screen.getByTestId('auth-request-button'))
 
-    expect(await screen.findByText('이름 입력')).toBeInTheDocument()
+    expect(await screen.findByText('누리맵에서 사용할 이름을 입력해주세요.')).toBeInTheDocument()
     expect(screen.queryByTestId('auth-request-button')).not.toBeInTheDocument()
   })
 
@@ -295,7 +304,7 @@ describe('Sprint 12 auth flow', () => {
 
     await user.click(screen.getByRole('button', { name: '로그아웃' }))
 
-    expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
 
     await user.clear(screen.getByLabelText('이메일'))
     await user.type(screen.getByLabelText('이메일'), 'bypass.named@example.com')
@@ -308,7 +317,7 @@ describe('Sprint 12 auth flow', () => {
       })
     })
     expect(await screen.findByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
-    expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('auth-verifying-spinner')).not.toBeInTheDocument()
   })
 
   it('automatically signs in with the local bypass account in development', async () => {
@@ -371,7 +380,7 @@ describe('Sprint 12 auth flow', () => {
       token_hash: 'auto-login-token-hash',
       type: 'magiclink',
     })
-    expect(screen.queryByRole('button', { name: '이메일로 로그인 링크 전송' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '로그인 링크 전송' })).not.toBeInTheDocument()
   })
 
   it('recovers to the auth form when local auto-login request fails', async () => {
@@ -386,7 +395,7 @@ describe('Sprint 12 auth flow', () => {
     render(<App />)
 
     expect(await screen.findByText('로그인 링크를 보내지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '로그인 링크 전송' })).toBeEnabled()
     expect(screen.getByLabelText('이메일')).toHaveValue('bypass.named@example.com')
   })
 
@@ -414,8 +423,8 @@ describe('Sprint 12 auth flow', () => {
     render(<App />)
 
     expect(await screen.findByText('로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeEnabled()
-    expect(screen.queryByText('로그인 링크를 보냈어요.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '로그인 링크 전송' })).toBeEnabled()
+    expect(screen.queryByText('로그인 링크를 보냈어요. 메일함을 확인해 주세요.')).not.toBeInTheDocument()
     expect(verifyOtpMock).not.toHaveBeenCalled()
   })
 
@@ -466,7 +475,7 @@ describe('Sprint 12 auth flow', () => {
 
     await user.click(screen.getByRole('button', { name: '로그아웃' }))
 
-    expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -484,7 +493,7 @@ describe('Sprint 12 auth flow', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -492,7 +501,7 @@ describe('Sprint 12 auth flow', () => {
     setTestAuthState({ phase: 'verifying', user: null, message: null, failureReason: null })
     render(<App />)
 
-    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
   })
 
   it('keeps the auth failure screen when the auth client emits SIGNED_OUT during verify failure handling', async () => {
@@ -533,7 +542,7 @@ describe('Sprint 12 auth flow', () => {
     )
 
     expect(await screen.findByText('최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '이메일로 로그인 링크 전송' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '로그인 링크 전송' })).not.toBeInTheDocument()
   })
 
   it('moves to the auth failure screen and clears the verify query when the refresh-time verify request rejects', async () => {
@@ -548,10 +557,10 @@ describe('Sprint 12 auth flow', () => {
       </AuthProvider>,
     )
 
-    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
 
     expect(await screen.findByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
-    expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('auth-verifying-spinner')).not.toBeInTheDocument()
     expect(window.location.search).toBe('')
   })
 
@@ -569,7 +578,7 @@ describe('Sprint 12 auth flow', () => {
       </AuthProvider>,
     )
 
-    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
     expect(window.location.pathname).toBe('/')
     expect(window.location.search).toBe('')
 
@@ -578,7 +587,7 @@ describe('Sprint 12 auth flow', () => {
     })
 
     expect(screen.getByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
-    expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('auth-verifying-spinner')).not.toBeInTheDocument()
   }, 10000)
 
   it('finalizes nonce consumption after a refresh-time verify succeeds', async () => {
@@ -733,7 +742,7 @@ describe('Sprint 12 auth flow', () => {
       </AuthProvider>,
     )
 
-    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
     await waitFor(() => {
       expect(window.location.search).toBe('')
     })
@@ -844,7 +853,7 @@ describe('Sprint 12 auth flow', () => {
       </AuthProvider>,
     )
 
-    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
 
     await act(async () => {
       await Promise.resolve()
@@ -853,7 +862,7 @@ describe('Sprint 12 auth flow', () => {
     })
 
     expect(screen.getByTestId('protected-child')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '이메일로 로그인 링크 전송' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '로그인 링크 전송' })).not.toBeInTheDocument()
   })
 
   it('falls back to the login screen when session bootstrap never resolves', async () => {
@@ -867,14 +876,14 @@ describe('Sprint 12 auth flow', () => {
       </AuthProvider>,
     )
 
-    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
 
-    expect(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
-    expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
+    expect(screen.queryByTestId('auth-verifying-spinner')).not.toBeInTheDocument()
   })
 
   it('recovers to the login form when the request-link call never resolves', async () => {
@@ -894,16 +903,16 @@ describe('Sprint 12 auth flow', () => {
 
     const input = screen.getByLabelText('이메일')
     fireEvent.change(input, { target: { value: 'tester@nurimedia.co.kr' } })
-    fireEvent.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
+    fireEvent.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
 
-    expect(screen.getByRole('button', { name: '요청 중...' })).toBeDisabled()
+    expect(screen.getByTestId('auth-request-button')).toBeDisabled()
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(AUTH_BOOTSTRAP_TIMEOUT_MS)
     })
 
     expect(screen.getByText('로그인 링크를 보내지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '로그인 링크 전송' })).toBeEnabled()
     expect(screen.getByLabelText('이메일')).toHaveValue('tester@nurimedia.co.kr')
   }, 10000)
 
@@ -916,7 +925,7 @@ describe('Sprint 12 auth flow', () => {
     expect(screen.getByRole('button', { name: '새 로그인 링크 받기' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '이메일 다시 입력' }))
 
-    expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
   })
 
   it('shows the name capture screen for users without a name and requires at least one character', async () => {
@@ -929,15 +938,51 @@ describe('Sprint 12 auth flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '이름 저장' }))
+    await user.click(screen.getByRole('button', { name: '저장' }))
     expect(screen.getByText('이름을 입력해 주세요.')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('이름'), '김')
-    await user.click(screen.getByRole('button', { name: '이름 저장' }))
+    await user.click(screen.getByRole('button', { name: '저장' }))
 
     await waitFor(() => {
       expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
     })
+  })
+
+  it('clamps the name input to 10 characters including pasted content', async () => {
+    setTestAuthState({
+      phase: 'name_required',
+      user: { email: 'tester@nurimedia.co.kr', name: null },
+      message: null,
+      failureReason: null,
+    })
+    const user = userEvent.setup()
+    render(<App />)
+
+    const input = screen.getByLabelText('이름')
+    await user.type(input, 'abcdefghijk')
+    expect(input).toHaveValue('abcdefghij')
+
+    fireEvent.change(input, { target: { value: '가나다라마바사아자차카타' } })
+    expect(input).toHaveValue('가나다라마바사아자차')
+  })
+
+  it('clamps the name input to 10 characters including pasted values', async () => {
+    setTestAuthState({
+      phase: 'name_required',
+      user: { email: 'tester@nurimedia.co.kr', name: null },
+      message: null,
+      failureReason: null,
+    })
+    const user = userEvent.setup()
+    render(<App />)
+
+    const input = screen.getByLabelText('이름')
+    await user.type(input, 'abcdefghijk')
+    expect(input).toHaveValue('abcdefghij')
+
+    fireEvent.change(input, { target: { value: '가나다라마바사아자차카타' } })
+    expect(input).toHaveValue('가나다라마바사아자차')
   })
 
   it('shows the authenticated app directly when the user already has a name', () => {
@@ -954,7 +999,7 @@ describe('Sprint 12 auth flow', () => {
 
     await user.click(screen.getByRole('button', { name: '로그아웃' }))
 
-    expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
     expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
   })
 
@@ -967,7 +1012,7 @@ describe('Sprint 12 auth flow', () => {
 
     await user.click(screen.getByRole('button', { name: '로그아웃' }))
 
-    expect(window.confirm).toHaveBeenCalledWith('로그아웃할까요?')
+    expect(window.confirm).toHaveBeenCalledWith('로그아웃하시겠어요?')
     expect(signOutMock).toHaveBeenCalledTimes(signOutCallCountBeforeClick)
     expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
   })

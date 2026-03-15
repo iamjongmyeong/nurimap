@@ -5,8 +5,8 @@ import type { PlaceLookupSuccess } from '../server/placeLookupTypes'
 export const CURRENT_USER_NAME = '테스트 사용자'
 const REVIEW_LIMIT = 500
 const REVIEW_SAVE_FAILED_MESSAGE = '리뷰를 저장하지 못했어요. 다시 시도해 주세요.'
-const DUPLICATE_PLACE_CONFIRM_MESSAGE = '이미 등록된 장소예요. 새로 만들지 않고 지금 입력한 평가와 후기, 장소 정보를 이 장소에 반영할까요?'
-const OVERWRITE_REVIEW_CONFIRM_MESSAGE = '이미 내가 리뷰를 남긴 장소예요. 지금 입력한 평가와 후기, 장소 정보를 반영할까요? 후기를 비워 두면 기존 후기는 그대로 두고 평가만 바꿔요.'
+const DUPLICATE_PLACE_CONFIRM_MESSAGE = '이미 등록된 장소예요. 지금 입력한 정보를 이 장소에 반영할까요?'
+const OVERWRITE_REVIEW_CONFIRM_MESSAGE = '이미 내가 리뷰를 남긴 장소예요. 지금 입력한 정보를 반영할까요?'
 
 export type RegistrationDraft = {
   place_type: 'restaurant' | 'cafe'
