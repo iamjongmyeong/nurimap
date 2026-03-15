@@ -148,7 +148,9 @@ describe('Sprint 12 auth flow', () => {
       new Response(
         JSON.stringify({
           status: 'error',
+          code: 'cooldown',
           message: '1분 07초 후에 다시 시도해주세요.',
+          retryAfterSeconds: 67,
         }),
         {
           status: 400,
@@ -159,7 +161,11 @@ describe('Sprint 12 auth flow', () => {
     vi.stubGlobal('fetch', fetchMock)
     render(<App />)
 
-    const input = await screen.findByLabelText('이메일')
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const input = screen.getByLabelText('이메일')
     await user.type(input, 'cooldown@nurimedia.co.kr')
     await user.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
 
@@ -176,7 +182,9 @@ describe('Sprint 12 auth flow', () => {
       new Response(
         JSON.stringify({
           status: 'error',
+          code: 'cooldown',
           message: '42초 후에 다시 시도해주세요.',
+          retryAfterSeconds: 42,
         }),
         {
           status: 400,
@@ -193,6 +201,50 @@ describe('Sprint 12 auth flow', () => {
 
     expect(await screen.findByText('42초 후에 다시 시도해주세요.')).toBeInTheDocument()
     expect(input).toHaveValue('cooldown@nurimedia.co.kr')
+  })
+
+  it('decrements the cooldown inline error over time', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    vi.useFakeTimers()
+    setViewport(1280)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'error',
+          code: 'cooldown',
+          message: '1분 07초 후에 다시 시도해주세요.',
+          retryAfterSeconds: 67,
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const input = screen.getByLabelText('이메일')
+    fireEvent.change(input, { target: { value: 'cooldown@nurimedia.co.kr' } })
+    fireEvent.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('1분 07초 후에 다시 시도해주세요.')).toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+
+    expect(screen.getByText('1분 06초 후에 다시 시도해주세요.')).toBeInTheDocument()
+    expect(screen.queryByText('1분 07초 후에 다시 시도해주세요.')).not.toBeInTheDocument()
   })
 
   it('disables the request button while requesting the login link', async () => {

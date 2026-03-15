@@ -18,6 +18,18 @@ type AuthVerifyType = 'magiclink' | 'signup' | 'invite'
 type RequestLoginLinkOptions = {
   requireBypass?: boolean
 }
+type AuthRequestError =
+  | {
+      status: 'error'
+      code: 'cooldown'
+      message: string
+      retryAfterSeconds: number
+    }
+  | {
+      status: 'error'
+      code: Exclude<AuthRequestErrorCode, 'cooldown'>
+      message: string
+    }
 type SendLoginEmailResult =
   | {
       ok: true
@@ -322,12 +334,14 @@ export const requestLoginLink = async (email: string, options: RequestLoginLinkO
   const requestPolicy = evaluateRequestPolicy({ now, state: currentState })
 
   if (!requestPolicy.allowed) {
+    const remainingSeconds = requestPolicy.remainingSeconds ?? 0
     logAuthRequestFailure({ code: 'cooldown', email: normalizedEmail })
     return {
       status: 'error' as const,
       code: 'cooldown' as AuthRequestErrorCode,
-      message: formatCooldownMessage(requestPolicy.remainingSeconds ?? 0),
-    }
+      message: formatCooldownMessage(remainingSeconds),
+      retryAfterSeconds: remainingSeconds,
+    } satisfies AuthRequestError
   }
 
   if (!publicAppUrl) {

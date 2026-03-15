@@ -352,6 +352,7 @@ describe('allowlisted bypass auth request flow', () => {
       status: 'error',
       code: 'cooldown',
       message: '1분 07초 후에 다시 시도해주세요.',
+      retryAfterSeconds: 67,
     })
     expect(generateLinkMock).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
@@ -392,6 +393,7 @@ describe('allowlisted bypass auth request flow', () => {
       status: 'error',
       code: 'cooldown',
       message: '42초 후에 다시 시도해주세요.',
+      retryAfterSeconds: 42,
     })
     expect(generateLinkMock).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()

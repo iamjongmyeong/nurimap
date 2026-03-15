@@ -163,7 +163,7 @@ const getLocalAutoLoginEmail = () => {
 const AuthSurface = ({ children }: { children: ReactNode }) => (
   <main className="min-h-screen bg-white px-4 py-10">
     <div className="mx-auto flex min-h-screen max-w-5xl items-center justify-center">
-      <div className="w-full max-w-md px-8 py-8 sm:px-10 sm:py-10">{children}</div>
+      <div className="w-full max-w-md">{children}</div>
     </div>
   </main>
 )
@@ -186,6 +186,16 @@ const AuthBrand = () => (
 
 const LOGIN_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_NAME_LENGTH = 10
+const formatCooldownMessage = (remainingSeconds: number) => {
+  const minutes = Math.floor(remainingSeconds / 60)
+  const seconds = remainingSeconds % 60
+
+  if (minutes === 0) {
+    return `${remainingSeconds}초 후에 다시 시도해주세요.`
+  }
+
+  return `${minutes}분 ${String(seconds).padStart(2, '0')}초 후에 다시 시도해주세요.`
+}
 
 const AuthShell = ({
   email,
@@ -231,7 +241,7 @@ const AuthShell = ({
       >
         {showLinkSentState ? (
           <div
-            className="flex h-12 w-full max-w-[320px] items-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-base leading-6 text-zinc-900"
+            className="flex h-10 w-full max-w-[320px] items-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-base leading-6 text-zinc-900"
             data-testid="auth-requested-email"
           >
             {deliveredEmail}
@@ -240,7 +250,7 @@ const AuthShell = ({
           <label className="form-control w-full max-w-[320px] gap-2">
             <span className="sr-only">이메일</span>
             <input
-              className={`input h-12 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${hasInlineError ? 'border-error focus:border-error' : ''}`}
+              className={`input h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${hasInlineError ? 'border-error focus:border-error' : ''}`}
               onChange={(event) => onEmailChange(event.target.value)}
               placeholder="example@nurimedia.co.kr"
               type="email"
@@ -366,6 +376,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [message, setMessage] = useState<string | null>(null)
   const [failureReason, setFailureReason] = useState<string | null>(null)
   const [email, setEmail] = useState('')
+  const [cooldownState, setCooldownState] = useState<{ email: string; remainingSeconds: number } | null>(null)
   const [requestedEmail, setRequestedEmail] = useState<string | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -376,6 +387,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const devOverrideState = useMemo(() => getDevAuthOverride(), [])
   const localAutoLoginEmail = useMemo(() => getLocalAutoLoginEmail(), [])
   const isTestMode = import.meta.env.MODE === 'test' || devOverrideState !== null
+  const normalizedEmail = email.trim().toLowerCase()
+  const resolvedCooldownMessage = !isTestMode && cooldownState && cooldownState.email === normalizedEmail
+    ? formatCooldownMessage(cooldownState.remainingSeconds)
+    : null
+
+  useEffect(() => {
+    if (!cooldownState || cooldownState.remainingSeconds <= 0) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCooldownState((current) => {
+        if (!current) {
+          return null
+        }
+
+        if (current.remainingSeconds <= 1) {
+          return null
+        }
+
+        return {
+          ...current,
+          remainingSeconds: current.remainingSeconds - 1,
+        }
+      })
+    }, 1000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [cooldownState])
 
   const applyAuthenticatedState = useCallback(({
     accessToken,
@@ -396,6 +438,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     markSessionStarted()
     setAccessToken(accessToken)
     setEmail(user?.email ?? '')
+    setCooldownState(null)
     setRequestedEmail(null)
     setMessage(null)
     setFailureReason(null)
@@ -641,6 +684,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     setSubmitting(true)
+    setCooldownState(null)
     setMessage(null)
     setEmail(nextEmail)
 
@@ -674,11 +718,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             tokenHash: string
             verificationType: 'magiclink' | 'signup' | 'invite'
           }
-        | { status: 'error'; message: string }
+        | { status: 'error'; code: 'cooldown'; message: string; retryAfterSeconds: number }
+        | { status: 'error'; code?: string; message: string }
 
       if (!response.ok || payload.status === 'error') {
         setRequestedEmail(null)
-        setMessage(payload.message)
+        if (payload.status === 'error' && payload.code === 'cooldown' && 'retryAfterSeconds' in payload) {
+          setCooldownState({
+            email: nextEmail.trim().toLowerCase(),
+            remainingSeconds: payload.retryAfterSeconds,
+          })
+          setMessage(null)
+        } else {
+          setMessage(payload.message)
+        }
         setPhase('auth_required')
         return
       }
@@ -780,6 +833,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabaseBrowser.auth.signOut()
     clearSessionStarted()
     setAccessToken(null)
+    setCooldownState(null)
     setRequestedEmail(null)
     setMessage(null)
     setFailureReason(null)
@@ -788,7 +842,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const effectiveTestState = testState
   const resolvedPhase = isTestMode ? effectiveTestState.phase : phase
-  const resolvedMessage = isTestMode ? effectiveTestState.message : message
+  const resolvedMessage = isTestMode ? effectiveTestState.message : resolvedCooldownMessage ?? message
   const rawFailureReason = isTestMode ? effectiveTestState.failureReason : failureReason
   const resolvedFailureReason = rawFailureReason ? resolveVerifyFailureMessage(rawFailureReason) : null
   const resolvedEmail = email || (isTestMode ? effectiveTestState.user?.email ?? '' : email)
@@ -815,7 +869,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         <AuthShell
           email={resolvedEmail}
           message={resolvedMessage}
-          onEmailChange={setEmail}
+          onEmailChange={(nextEmail) => {
+            setEmail(nextEmail)
+            if (cooldownState && nextEmail.trim().toLowerCase() !== cooldownState.email) {
+              setCooldownState(null)
+            }
+          }}
           onSubmit={() => {
             void requestLink(resolvedEmail)
           }}
@@ -838,6 +897,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               suppressSignedOutRef.current = false
               suppressSignedOutRef.current = false
               setPhase('auth_required')
+              setCooldownState(null)
               setFailureReason(null)
               setMessage(null)
             }
@@ -849,6 +909,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } else {
               suppressSignedOutRef.current = false
               setPhase('auth_required')
+              setCooldownState(null)
               setFailureReason(null)
               setMessage(null)
             }
