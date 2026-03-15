@@ -161,7 +161,7 @@ describe('allowlisted bypass auth request flow', () => {
       text: string
       to: string[]
     }
-    const loginUrl = 'https://nurimap.vercel.app?auth_mode=verify&email=tester%40nurimedia.co.kr&nonce=00000000-0000-4000-8000-000000000000'
+    const loginUrl = 'https://nurimap.vercel.app/auth/verify?email=tester%40nurimedia.co.kr&nonce=00000000-0000-4000-8000-000000000000'
 
     expect(url).toBe('https://api.resend.com/emails')
     expect(payload.to).toEqual(['tester@nurimedia.co.kr'])
@@ -193,6 +193,86 @@ describe('allowlisted bypass auth request flow', () => {
       status: 'error',
       code: 'delivery_failed',
       message: '로그인 링크를 보내지 못했어요. 다시 시도해 주세요.',
+    })
+    expect(generateLinkMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('formats cooldown messages as MM분 SS초 when minutes remain', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.vercel.app'
+
+    listUsersMock.mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: 'user-1',
+            email: 'tester@nurimedia.co.kr',
+            app_metadata: {
+              nurimap_auth: {
+                day_key: '2026-03-08',
+                day_count: 5,
+                last_requested_at: new Date(Date.now() - 233 * 1000).toISOString(),
+                active_nonce: null,
+                active_token_hash: null,
+                active_verification_type: null,
+                active_expires_at: null,
+                last_consumed_nonce: null,
+              },
+            },
+            user_metadata: {},
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const result = await requestLoginLink('tester@nurimedia.co.kr')
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 'cooldown',
+      message: '1분 07초 후에 다시 시도해주세요.',
+    })
+    expect(generateLinkMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('formats cooldown messages as SS초 when less than a minute remains', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.vercel.app'
+
+    listUsersMock.mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: 'user-1',
+            email: 'tester@nurimedia.co.kr',
+            app_metadata: {
+              nurimap_auth: {
+                day_key: '2026-03-08',
+                day_count: 5,
+                last_requested_at: new Date(Date.now() - 258 * 1000).toISOString(),
+                active_nonce: null,
+                active_token_hash: null,
+                active_verification_type: null,
+                active_expires_at: null,
+                last_consumed_nonce: null,
+              },
+            },
+            user_metadata: {},
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const result = await requestLoginLink('tester@nurimedia.co.kr')
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 'cooldown',
+      message: '42초 후에 다시 시도해주세요.',
     })
     expect(generateLinkMock).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()

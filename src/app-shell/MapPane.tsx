@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MAP_INITIAL_CENTER } from './mockPlaces'
 import type { PlaceSummary, PlaceType } from './types'
 
@@ -54,9 +54,16 @@ declare global {
   }
 }
 
+type KakaoScriptStatus = 'fallback' | 'loading' | 'ready' | 'unavailable' | 'error'
+
 const LEVEL_LABEL_THRESHOLD = 5
 const MAP_MIN_LEVEL = 1
 const MAP_MAX_LEVEL = 14
+const KAKAO_SCRIPT_SELECTOR = 'script[data-kakao-map-sdk="true"]'
+const MAP_LOADING_COPY = '지도를 불러오는 중이에요.'
+const MAP_FAILURE_TITLE = '지도를 불러오지 못했어요.'
+const MAP_FAILURE_BODY = '네트워크 상태를 확인한 뒤 다시 시도해주세요.'
+const MAP_RETRY_LABEL = '다시 시도'
 
 type PlaceWithCoordinates = PlaceSummary & {
   latitude: number
@@ -65,7 +72,6 @@ type PlaceWithCoordinates = PlaceSummary & {
 
 const hasCoordinates = (place: PlaceSummary): place is PlaceWithCoordinates =>
   place.latitude !== undefined && place.longitude !== undefined
-
 
 const markerPalette: Record<PlaceType, { fill: string; stroke: string; label: string }> = {
   restaurant: {
@@ -95,57 +101,74 @@ const toMarkerImageSource = (placeType: PlaceType) => {
 
 const useKakaoScript = () => {
   const appKey = import.meta.env.PUBLIC_KAKAO_MAP_APP_KEY
+  const isTestMode = import.meta.env.MODE === 'test'
+  const [retryKey, setRetryKey] = useState(0)
   const hasExistingRuntime = Boolean(window.kakao?.maps)
-  const canUseRuntime = hasExistingRuntime || (Boolean(appKey) && import.meta.env.MODE !== 'test')
-  const [status, setStatus] = useState<'loading' | 'ready' | 'unavailable'>(() => {
-    if (hasExistingRuntime) {
-      return 'ready'
-    }
-
-    if (!canUseRuntime) {
-      return 'unavailable'
-    }
-
-    return 'loading'
-  })
+  const canUseRuntime = hasExistingRuntime || (Boolean(appKey) && !isTestMode)
+  const [runtimeStatus, setRuntimeStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
   useEffect(() => {
     if (window.kakao?.maps) {
-      window.kakao.maps.load(() => setStatus('ready'))
+      window.kakao.maps.load(() => setRuntimeStatus('ready'))
       return
     }
 
-    if (!canUseRuntime) {
+    if (isTestMode || !canUseRuntime) {
       return
     }
 
-    const existingScript = document.querySelector<HTMLScriptElement>('script[data-kakao-map-sdk="true"]')
+    const existingScript = document.querySelector<HTMLScriptElement>(KAKAO_SCRIPT_SELECTOR)
 
     const handleReady = () => {
-      window.kakao?.maps.load(() => setStatus('ready'))
-    }
-
-    if (existingScript) {
-      existingScript.addEventListener('load', handleReady, { once: true })
-      return () => {
-        existingScript.removeEventListener('load', handleReady)
+      if (!window.kakao?.maps) {
+        setRuntimeStatus('error')
+        return
       }
+
+      window.kakao.maps.load(() => setRuntimeStatus('ready'))
     }
 
-    const script = document.createElement('script')
+    const handleError = () => {
+      setRuntimeStatus('error')
+    }
+
+    const script = existingScript ?? document.createElement('script')
     script.async = true
     script.dataset.kakaoMapSdk = 'true'
     script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false`
     script.addEventListener('load', handleReady, { once: true })
-    document.head.appendChild(script)
+    script.addEventListener('error', handleError, { once: true })
+
+    if (!existingScript) {
+      document.head.appendChild(script)
+    }
 
     return () => {
       script.removeEventListener('load', handleReady)
+      script.removeEventListener('error', handleError)
     }
-  }, [appKey, canUseRuntime])
+  }, [appKey, canUseRuntime, isTestMode, retryKey])
+
+  const retry = useCallback(() => {
+    if (!appKey || isTestMode) {
+      return
+    }
+
+    document.querySelector<HTMLScriptElement>(KAKAO_SCRIPT_SELECTOR)?.remove()
+    setRuntimeStatus('loading')
+    setRetryKey((current) => current + 1)
+  }, [appKey, isTestMode])
+
+  const status: KakaoScriptStatus = hasExistingRuntime
+    ? 'ready'
+    : isTestMode
+      ? 'fallback'
+      : !canUseRuntime
+        ? 'unavailable'
+        : runtimeStatus
 
   return {
-    appKey,
+    retry,
     status,
   }
 }
@@ -293,6 +316,37 @@ const FallbackMapPane = ({
   )
 }
 
+const MapLoadingPane = () => (
+  <div
+    aria-label="지도 캔버스"
+    className="relative z-0 flex min-h-screen items-center justify-center overflow-hidden bg-[#edf2f7]"
+    data-testid="map-canvas"
+  >
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(148,163,184,0.18),_transparent_28%),linear-gradient(180deg,_rgba(248,250,252,1)_0%,_rgba(237,242,247,1)_100%)]" />
+    <div className="relative z-10 flex flex-col items-center gap-3 rounded-[28px] bg-white/85 px-6 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm" data-testid="map-loading-state">
+      <span className="loading loading-spinner loading-lg text-primary" />
+      <p className="text-sm font-semibold text-slate-700">{MAP_LOADING_COPY}</p>
+    </div>
+  </div>
+)
+
+const MapErrorPane = ({ onRetry }: { onRetry: () => void }) => (
+  <div
+    aria-label="지도 캔버스"
+    className="relative z-0 flex min-h-screen items-center justify-center overflow-hidden bg-[#edf2f7]"
+    data-testid="map-canvas"
+  >
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(148,163,184,0.18),_transparent_28%),linear-gradient(180deg,_rgba(248,250,252,1)_0%,_rgba(237,242,247,1)_100%)]" />
+    <div className="relative z-10 w-full max-w-sm rounded-[32px] bg-white px-6 py-7 text-center shadow-[0_24px_72px_rgba(15,23,42,0.12)]" data-testid="map-error-state">
+      <p className="text-base font-semibold text-slate-800">{MAP_FAILURE_TITLE}</p>
+      <p className="mt-3 text-sm leading-6 text-slate-600">{MAP_FAILURE_BODY}</p>
+      <button className="btn btn-primary mt-6 rounded-full px-6" onClick={onRetry} type="button">
+        {MAP_RETRY_LABEL}
+      </button>
+    </div>
+  </div>
+)
+
 export const MapPane = ({
   places,
   selectedPlaceId,
@@ -300,7 +354,7 @@ export const MapPane = ({
   onMapLevelChange,
   onMarkerSelect,
 }: MapPaneProps) => {
-  const { status } = useKakaoScript()
+  const { retry, status } = useKakaoScript()
   const mapRef = useRef<HTMLDivElement | null>(null)
   const kakaoMapRef = useRef<KakaoMapInstance | null>(null)
   const markerRefs = useRef<KakaoMarkerInstance[]>([])
@@ -405,7 +459,7 @@ export const MapPane = ({
     }
   }, [mapLevel])
 
-  if (status !== 'ready') {
+  if (status === 'fallback') {
     return (
       <FallbackMapPane
         mapLevel={mapLevel}
@@ -415,6 +469,14 @@ export const MapPane = ({
         selectedPlaceId={selectedPlaceId}
       />
     )
+  }
+
+  if (status === 'loading') {
+    return <MapLoadingPane />
+  }
+
+  if (status === 'unavailable' || status === 'error') {
+    return <MapErrorPane onRetry={retry} />
   }
 
   return (

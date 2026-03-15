@@ -67,6 +67,7 @@ describe('Plan 06 place registration flow', () => {
     vi.restoreAllMocks()
     vi.spyOn(window, 'alert').mockImplementation(() => {})
     resetAppShellStore()
+    window.history.replaceState({}, '', '/')
     globalThis.fetch = originalFetch
   })
 
@@ -235,6 +236,7 @@ describe('Plan 06 place registration flow', () => {
     await user.click(screen.getByTestId('place-submit-button'))
 
     expect(await screen.findByTestId('detail-review-list')).toHaveTextContent('새 장소 첫 리뷰')
+    expect(window.location.pathname).toBe('/places/place-direct-entry-123456789')
     expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('5.0 (1)')
     expect(window.alert).toHaveBeenCalledWith('장소를 추가했어요.')
     expect(screen.queryByTestId('registration-message')).not.toBeInTheDocument()
@@ -268,6 +270,7 @@ describe('Plan 06 place registration flow', () => {
     })
     expect(confirmSpy).toHaveBeenCalledWith(DUPLICATE_CONFIRM_MESSAGE)
     expect(await screen.findByTestId('desktop-detail-panel')).toHaveTextContent('양화로 카페 리프레시')
+    expect(window.location.pathname).toBe('/places/place-cafe-1')
     expect(screen.getByTestId('detail-review-list')).toHaveTextContent('병합 테스트 리뷰')
     expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.4 (9)')
     expect(screen.getByTestId('detail-zeropay-indicator')).toBeInTheDocument()
@@ -299,6 +302,7 @@ describe('Plan 06 place registration flow', () => {
     })
     expect(confirmSpy).toHaveBeenCalledWith(OVERWRITE_CONFIRM_MESSAGE)
     expect(await screen.findByTestId('desktop-detail-panel')).toHaveTextContent('누리 식당')
+    expect(window.location.pathname).toBe('/places/place-restaurant-1')
     expect(screen.getByTestId('detail-review-list')).toHaveTextContent('점심 모임으로 가기 좋은 식당이에요.')
     expect(screen.getByTestId('detail-review-list')).toHaveTextContent('3.0')
     expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.5 (12)')

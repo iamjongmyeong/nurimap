@@ -556,3 +556,58 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/03-specs/09-place-merge.md
   - docs/05-sprints/sprint-14/planning.md
 - Related commit:
+
+
+## 2026-03-15 Sprint 17 - Adopt minimal hybrid routing while keeping place-add as internal app-shell state
+- Context: browse/detail 흐름은 direct entry와 browser back, refresh 안정성을 위해 canonical URL이 필요해졌지만, 현재 design과 user-flow는 place add를 기존 목록/사이드바 surface 안의 상태 전환으로 정의한다. 기존 구현도 Zustand 기반 navigation state와 mobile detail history bridge를 사용하고 있어, 전면 라우터화와 무라우팅 유지 사이에서 bounded choice가 필요했다.
+- Options considered:
+  - Option A: 현재 Zustand-only navigation 구조를 유지하고 direct entry / browser back 요구를 history bridge와 query parsing으로 계속 보강한다.
+  - Option B: `/places/:placeId`와 `/auth/verify`만 도입하는 최소 hybrid routing으로 가고, `place_add_open`과 `mobile_place_list_open`은 internal UI state로 유지한다.
+  - Option C: `/login`, `/add-place`, `/places/:placeId`를 포함한 full route split으로 전환한다.
+- Decision: Option B를 선택한다.
+- Rationale: detail과 auth verify는 shareable/direct-entry 가능한 durable state라 URL이 필요하지만, place add는 현재 source-of-truth 문서가 같은 surface 안의 전환으로 고정하고 있다. 최소 hybrid routing은 direct entry, refresh, browser back 안정성을 얻으면서도 기존 app-shell 구조와 테스트 자산을 가장 덜 흔든다.
+- Impact: canonical detail route는 `/places/:placeId`, canonical auth verify route는 `/auth/verify`를 사용한다. `place_add_open`과 `mobile_place_list_open`은 계속 internal state로 남고, route/store bridge는 UI layer에서 수행한다. migration 동안 legacy root verify query는 병행 지원한다.
+- Revisit trigger: public/private shell 분리, route-level data loading, not-found page, 또는 add-place deep-link 요구가 커져 현재 minimal hybrid 구조가 부족해지면 full router split을 다시 검토한다.
+- Related docs:
+  - docs/05-sprints/sprint-17/planning.md
+  - docs/03-specs/03-list-browse.md
+  - docs/03-specs/04-place-detail.md
+  - docs/03-specs/05-auth-email-login-link.md
+  - docs/01-product/user-flows/browse-and-detail.md
+  - docs/01-product/user-flows/auth-and-name-entry.md
+  - docs/04-design/browse-and-detail.md
+- Related commit: TBD
+
+## 2026-03-15 Sprint 17 - Replace immediate cooldown + daily limit with resend burst then cooldown
+- Context: 현재 auth policy는 로그인 링크 요청 직후 바로 5분 cooldown을 적용하고 일일 5회 제한을 둔다. 사용자는 같은 이메일에 대해 최대 5회까지는 대기 없이 재전송을 허용하고, 그 이후에만 cooldown을 적용하는 정책으로 바꾸길 원했다.
+- Options considered:
+  - Option A: 기존 즉시 cooldown + 일일 5회 제한 정책을 유지한다.
+  - Option B: 동일 이메일 기준으로 burst 5회까지 즉시 재전송을 허용하고, 6번째 요청부터 5분 cooldown을 적용하며 cooldown 종료 후 burst count를 reset한다.
+  - Option C: 일일 제한은 유지하되 숫자를 별도로 올리고 burst/cooldown을 추가하는 혼합 정책을 만든다.
+- Decision: Option B를 선택한다.
+- Rationale: 사용자의 요청은 “첫 전송 직후 곧바로 막히지 않게 해 달라”는 것이고, 현재 정책은 그 요청과 정면으로 충돌한다. burst 후 cooldown 방식은 재전송 UX를 단순하게 만들고, policy/copy/test를 한 번에 명확하게 정리할 수 있다.
+- Impact: 기존 `즉시 5분 cooldown + 하루 5회 제한`은 Sprint 17 source of truth가 아니다. 동일 이메일은 burst 5회까지 즉시 재전송할 수 있고, 6번째 요청부터 5분 cooldown을 적용한다. cooldown 카피는 `MM분 SS초 후에 다시 시도해주세요.` 형식을 사용하고, 분이 0이면 초만 표시한다.
+- Revisit trigger: abuse/운영 관찰 결과 burst 5회가 과도하거나 부족하다고 판단되면 burst 횟수, cooldown 길이, rolling window 기반 정책으로 재검토한다.
+- Related docs:
+  - docs/05-sprints/sprint-17/planning.md
+  - docs/03-specs/05-auth-email-login-link.md
+  - docs/01-product/user-flows/auth-and-name-entry.md
+  - docs/04-design/auth-and-name-entry.md
+- Related commit: TBD
+
+## 2026-03-15 Sprint 17 - Separate runtime map loading/failure UX from deterministic test fallback renderer
+- Context: Kakao map integration은 Plan 02에서 runtime adapter + fallback renderer 구조를 선택했지만, 현재 runtime browser에서 SDK가 준비되지 않으면 user-facing 화면에도 navy fake-map fallback이 그대로 보인다. 이 화면은 테스트/비런타임 fallback에는 유용하지만, 실제 사용자에게는 loading인지 failure인지 구분이 어렵다.
+- Options considered:
+  - Option A: 현재 fallback renderer를 runtime loading/unavailable UI로도 계속 사용한다.
+  - Option B: runtime browser에서는 loading과 failure를 별도 UX로 분리하고, deterministic fallback renderer는 test/JSDOM 계약 용도로만 유지한다.
+- Decision: Option B를 선택한다.
+- Rationale: 사용자 관점에서 지도 loading과 지도 failure는 구분 가능해야 하고, fake-map처럼 보이는 fallback은 실제 지도가 로드된 것으로 오해를 줄 수 있다. test fallback renderer 자체를 버릴 필요는 없지만, runtime UX와 역할을 분리하는 편이 현재 symptom과 spec의 “현재 맥락 안에서 이해 가능한 실패 표시” 요구를 더 잘 만족한다.
+- Impact: runtime loading 상태에서는 spinner/placeholder를, runtime failure/unavailable 상태에서는 retry 가능한 실패 UI를 지도 영역 안에 표시한다. deterministic fallback renderer는 테스트/JSDOM에서만 canonical 검증 surface로 유지한다.
+- Revisit trigger: Kakao SDK wrapper abstraction을 별도로 도입하거나, runtime map adapter와 test fallback의 차이가 더 커져 별도 component 경계가 필요해지면 현재 구조를 다시 검토한다.
+- Related docs:
+  - docs/05-sprints/sprint-17/planning.md
+  - docs/03-specs/02-map-rendering.md
+  - docs/01-product/user-flows/browse-and-detail.md
+  - docs/04-design/browse-and-detail.md
+  - docs/06-history/decisions.md
+- Related commit: TBD

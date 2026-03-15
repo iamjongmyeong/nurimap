@@ -34,12 +34,16 @@
 - `로그아웃` text action은 hover 시 `#E52E30`로 변하고 pointer cursor를 보여주며, 클릭 시 browser confirm으로 로그아웃 여부를 먼저 확인해야 한다.
 - 기본 상태에서는 장소 목록을 보여준다.
 - `장소 추가`를 누르면 별도 panel을 띄우지 않고, **같은 사이드바 내용이 등록 화면으로 전환**된다.
+- 지도 runtime loading 동안에는 fake-map처럼 오해될 수 있는 화면 대신 약한 placeholder 배경 위에 spinner와 `지도를 불러오는 중이에요.` 문구를 표시한다.
+- 지도 runtime failure/unavailable 상태에서는 현재 레이아웃을 유지한 채 `지도를 불러오지 못했어요.` 제목, `네트워크 상태를 확인한 뒤 다시 시도해주세요.` 설명, `다시 시도` 버튼을 표시한다.
 
 ### Detail State
+- detail의 canonical URL은 `/places/:placeId`다.
 - 목록 또는 지도에서 장소 선택 시 목록 영역 안의 내용이 상세 화면으로 전환된다.
 - 데스크톱 상세는 별도 floating panel을 띄우지 않는다.
-- 상세 화면 상단에는 뒤로 가기 affordance를 두고, 뒤로 가기 시 목록 상태로 복귀한다.
+- 상세 화면 상단에는 뒤로 가기 affordance를 두고, 뒤로 가기 시 목록 상태(`/`)로 복귀한다.
 - 지도는 상세와 병렬로 계속 보이지만, 상세 UI는 사이드바 내부에서만 전환된다.
+- `/places/:placeId` direct entry에서도 데스크톱은 같은 sidebar detail surface를 사용한다.
 
 ## Mobile Layout `< 768px`
 
@@ -50,19 +54,24 @@
   - 위치: 화면 하단
 - `목록 보기` 버튼을 누르면 장소 목록 페이지로 이동한다.
 - `장소 추가` 버튼을 누르면 **별도 전용 등록 페이지가 아니라 모바일 목록 화면이 등록 화면으로 바뀐다.**
+- 지도 runtime loading 동안에는 fake-map gradient 대신 약한 placeholder 배경 위에 spinner와 `지도를 불러오는 중이에요.` 문구를 표시한다.
+- 지도 runtime failure/unavailable 상태에서는 현재 맥락을 유지한 채 `지도를 불러오지 못했어요.` 제목, `네트워크 상태를 확인한 뒤 다시 시도해주세요.` 설명, `다시 시도` 버튼을 표시한다.
 
 ### Detail State
+- detail의 canonical URL은 `/places/:placeId`다.
 - 장소 목록 페이지 또는 지도에서 장소 선택 시 장소 상세 화면을 연다.
 - 모바일 장소 상세 화면은 전체 화면 페이지로 표시한다.
-- 왼쪽 화살표 모양 뒤로 가기 버튼을 누르면 지도 화면으로 이동한다.
+- 왼쪽 화살표 모양 뒤로 가기 버튼을 누르면 지도 화면(`/`)으로 이동한다.
 - 브라우저 기본 뒤로 가기도 화면의 뒤로 가기 버튼과 같은 동작을 해야 한다.
 - 지도 화면으로 돌아갈 때 선택한 장소를 유지한다.
 - 지도 화면으로 돌아갈 때 지도는 선택한 장소 위치를 기준으로 보여준다.
+- `/places/:placeId` direct entry에서도 모바일은 같은 full-screen detail surface를 사용한다.
 
 ## 목록 영역 전환
 - 목록 영역은 기본적으로 장소 목록을 보여준다.
 - 장소 추가를 누르면 같은 영역이 등록 화면으로 바뀐다.
 - 등록 화면을 닫으면 이전 목록 상태로 돌아간다.
+- 장소 추가 진입/닫기 동안 URL을 place add 전용 route로 바꾸지 않는다.
 
 ## Interaction Notes
 - 장소 목록 item 상단 row에는 이름을 왼쪽에, `zeropay_status = available`인 경우에만 blue QR icon을 오른쪽에 배치한다.

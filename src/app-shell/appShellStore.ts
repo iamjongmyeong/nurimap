@@ -33,6 +33,7 @@ type AppShellState = {
   openPlaceDetail: (placeId: string) => void
   closePlaceDetail: () => void
   returnToMapBrowse: () => void
+  setSelectedPlaceId: (placeId: string | null) => void
   setPlaceListLoad: (status: PlaceListLoadState) => void
   setPlaceDetailLoad: (status: PlaceDetailLoadState) => void
   setMapLevel: (level: number) => void
@@ -67,6 +68,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
     }),
   closePlaceDetail: () => set({ navigationState: 'map_browse' }),
   returnToMapBrowse: () => set({ navigationState: 'map_browse' }),
+  setSelectedPlaceId: (selectedPlaceId) => set({ selectedPlaceId }),
   setPlaceListLoad: (placeListLoad) => set({ placeListLoad }),
   setPlaceDetailLoad: (placeDetailLoad) => set({ placeDetailLoad }),
   setMapLevel: (mapLevel) => set({ mapLevel }),
@@ -75,7 +77,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
     set({
       places: result.places,
       selectedPlaceId: result.place.id,
-      navigationState: 'place_detail_open',
+      navigationState: 'map_browse',
       placeDetailLoad: 'ready',
     }),
   submitPlaceReview: (placeId, draft) => {

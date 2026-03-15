@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AUTH_BOOTSTRAP_TIMEOUT_MS, resolveBypassVerification } from './authVerification'
+import { AUTH_BOOTSTRAP_TIMEOUT_MS, GENERIC_AUTH_FAILURE_MESSAGE, resolveBypassVerification } from './authVerification'
 
 describe('authVerification', () => {
   afterEach(() => {
@@ -21,7 +21,7 @@ describe('authVerification', () => {
 
     await expect(verificationPromise).resolves.toEqual({
       status: 'error',
-      message: '인증에 실패했어요.',
+      message: GENERIC_AUTH_FAILURE_MESSAGE,
     })
   })
 

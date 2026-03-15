@@ -19,6 +19,7 @@ const setViewport = (width: number) => {
 describe('Sprint 16 place detail refresh', () => {
   beforeEach(() => {
     resetAppShellStore()
+    window.history.replaceState({}, '', '/')
   })
 
   it('shows the redesigned desktop detail fields and removes legacy modules', async () => {
@@ -77,8 +78,10 @@ describe('Sprint 16 place detail refresh', () => {
     render(<App />)
 
     await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
+    expect(window.location.pathname).toBe('/places/place-restaurant-1')
     await user.click(screen.getByRole('button', { name: '목록으로 돌아가기' }))
 
+    expect(window.location.pathname).toBe('/')
     expect(screen.queryByTestId('desktop-detail-panel')).not.toBeInTheDocument()
     expect(screen.getByTestId('desktop-browse-topbar')).toBeInTheDocument()
     expect(screen.getByTestId('desktop-browse-footer')).toBeInTheDocument()
@@ -117,8 +120,10 @@ describe('Sprint 16 place detail refresh', () => {
 
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
     await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
+    expect(window.location.pathname).toBe('/places/place-restaurant-1')
     await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
 
+    expect(window.location.pathname).toBe('/')
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
     expect(useAppShellStore.getState().selectedPlaceId).toBe('place-restaurant-1')
     expect(screen.getByTestId('map-center')).toHaveTextContent('37.55918, 126.92374')
@@ -131,11 +136,14 @@ describe('Sprint 16 place detail refresh', () => {
 
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
     await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    expect(window.location.pathname).toBe('/places/place-cafe-1')
 
     act(() => {
+      window.history.replaceState({}, '', '/')
       window.dispatchEvent(new PopStateEvent('popstate'))
     })
 
+    expect(window.location.pathname).toBe('/')
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
     expect(useAppShellStore.getState().selectedPlaceId).toBe('place-cafe-1')
     expect(screen.getByTestId('map-center')).toHaveTextContent('37.55831, 126.92518')
@@ -143,8 +151,8 @@ describe('Sprint 16 place detail refresh', () => {
 
   it('shows the detail loading state', () => {
     setViewport(1280)
+    window.history.replaceState({}, '', '/places/place-restaurant-1')
     useAppShellStore.setState({
-      navigationState: 'place_detail_open',
       selectedPlaceId: 'place-restaurant-1',
       placeDetailLoad: 'loading',
     })
@@ -155,8 +163,8 @@ describe('Sprint 16 place detail refresh', () => {
 
   it('shows the detail error state and retry action', () => {
     setViewport(1280)
+    window.history.replaceState({}, '', '/places/place-restaurant-1')
     useAppShellStore.setState({
-      navigationState: 'place_detail_open',
       selectedPlaceId: 'place-restaurant-1',
       placeDetailLoad: 'error',
     })
@@ -168,6 +176,7 @@ describe('Sprint 16 place detail refresh', () => {
 
   it('leaves the review section body empty when there are no reviews', () => {
     setViewport(390)
+    window.history.replaceState({}, '', '/places/place-empty-review')
     const emptyReviewPlace: PlaceSummary = {
       id: 'place-empty-review',
       naver_place_id: '10099',
@@ -188,7 +197,6 @@ describe('Sprint 16 place detail refresh', () => {
     }
 
     useAppShellStore.setState({
-      navigationState: 'place_detail_open',
       placeDetailLoad: 'ready',
       selectedPlaceId: emptyReviewPlace.id,
       places: [emptyReviewPlace],
@@ -198,5 +206,13 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('detail-review-section')).toHaveTextContent('평가 및 리뷰')
     expect(screen.getByTestId('detail-review-list')).toBeEmptyDOMElement()
     expect(screen.queryByText('아직 등록된 리뷰가 없어요.')).not.toBeInTheDocument()
+  })
+
+  it('opens the detail screen from a direct /places route entry', () => {
+    setViewport(1280)
+    window.history.replaceState({}, '', '/places/place-restaurant-1')
+    render(<App />)
+
+    expect(screen.getByTestId('desktop-detail-panel')).toHaveTextContent('누리 식당')
   })
 })

@@ -179,6 +179,7 @@ const hasCompletedRequiredFields = (draft: RegistrationDraft) =>
 
 const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
 const formatDialogMessage = (message: string) => message.replace(/([.!?])\s+/g, '$1\n\n')
+const getDetailRoutePath = (placeId: string) => `/places/${encodeURIComponent(placeId)}`
 
 const resizeReviewTextarea = (textarea: HTMLTextAreaElement) => {
   textarea.style.height = `${REVIEW_TEXTAREA_MIN_HEIGHT}px`
@@ -314,6 +315,8 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
       })
 
       applyRegistrationResult(registrationResult)
+      window.history.pushState({}, '', getDetailRoutePath(registrationResult.place.id))
+      window.dispatchEvent(new PopStateEvent('popstate'))
       window.alert(formatDialogMessage(registrationResult.message))
       setSubmitState('idle')
     } catch (error) {

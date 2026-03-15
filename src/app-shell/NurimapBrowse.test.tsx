@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
+import { MapPane } from './MapPane'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
 
 const setViewport = (width: number) => {
@@ -19,6 +20,14 @@ describe('Sprint 16 browse refresh', () => {
   beforeEach(() => {
     resetAppShellStore()
     delete window.kakao
+    vi.unstubAllEnvs()
+    window.history.replaceState({}, '', '/')
+    document.querySelector('script[data-kakao-map-sdk="true"]')?.remove()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    document.querySelector('script[data-kakao-map-sdk="true"]')?.remove()
   })
 
   it('shows the initial map center coordinates', () => {
@@ -226,6 +235,57 @@ describe('Sprint 16 browse refresh', () => {
     render(<App />)
 
     expect(screen.getByTestId('place-list-loading')).toBeInTheDocument()
+  })
+
+  it('shows a placeholder loading state for the runtime Kakao map without fake markers', () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('PUBLIC_KAKAO_MAP_APP_KEY', 'test-kakao-key')
+    setViewport(1280)
+    render(
+      <MapPane
+        mapLevel={5}
+        onMapLevelChange={() => {}}
+        onMarkerSelect={() => {}}
+        places={useAppShellStore.getState().places}
+        selectedPlaceId={useAppShellStore.getState().selectedPlaceId}
+      />,
+    )
+
+    expect(screen.getByTestId('map-loading-state')).toHaveTextContent('지도를 불러오는 중이에요.')
+    expect(screen.queryByTestId('map-marker-place-restaurant-1')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '지도 확대' })).not.toBeInTheDocument()
+  })
+
+  it('shows a retryable runtime Kakao map error state after the SDK script fails to load', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('PUBLIC_KAKAO_MAP_APP_KEY', 'test-kakao-key')
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(
+      <MapPane
+        mapLevel={5}
+        onMapLevelChange={() => {}}
+        onMarkerSelect={() => {}}
+        places={useAppShellStore.getState().places}
+        selectedPlaceId={useAppShellStore.getState().selectedPlaceId}
+      />,
+    )
+
+    const script = document.querySelector<HTMLScriptElement>('script[data-kakao-map-sdk="true"]')
+    expect(script).not.toBeNull()
+
+    act(() => {
+      script?.dispatchEvent(new Event('error'))
+    })
+
+    expect(screen.getByTestId('map-error-state')).toHaveTextContent('지도를 불러오지 못했어요.')
+    expect(screen.getByTestId('map-error-state')).toHaveTextContent('네트워크 상태를 확인한 뒤 다시 시도해주세요.')
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
+    expect(screen.queryByTestId('map-marker-place-restaurant-1')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+
+    expect(screen.getByTestId('map-loading-state')).toHaveTextContent('지도를 불러오는 중이에요.')
   })
 
   it('renders the error state and retry action in the list area', () => {

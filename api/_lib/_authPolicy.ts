@@ -1,5 +1,5 @@
 export const AUTH_REQUEST_COOLDOWN_SECONDS = 60 * 5
-export const AUTH_REQUEST_DAILY_LIMIT = 5
+export const AUTH_REQUEST_BURST_LIMIT = 5
 export const AUTH_LINK_EXPIRES_MINUTES = 5
 
 export type LoginLinkState = {
@@ -41,24 +41,14 @@ export const evaluateRequestPolicy = ({
   const nowMs = now.getTime()
   const todayKey = getDayKey(now)
   const lastRequestedAtMs = state.last_requested_at ? Date.parse(state.last_requested_at) : null
+  const hasActiveCooldownWindow = lastRequestedAtMs !== null && nowMs - lastRequestedAtMs < AUTH_REQUEST_COOLDOWN_SECONDS * 1000
+  const burstCount = hasActiveCooldownWindow ? state.day_count : 0
 
-  if (lastRequestedAtMs && nowMs - lastRequestedAtMs < AUTH_REQUEST_COOLDOWN_SECONDS * 1000) {
+  if (burstCount >= AUTH_REQUEST_BURST_LIMIT && lastRequestedAtMs !== null) {
     return {
       allowed: false as const,
       reason: 'cooldown' as const,
       remainingSeconds: Math.ceil((AUTH_REQUEST_COOLDOWN_SECONDS * 1000 - (nowMs - lastRequestedAtMs)) / 1000),
-      nextState: state,
-    }
-  }
-
-  const isSameDay = state.day_key === todayKey
-  const nextCount = isSameDay ? state.day_count + 1 : 1
-
-  if (nextCount > AUTH_REQUEST_DAILY_LIMIT) {
-    return {
-      allowed: false as const,
-      reason: 'daily_limit' as const,
-      remainingSeconds: null,
       nextState: state,
     }
   }
@@ -70,7 +60,7 @@ export const evaluateRequestPolicy = ({
     nextState: {
       ...state,
       day_key: todayKey,
-      day_count: nextCount,
+      day_count: burstCount + 1,
       last_requested_at: now.toISOString(),
     },
   }

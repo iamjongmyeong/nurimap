@@ -1,7 +1,8 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { AuthProvider } from './AuthProvider'
+import { AUTH_BOOTSTRAP_TIMEOUT_MS, GENERIC_AUTH_FAILURE_MESSAGE } from './authVerification'
 import { resetTestAuthState, setTestAuthState } from './testAuthState'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -131,31 +132,59 @@ describe('Sprint 12 auth flow', () => {
   })
 
   it('shows the cooldown inline error and keeps the email input', async () => {
-    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
     setViewport(1280)
     const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'error',
+          message: '1분 07초 후에 다시 시도해주세요.',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
     render(<App />)
 
-    const input = screen.getByLabelText('이메일')
+    const input = await screen.findByLabelText('이메일')
     await user.type(input, 'cooldown@nurimedia.co.kr')
     await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
 
-    expect(await screen.findByText('300초 후에 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(await screen.findByText('1분 07초 후에 다시 시도해주세요.')).toBeInTheDocument()
     expect(input).toHaveValue('cooldown@nurimedia.co.kr')
   })
 
-  it('shows the daily limit inline error and keeps the email input', async () => {
-    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+  it('shows the cooldown inline error without minutes when less than a minute remains', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
     setViewport(1280)
     const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'error',
+          message: '42초 후에 다시 시도해주세요.',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
     render(<App />)
 
-    const input = screen.getByLabelText('이메일')
-    await user.type(input, 'limit@nurimedia.co.kr')
+    const input = await screen.findByLabelText('이메일')
+    await user.type(input, 'cooldown@nurimedia.co.kr')
     await user.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
 
-    expect(await screen.findByText('오늘은 더 이상 로그인 링크를 요청할 수 없어요.')).toBeInTheDocument()
-    expect(input).toHaveValue('limit@nurimedia.co.kr')
+    expect(await screen.findByText('42초 후에 다시 시도해주세요.')).toBeInTheDocument()
+    expect(input).toHaveValue('cooldown@nurimedia.co.kr')
   })
 
   it('disables the request button while requesting the login link', async () => {
@@ -278,7 +307,7 @@ describe('Sprint 12 auth flow', () => {
         type: 'magiclink',
       })
     })
-    expect(await screen.findByText('인증에 실패했어요')).toBeInTheDocument()
+    expect(await screen.findByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
     expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
   })
 
@@ -466,6 +495,47 @@ describe('Sprint 12 auth flow', () => {
     expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
   })
 
+  it('keeps the auth failure screen when the auth client emits SIGNED_OUT during verify failure handling', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'error',
+          reason: 'invalidated',
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    ))
+    window.history.replaceState({}, '', '/auth/verify?email=tester%40nurimedia.co.kr&nonce=nonce-signed-out')
+
+    onAuthStateChangeMock.mockImplementation((callback) => {
+      queueMicrotask(() => {
+        void callback('SIGNED_OUT', null as never)
+      })
+
+      return {
+        data: {
+          subscription: {
+            unsubscribe: vi.fn(),
+          },
+        },
+      }
+    })
+
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
+
+    expect(await screen.findByText('최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '이메일로 로그인 링크 전송' })).not.toBeInTheDocument()
+  })
+
   it('moves to the auth failure screen and clears the verify query when the refresh-time verify request rejects', async () => {
     vi.stubEnv('MODE', 'development')
     const fetchMock = vi.fn().mockRejectedValue(new Error('network down'))
@@ -480,19 +550,51 @@ describe('Sprint 12 auth flow', () => {
 
     expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
 
-    expect(await screen.findByText('인증에 실패했어요')).toBeInTheDocument()
+    expect(await screen.findByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
     expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
     expect(window.location.search).toBe('')
   })
 
-  it('clears the verify query immediately before the refresh-time verify request resolves', async () => {
+  it('supports the canonical /auth/verify path and recovers when the verify request never resolves', async () => {
     vi.stubEnv('MODE', 'development')
-    let resolveFetch!: (value: Response) => void
-    const fetchMock = vi.fn(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveFetch = resolve
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    vi.useFakeTimers()
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {}))
+    vi.stubGlobal('fetch', fetchMock)
+    window.history.replaceState({}, '', '/auth/verify?email=tester%40nurimedia.co.kr&nonce=nonce-canonical')
+
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
+
+    expect(screen.getByText('로그인 링크를 확인하는 중입니다.')).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/')
+    expect(window.location.search).toBe('')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AUTH_BOOTSTRAP_TIMEOUT_MS)
+    })
+
+    expect(screen.getByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
+    expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
+  }, 10000)
+
+  it('shows the localized invalidated message when the refresh-time verify request is rejected as stale', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'error',
+          reason: 'invalidated',
         }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
     )
     vi.stubGlobal('fetch', fetchMock)
     window.history.replaceState({}, '', '/?auth_mode=verify&email=tester%40nurimedia.co.kr&nonce=nonce-2')
@@ -508,22 +610,7 @@ describe('Sprint 12 auth flow', () => {
       expect(window.location.search).toBe('')
     })
 
-    await act(async () => {
-      resolveFetch(
-        new Response(
-          JSON.stringify({
-            status: 'error',
-            reason: 'invalidated',
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
-      )
-    })
-
-    expect(await screen.findByText('인증에 실패했어요')).toBeInTheDocument()
+    expect(await screen.findByText('최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.')).toBeInTheDocument()
   })
 
   it('restores an existing session instead of re-verifying a stale refresh query', async () => {
@@ -662,12 +749,42 @@ describe('Sprint 12 auth flow', () => {
     expect(screen.queryByText('로그인 링크를 확인하는 중입니다.')).not.toBeInTheDocument()
   })
 
+  it('recovers to the login form when the request-link call never resolves', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    vi.useFakeTimers()
+    setViewport(1280)
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const input = screen.getByLabelText('이메일')
+    fireEvent.change(input, { target: { value: 'tester@nurimedia.co.kr' } })
+    fireEvent.click(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' }))
+
+    expect(screen.getByRole('button', { name: '요청 중...' })).toBeDisabled()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AUTH_BOOTSTRAP_TIMEOUT_MS)
+    })
+
+    expect(screen.getByText('로그인 링크를 보내지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeEnabled()
+    expect(screen.getByLabelText('이메일')).toHaveValue('tester@nurimedia.co.kr')
+  }, 10000)
+
   it('shows the auth failure screen CTA and returns to the login form', async () => {
     setTestAuthState({ phase: 'auth_failure', user: null, message: null, failureReason: 'expired' })
     const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.getByText('인증에 실패했어요')).toBeInTheDocument()
+    expect(screen.getByText('로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '새 로그인 링크 받기' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '이메일 다시 입력' }))
 

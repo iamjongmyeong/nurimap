@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AuthContext, type AuthContextValue, type AuthPhase } from './authContext'
 import { supabaseBrowser } from './supabaseBrowser'
 import { requestTestLoginLink, setTestAuthState, signOutTestUser, submitTestName, useTestAuthState } from './testAuthState'
-import { resolveBypassVerification, withTimeout } from './authVerification'
+import { GENERIC_AUTH_FAILURE_MESSAGE, resolveBypassVerification, withTimeout } from './authVerification'
 
 declare global {
   interface ImportMetaEnv {
@@ -14,10 +14,63 @@ declare global {
 const SESSION_STARTED_AT_KEY = 'nurimap_session_started_at'
 const SESSION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
 const LOCAL_AUTO_LOGIN_REQUIRES_BYPASS_MESSAGE = '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.'
-const clearAuthQuery = () => {
+const VERIFY_PATH_SUFFIX = '/auth/verify'
+const VERIFY_FAILURE_MESSAGES = {
+  expired: '로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.',
+  invalidated: '최근에 보낸 로그인 링크만 사용할 수 있어요. 최신 이메일의 링크를 열어주세요.',
+  used: '이미 사용한 로그인 링크예요. 새 로그인 링크를 받아주세요.',
+} as const
+
+const buildBasePathFromVerifyPath = (pathname: string) => {
+  if (pathname === VERIFY_PATH_SUFFIX) {
+    return '/'
+  }
+
+  if (pathname.endsWith(VERIFY_PATH_SUFFIX)) {
+    const basePath = pathname.slice(0, -VERIFY_PATH_SUFFIX.length)
+    return basePath || '/'
+  }
+
+  return pathname || '/'
+}
+
+const clearAuthEntryUrl = () => {
   const url = new URL(window.location.href)
+  url.pathname = buildBasePathFromVerifyPath(url.pathname)
   url.search = ''
   window.history.replaceState({}, '', url.toString())
+}
+
+const resolveVerifyFailureMessage = (reason: string | null | undefined) => {
+  if (!reason) {
+    return GENERIC_AUTH_FAILURE_MESSAGE
+  }
+
+  return VERIFY_FAILURE_MESSAGES[reason as keyof typeof VERIFY_FAILURE_MESSAGES] ?? reason
+}
+
+const getVerifyEntryFromLocation = () => {
+  const url = new URL(window.location.href)
+  const authEmail = url.searchParams.get('email')
+  const nonce = url.searchParams.get('nonce')
+  const hasCanonicalVerifyPath = url.pathname === VERIFY_PATH_SUFFIX || url.pathname.endsWith(VERIFY_PATH_SUFFIX)
+
+  if (hasCanonicalVerifyPath && authEmail && nonce) {
+    return {
+      email: authEmail,
+      nonce,
+    }
+  }
+
+  const authMode = url.searchParams.get('auth_mode')
+  if (authMode === 'verify' && authEmail && nonce) {
+    return {
+      email: authEmail,
+      nonce,
+    }
+  }
+
+  return null
 }
 
 const getStoredSessionAgeExceeded = () => {
@@ -195,7 +248,7 @@ const AuthFailureScreen = ({
   <AuthSurface>
     <p className="text-center text-xs font-semibold uppercase tracking-[0.4em] text-primary/80">NURIMAP LOGIN</p>
     <h1 className="mt-8 text-center text-2xl font-bold text-base-content">인증에 실패했어요</h1>
-    <p className="mt-3 text-center text-sm text-base-content/70">{reason ?? '로그인 링크를 다시 확인해 주세요.'}</p>
+    <p className="mt-3 text-center text-sm text-base-content/70">{reason ?? GENERIC_AUTH_FAILURE_MESSAGE}</p>
     <div className="mt-6 flex gap-3">
       <button className="btn btn-primary flex-1 rounded-2xl" onClick={onRetry} type="button">
         새 로그인 링크 받기
@@ -270,6 +323,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const hasAttemptedLocalAutoLoginRef = useRef(false)
+  const phaseRef = useRef<AuthPhase>('loading')
+  const suppressSignedOutRef = useRef(false)
 
   const devOverrideState = useMemo(() => getDevAuthOverride(), [])
   const localAutoLoginEmail = useMemo(() => getLocalAutoLoginEmail(), [])
@@ -290,6 +345,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       | null
       | undefined
   }) => {
+    suppressSignedOutRef.current = false
     markSessionStarted()
     setAccessToken(accessToken)
     setEmail(user?.email ?? '')
@@ -314,7 +370,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (error || !data.session || !data.user) {
       return {
         status: 'error' as const,
-        message: error?.message ?? '인증에 실패했어요.',
+        message: error?.message ?? GENERIC_AUTH_FAILURE_MESSAGE,
       }
     }
 
@@ -335,6 +391,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [devOverrideState])
 
   useEffect(() => {
+    phaseRef.current = phase
+  }, [phase])
+
+  useEffect(() => {
     if (isTestMode) {
       return
     }
@@ -342,14 +402,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let isMounted = true
 
     const bootstrap = async () => {
-      const params = new URLSearchParams(window.location.search)
-      const authMode = params.get('auth_mode')
-      const authEmail = params.get('email')
-      const nonce = params.get('nonce')
-      const hasVerifyQuery = authMode === 'verify' && authEmail && nonce
+      const verifyEntry = getVerifyEntryFromLocation()
+      const authEmail = verifyEntry?.email ?? null
+      const nonce = verifyEntry?.nonce ?? null
+      const hasVerifyQuery = authEmail !== null && nonce !== null
+      suppressSignedOutRef.current = hasVerifyQuery
 
       if (hasVerifyQuery) {
-        clearAuthQuery()
+        clearAuthEntryUrl()
       }
 
       const restoreSession = async (accessToken: string) => {
@@ -391,12 +451,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setPhase('verifying')
           setEmail(authEmail)
           try {
-            const response = await fetch('/api/auth/verify-link', {
+            const timedResponse = await withTimeout(fetch('/api/auth/verify-link', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email: authEmail, nonce }),
-            })
-            const timedResponse = await withTimeout(Promise.resolve(response))
+            }))
             const payload = (await withTimeout(timedResponse.json())) as
               | { status: 'error'; reason: string }
               | { status: 'success'; tokenHash: string; verificationType: 'magiclink' | 'signup' | 'invite' }
@@ -404,7 +463,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (!timedResponse.ok || payload.status === 'error') {
               if (isMounted) {
                 setPhase('auth_failure')
-                setFailureReason(payload.status === 'error' ? payload.reason : '인증에 실패했어요.')
+                setFailureReason(payload.status === 'error' ? resolveVerifyFailureMessage(payload.reason) : GENERIC_AUTH_FAILURE_MESSAGE)
               }
               return
             }
@@ -423,13 +482,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } catch {
             if (isMounted) {
               setPhase('auth_failure')
-              setFailureReason('인증에 실패했어요.')
+              setFailureReason(GENERIC_AUTH_FAILURE_MESSAGE)
             }
           }
           return
         }
 
         if (!session?.access_token) {
+          suppressSignedOutRef.current = false
           if (isMounted) {
             setPhase('auth_required')
           }
@@ -441,8 +501,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (isMounted) {
           if (hasVerifyQuery) {
             setPhase('auth_failure')
-            setFailureReason('인증에 실패했어요.')
+            setFailureReason(GENERIC_AUTH_FAILURE_MESSAGE)
           } else {
+            suppressSignedOutRef.current = false
             setPhase('auth_required')
           }
         }
@@ -455,6 +516,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (event === 'SIGNED_OUT') {
         clearSessionStarted()
         setAccessToken(null)
+
+        if (suppressSignedOutRef.current || phaseRef.current === 'verifying' || phaseRef.current === 'auth_failure') {
+          return
+        }
+
         setPhase('auth_required')
         return
       }
@@ -524,14 +590,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      const response = await fetch('/api/auth/request-link', {
+      const response = await withTimeout(fetch('/api/auth/request-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: nextEmail,
           requireBypass: options?.requireBypass === true,
         }),
-      })
+      }))
       const payload = (await response.json()) as
         | { status: 'success'; mode: 'link'; message: string }
         | {
@@ -643,6 +709,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return
     }
 
+    suppressSignedOutRef.current = false
     await supabaseBrowser.auth.signOut()
     clearSessionStarted()
     setAccessToken(null)
@@ -655,7 +722,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const effectiveTestState = testState
   const resolvedPhase = isTestMode ? effectiveTestState.phase : phase
   const resolvedMessage = isTestMode ? effectiveTestState.message : message
-  const resolvedFailureReason = isTestMode ? effectiveTestState.failureReason : failureReason
+  const rawFailureReason = isTestMode ? effectiveTestState.failureReason : failureReason
+  const resolvedFailureReason = rawFailureReason ? resolveVerifyFailureMessage(rawFailureReason) : null
   const resolvedEmail = email || (isTestMode ? effectiveTestState.user?.email ?? '' : email)
   const resolvedAccessToken = isTestMode && effectiveTestState.phase === 'authenticated' ? 'test-access-token' : accessToken
 
@@ -700,6 +768,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (isTestMode) {
               setTestAuthState({ phase: 'auth_required', failureReason: null, message: null })
             } else {
+              suppressSignedOutRef.current = false
+              suppressSignedOutRef.current = false
               setPhase('auth_required')
               setFailureReason(null)
               setMessage(null)
@@ -710,6 +780,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (isTestMode) {
               setTestAuthState({ phase: 'auth_required', failureReason: null, message: null })
             } else {
+              suppressSignedOutRef.current = false
               setPhase('auth_required')
               setFailureReason(null)
               setMessage(null)

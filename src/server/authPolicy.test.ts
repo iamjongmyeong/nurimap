@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AUTH_REQUEST_BURST_LIMIT,
   AUTH_REQUEST_COOLDOWN_SECONDS,
   buildIssuedLoginLinkState,
   createEmptyLoginLinkState,
@@ -14,31 +15,53 @@ describe('Plan 08 auth policy', () => {
     expect(isAllowedEmailDomain('user@example.com', 'nurimedia.co.kr')).toBe(false)
   })
 
-  it('enforces the 5 minute cooldown', () => {
+  it('allows a resend burst up to 5 times before cooldown begins', () => {
     const now = new Date('2026-03-08T10:00:00.000Z')
     const state = {
       ...createEmptyLoginLinkState(),
-      last_requested_at: new Date(now.getTime() - (AUTH_REQUEST_COOLDOWN_SECONDS - 10) * 1000).toISOString(),
+      last_requested_at: new Date(now.getTime() - 10 * 1000).toISOString(),
       day_key: '2026-03-08',
-      day_count: 1,
+      day_count: AUTH_REQUEST_BURST_LIMIT - 1,
+    }
+
+    const result = evaluateRequestPolicy({ now, state })
+    expect(result.allowed).toBe(true)
+    expect(result.reason).toBeNull()
+    if (result.allowed) {
+      expect(result.nextState.day_count).toBe(AUTH_REQUEST_BURST_LIMIT)
+    }
+  })
+
+  it('enforces cooldown on the 6th resend attempt within the active window', () => {
+    const now = new Date('2026-03-08T10:00:00.000Z')
+    const state = {
+      ...createEmptyLoginLinkState(),
+      last_requested_at: new Date(now.getTime() - 10 * 1000).toISOString(),
+      day_key: '2026-03-08',
+      day_count: AUTH_REQUEST_BURST_LIMIT,
     }
 
     const result = evaluateRequestPolicy({ now, state })
     expect(result.allowed).toBe(false)
     expect(result.reason).toBe('cooldown')
+    expect(result.remainingSeconds).toBeGreaterThan(0)
   })
 
-  it('enforces the daily request limit', () => {
+  it('resets the resend burst after the cooldown window elapses', () => {
     const now = new Date('2026-03-08T10:00:00.000Z')
     const state = {
       ...createEmptyLoginLinkState(),
+      last_requested_at: new Date(now.getTime() - (AUTH_REQUEST_COOLDOWN_SECONDS + 1) * 1000).toISOString(),
       day_key: '2026-03-08',
-      day_count: 5,
+      day_count: AUTH_REQUEST_BURST_LIMIT,
     }
 
     const result = evaluateRequestPolicy({ now, state })
-    expect(result.allowed).toBe(false)
-    expect(result.reason).toBe('daily_limit')
+    expect(result.allowed).toBe(true)
+    expect(result.reason).toBeNull()
+    if (result.allowed) {
+      expect(result.nextState.day_count).toBe(1)
+    }
   })
 
   it('marks a valid link as consumed after verification', () => {

@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (result.status === 'error') {
     const statusCode = result.code === 'delivery_failed'
       ? 502
-      : result.code === 'cooldown' || result.code === 'daily_limit'
+      : result.code === 'cooldown'
         ? 429
         : 400
     res.status(statusCode).json(result)

@@ -11,7 +11,7 @@ import {
 import { logAuthBypassLogin, logAuthRequestFailure } from './_opsLogger.js'
 import { createSupabaseAdminClient, createSupabaseBrowserlessClient } from './_supabaseAdmin.js'
 
-type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'daily_limit' | 'delivery_failed' | 'bypass_required'
+type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'delivery_failed' | 'bypass_required'
 type AuthVerifyErrorReason = 'expired' | 'used' | 'invalidated'
 type AuthVerifyType = 'magiclink' | 'signup' | 'invite'
 type RequestLoginLinkOptions = {
@@ -76,8 +76,24 @@ const getPublicAppUrl = () => {
 }
 
 const buildLoginUrl = ({ baseUrl, email, nonce }: { baseUrl: string; email: string; nonce: string }) => {
-  const separator = baseUrl.includes('?') ? '&' : '?'
-  return `${baseUrl}${separator}auth_mode=verify&email=${encodeURIComponent(email)}&nonce=${encodeURIComponent(nonce)}`
+  const url = new URL(baseUrl)
+  const normalizedPath = url.pathname === '/' ? '' : url.pathname.replace(/\/$/, '')
+  url.pathname = `${normalizedPath}/auth/verify`
+  url.search = ''
+  url.searchParams.set('email', email)
+  url.searchParams.set('nonce', nonce)
+  return url.toString()
+}
+
+const formatCooldownMessage = (remainingSeconds: number) => {
+  const minutes = Math.floor(remainingSeconds / 60)
+  const seconds = remainingSeconds % 60
+
+  if (minutes === 0) {
+    return `${remainingSeconds}초 후에 다시 시도해주세요.`
+  }
+
+  return `${minutes}분 ${String(seconds).padStart(2, '0')}초 후에 다시 시도해주세요.`
 }
 
 const buildLoginEmailHtml = (loginUrl: string) => `
@@ -247,20 +263,11 @@ export const requestLoginLink = async (email: string, options: RequestLoginLinkO
   const requestPolicy = evaluateRequestPolicy({ now, state: currentState })
 
   if (!requestPolicy.allowed) {
-    if (requestPolicy.reason === 'cooldown') {
-      logAuthRequestFailure({ code: 'cooldown', email: normalizedEmail })
-      return {
-        status: 'error' as const,
-        code: 'cooldown' as AuthRequestErrorCode,
-        message: `${requestPolicy.remainingSeconds}초 후에 다시 시도해 주세요.`,
-      }
-    }
-
-    logAuthRequestFailure({ code: 'daily_limit', email: normalizedEmail })
+    logAuthRequestFailure({ code: 'cooldown', email: normalizedEmail })
     return {
       status: 'error' as const,
-      code: 'daily_limit' as AuthRequestErrorCode,
-      message: '오늘은 더 이상 로그인 링크를 요청할 수 없어요.',
+      code: 'cooldown' as AuthRequestErrorCode,
+      message: formatCooldownMessage(requestPolicy.remainingSeconds ?? 0),
     }
   }
 

@@ -45,6 +45,8 @@
 - navigation state와 async substate는 분리해서 모델링한다.
 - navigation state는 한 시점에 하나만 활성화한다.
 - async substate는 현재 화면 안에서 함께 존재할 수 있다.
+- durable/shareable state는 URL로 표현될 수 있고, view-local state는 local store가 관리할 수 있다.
+- `place_detail_open` 같은 navigation state는 canonical route(`/places/:placeId`)가 source of truth가 되고, local store는 선택 상태와 맥락을 보강할 수 있다.
 - `loading` 또는 `submitting` 상태에서는 같은 액션을 다시 실행할 수 없다.
 - `error` 상태가 발생해도 전용 실패 화면이 정의된 경우를 제외하면 현재 화면, 입력값, 선택 상태를 유지한다.
 - `success`는 장기 유지 상태로 두지 않고 데이터 갱신 또는 다음 navigation state로 즉시 전환한다.
