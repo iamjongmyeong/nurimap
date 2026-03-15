@@ -1,7 +1,7 @@
 # Verification Scope
 
-- Sprint 16 장소 상세 정보 화면 UX/UI refresh 구현
-- `added_by_name` naming 통일 및 detail UI 회귀 검증
+- Sprint 16 장소 상세 정보 화면 UX/UI와 장소 목록 UI 일부 구현
+- `added_by_name` naming 통일, detail UI, browse row UI 회귀 검증
 - 자동화 검증 + browser automation 가능 여부 확인
 
 # Automated Checks Result
@@ -19,9 +19,9 @@
 
 ## AI Agent Interactive QA Result
 - 수행 내용:
-  - 사용자 제공 screenshot/Figma 코드 기준으로 detail UI 구조(단순 back header, flat info block, flat review list, 최신순 리뷰, empty-state 미노출, desktop same detail UI in sidebar)를 코드와 테스트 기준으로 점검했다.
+  - 사용자 제공 screenshot/Figma 코드 기준으로 detail UI 구조(단순 back header, flat info block, flat review list, 최신순 리뷰, empty-state 미노출, desktop same detail UI in sidebar)와 browse row 구조(이름 row + 하단 메타 라인, 조건부 QR icon, 회색 place type icon + label)를 코드와 테스트 기준으로 점검했다.
 - 결과:
-  - screenshot/Figma 기준의 flat detail UI, `added_by_name`, 최신순 리뷰, rating-only variant, review 0건 empty-state 미노출이 코드/테스트와 일치함을 확인했다.
+  - screenshot/Figma 기준의 flat detail UI, `added_by_name`, 최신순 리뷰, rating-only variant, review 0건 empty-state 미노출, 목록 row 2단 구조와 조건부 QR icon 반영이 코드/테스트와 일치함을 확인했다.
 
 ## Browser Automation QA Evidence
 - 실행 목적:
@@ -31,7 +31,7 @@
   - `pnpm exec playwright screenshot "http://127.0.0.1:4173/?auth_test_state=authenticated" "artifacts/qa/sprint-16/authenticated-shell.png"`
   - Playwright inline script (`chromium.launch`)로 desktop detail open / mobile detail open / mobile back / mobile browser back 확인
 - 확인한 시나리오:
-  - authenticated shell screenshot 캡처
+  - authenticated shell screenshot 캡처 (browse row UI 포함)
   - desktop detail open screenshot 캡처
   - mobile detail open screenshot 캡처
   - desktop detail -> 목록 복귀 확인

@@ -65,15 +65,18 @@
 - 등록 화면을 닫으면 이전 목록 상태로 돌아간다.
 
 ## Interaction Notes
-- 장소 목록 item 상단 row에는 이름을 왼쪽에, blue place type icon을 오른쪽에 배치한다.
+- 장소 목록 item 상단 row에는 이름을 왼쪽에, `zeropay_status = available`인 경우에만 blue QR icon을 오른쪽에 배치한다.
 - Sprint 15 목록 row는 Figma 기준으로 road address를 카드 본문에 직접 노출하지 않는다.
-- 장소 목록 item 하단 row에는 평균 별점, 리뷰 수, optional `제로페이` 텍스트를 같은 메타 라인에 배치한다.
+- 장소 목록 item 하단 row에는 평균 별점, 리뷰 수, 회색 place type icon + label을 같은 메타 라인에 배치한다.
 - 평균 별점 아이콘은 `public/assets/icons/icon-rating-star-red-16.svg` asset을 사용한다.
+- 목록 QR icon은 `public/assets/icons/icon-payment-zeropay-accent.svg` asset을 사용한다.
+- 목록 place type icon은 `public/assets/icons/icon-place-type-restaurant-muted.svg`, `public/assets/icons/icon-place-type-cafe-muted.svg` asset을 사용한다.
+- 목록의 제로페이 QR icon은 desktop pointer hover가 `1초` 이상 유지되면 `제로페이 가능` 텍스트를 tooltip으로 표시한다.
 - 목록 row는 sidebar 안에서 full-bleed white row처럼 보이도록 배치하고, place 사이에는 `#F0F0F0` divider line을 둔다.
 - 목록 row는 hover 시 background color를 바꾸지 않고 pointer cursor만 보여준다.
 - divider line은 위아래 `4px` margin을 유지한다.
-- `zeropay_status = available`인 경우에만 `제로페이` 텍스트를 표시한다.
-- `zeropay_status = unavailable | needs_verification`이면 목록에서 `제로페이` 텍스트를 표시하지 않는다.
+- `zeropay_status = available`인 경우에만 이름 row 우측에 blue QR icon을 표시한다.
+- `zeropay_status = unavailable | needs_verification`이면 목록 이름 row 우측에 QR icon을 표시하지 않는다.
 - 데스크톱 상세는 사이드바 내부 전환 방식으로 표시한다.
 - 모바일 장소 상세 화면은 전체 화면 페이지로 표시한다.
 - 데스크톱과 모바일 detail은 같은 visual language를 우선 사용하되, 데스크톱에서는 지도 + 왼쪽 sidebar surface를 유지한다.

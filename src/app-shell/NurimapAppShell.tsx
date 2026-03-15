@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { MapPane } from './MapPane'
 import { useAuth } from '../auth/authContext'
 import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
@@ -25,6 +25,11 @@ const PLACE_TYPE_LABEL: Record<PlaceType, string> = {
   cafe: '카페',
 }
 
+const BROWSE_PLACE_TYPE_LABEL: Record<PlaceType, string> = {
+  restaurant: '음식점',
+  cafe: '카페',
+}
+
 const BRAND_LOGO_SRC = '/assets/branding/brand-nurimap-logo.jpeg'
 const PLACE_TYPE_ACCENT_ICON: Record<PlaceType, string> = {
   restaurant: '/assets/icons/icon-place-type-restaurant-accent.svg',
@@ -36,11 +41,13 @@ const PLACE_TYPE_MUTED_ICON: Record<PlaceType, string> = {
 }
 const PLUS_ICON_SRC = '/assets/icons/icon-action-add.svg'
 const ZEROPAY_ICON_SRC = '/assets/icons/icon-payment-zeropay-muted.svg'
+const ZEROPAY_ACCENT_ICON_SRC = '/assets/icons/icon-payment-zeropay-accent.svg'
 const LIST_STAR_ICON_SRC = '/assets/icons/icon-rating-star-red-16.svg'
 const PLACE_ADDRESS_ICON_SRC = '/assets/icons/icon-place-address-muted.svg'
 const PLACE_ADDED_BY_ICON_SRC = '/assets/icons/icon-place-added-by-muted.svg'
 const DETAIL_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 const LOGOUT_CONFIRM_MESSAGE = '로그아웃할까요?'
+const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const STAR_PATH =
   'M11.9995 19.3643L6.46613 22.6977C6.22168 22.8532 5.96613 22.9199 5.69946 22.8977C5.4328 22.8754 5.19946 22.7865 4.99946 22.631C4.79946 22.4754 4.64391 22.2812 4.5328 22.0483C4.42168 21.8154 4.39946 21.5541 4.46613 21.2643L5.9328 14.9643L1.0328 10.731C0.810573 10.531 0.671906 10.303 0.616795 10.047C0.561684 9.79099 0.578129 9.54121 0.666129 9.29766C0.754129 9.0541 0.887462 8.8541 1.06613 8.69766C1.2448 8.54121 1.48924 8.44121 1.79946 8.39766L8.26613 7.83099L10.7661 1.89766C10.8772 1.63099 11.0497 1.43099 11.2835 1.29766C11.5172 1.16432 11.7559 1.09766 11.9995 1.09766C12.243 1.09766 12.4817 1.16432 12.7155 1.29766C12.9492 1.43099 13.1217 1.63099 13.2328 1.89766L15.7328 7.83099L22.1995 8.39766C22.5106 8.4421 22.755 8.5421 22.9328 8.69766C23.1106 8.85321 23.2439 9.05321 23.3328 9.29766C23.4217 9.5421 23.4386 9.79232 23.3835 10.0483C23.3284 10.3043 23.1892 10.5319 22.9661 10.731L18.0661 14.9643L19.5328 21.2643C19.5995 21.5532 19.5772 21.8145 19.4661 22.0483C19.355 22.2821 19.1995 22.4763 18.9995 22.631C18.7995 22.7857 18.5661 22.8745 18.2995 22.8977C18.0328 22.9208 17.7772 22.8541 17.5328 22.6977L11.9995 19.3643Z'
 
@@ -180,6 +187,60 @@ const ReviewMeta = ({ reviewCount }: { reviewCount: number }) => (
   </span>
 )
 
+const ListZeroPayIcon = ({ placeId }: { placeId: string }) => {
+  const [tooltipVisible, setTooltipVisible] = useState(false)
+  const tooltipTimerRef = useRef<number | null>(null)
+
+  const clearTooltipTimer = () => {
+    if (tooltipTimerRef.current !== null) {
+      window.clearTimeout(tooltipTimerRef.current)
+      tooltipTimerRef.current = null
+    }
+  }
+
+  useEffect(() => () => {
+    clearTooltipTimer()
+  }, [])
+
+  const handleMouseEnter = () => {
+    clearTooltipTimer()
+    tooltipTimerRef.current = window.setTimeout(() => {
+      setTooltipVisible(true)
+    }, ZEROPAY_TOOLTIP_DELAY_MS)
+  }
+
+  const handleMouseLeave = () => {
+    clearTooltipTimer()
+    setTooltipVisible(false)
+  }
+
+  return (
+    <span
+      className="relative inline-flex h-4 w-4 shrink-0"
+      data-testid={`place-list-zeropay-trigger-${placeId}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <img
+        alt=""
+        aria-hidden="true"
+        className="h-4 w-4 shrink-0"
+        data-testid={`place-list-zeropay-icon-${placeId}`}
+        src={ZEROPAY_ACCENT_ICON_SRC}
+      />
+      {tooltipVisible ? (
+        <span
+          className="absolute right-0 top-full z-10 mt-2 whitespace-nowrap rounded-md bg-[#1f1f1f] px-2 py-1 text-[11px] font-medium leading-none text-white shadow-[0_8px_24px_rgba(31,31,31,0.2)]"
+          data-testid={`place-list-zeropay-tooltip-${placeId}`}
+          role="tooltip"
+        >
+          제로페이 가능
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
 const PlaceListItem = ({
   onSelect,
   place,
@@ -193,34 +254,33 @@ const PlaceListItem = ({
 }) => (
   <div>
     <button
-      className={`w-full cursor-pointer bg-white px-6 py-5 text-left transition-colors ${
+      className={`w-full cursor-pointer bg-white px-6 text-left transition-colors ${
         selected ? 'bg-[#f7f8ff]' : ''
       }`}
       data-testid={`place-list-item-${place.id}`}
       onClick={() => onSelect(place.id)}
       type="button"
     >
-      <div className="flex items-center justify-between gap-3">
-        <p className="min-w-0 flex-1 truncate text-base font-medium text-[#1c1c1c]">{place.name}</p>
-        <PlaceTypeIcon
-          className="h-4 w-4 shrink-0"
-          emphasized
-          placeType={place.place_type}
-          testId={`place-list-type-icon-${place.id}`}
-        />
-      </div>
+      <div className="flex h-24 flex-col py-5">
+        <div className="flex items-center gap-1">
+          <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[#1f1f1f]">{place.name}</p>
+          {place.zeropay_status === 'available' ? (
+            <ListZeroPayIcon placeId={place.id} />
+          ) : null}
+        </div>
 
-      <div className="mt-7 flex flex-wrap items-center gap-3">
-        <RatingMeta averageRating={place.average_rating} testId={`place-list-rating-icon-${place.id}`} />
-        <ReviewMeta reviewCount={place.review_count} />
-        {place.zeropay_status === 'available' ? (
-          <span
-            className="inline-flex items-center text-xs font-medium text-[#5862fb]"
-            data-testid={`place-list-zeropay-${place.id}`}
-          >
-            제로페이
+        <div className="mt-7 flex flex-wrap items-center gap-3">
+          <RatingMeta averageRating={place.average_rating} testId={`place-list-rating-icon-${place.id}`} />
+          <ReviewMeta reviewCount={place.review_count} />
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-[#7a7a7a]">
+            <PlaceTypeIcon
+              className="h-4 w-4 shrink-0"
+              placeType={place.place_type}
+              testId={`place-list-type-icon-${place.id}`}
+            />
+            <span>{BROWSE_PLACE_TYPE_LABEL[place.place_type]}</span>
           </span>
-        ) : null}
+        </div>
       </div>
     </button>
     {showDivider ? <div aria-hidden="true" className="mx-6 my-1 border-b border-[#f0f0f0]" /> : null}
@@ -604,7 +664,7 @@ const DesktopBrowseTopBar = ({ onOpenPlaceAdd }: { onOpenPlaceAdd: () => void })
     </div>
     <button
       aria-label="장소 추가"
-      className="absolute right-6 top-6 inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl bg-[#5862fb] px-4 text-base font-semibold text-white"
+      className="absolute right-6 top-6 inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl bg-[#5862fb] px-4 text-base font-[600] text-white"
       data-testid="desktop-add-button"
       onClick={onOpenPlaceAdd}
       type="button"

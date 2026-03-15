@@ -1,6 +1,6 @@
 # Sprint Goal
 
-- Sprint 16에서 **장소 상세 정보 화면 UX/UI**를 사용자 제공 모바일 스크린샷과 Figma 추출 코드를 기준으로 재정렬한다.
+- Sprint 16에서 **장소 상세 정보 화면 UX/UI**와 **장소 목록 UI 일부**를 사용자 제공 reference 기준으로 재정렬한다.
 - 모바일 detail은 reference fidelity를 우선하고, 데스크톱 detail도 **우선 같은 detail UI를 사용**하되 현재 지도 노출 + 왼쪽 sidebar에서 장소 목록/장소 추가를 진행하는 app-shell surface는 그대로 유지하는 방향으로 범위를 고정한다.
 
 # In Scope
@@ -23,12 +23,17 @@
 - rating-only variant는 새 review schema를 도입하지 않고, 기존 review data shape 안에서 `content`가 비어 있는 경우 본문 row를 숨기는 방식으로 계획한다.
 - 메타 icon은 회색 단색, 별점만 빨간 accent를 사용하는 detail visual language 정의
 - 상세 메타 icon asset은 `public/assets/icons/icon-place-address-muted.svg`, `public/assets/icons/icon-place-added-by-muted.svg`, `public/assets/icons/icon-payment-zeropay-muted.svg`를 사용한다.
+- 목록 icon asset은 `public/assets/icons/icon-payment-zeropay-accent.svg`, `public/assets/icons/icon-place-type-restaurant-muted.svg`, `public/assets/icons/icon-place-type-cafe-muted.svg`를 사용한다.
+- 목록 제로페이 QR icon은 desktop hover `1초` 이후 `제로페이 가능` tooltip을 표시한다.
 - 상세 back icon asset은 `public/assets/icons/icon-navigation-back-24.svg`를 사용한다.
 - 상세 back affordance는 `24px x 24px` 기준과 pointer cursor를 사용한다.
 - 데스크톱 상세는 기존 **sidebar 내부 전환**과 back affordance, 지도 + 왼쪽 sidebar browse/add surface를 유지하면서 모바일과 **같은 detail UI를 우선 적용**하는 범위 정의
+- 장소 목록 row는 이름 row + 하단 메타 라인의 2단 구조로 정렬하고, 제로페이 가능 여부는 이름 row 우측 QR icon으로 표현한다.
+- 목록 row 하단 메타 라인에는 평균 별점, 리뷰 수, 회색 place type icon + label을 사용한다.
 - 장소 추가 화면의 header는 상세 header와 같은 visual language로 정렬한다.
 - 관련 source-of-truth 문서 업데이트 계획 수립
-  - `docs/03-specs/04-place-detail.md`
+  - `docs/03-specs/03-list-browse.md`
+- `docs/03-specs/04-place-detail.md`
   - `docs/03-specs/01-app-shell-and-layout.md`의 legacy floating detail wording 후속 정리 여부 확인
   - `docs/01-product/user-flows/browse-and-detail.md`
   - `docs/04-design/browse-and-detail.md`
@@ -43,7 +48,6 @@
 
 # Out Of Scope
 
-- 장소 목록 화면 UI 변경
 - place data model / API contract / persistence 변경
 - 새로운 navigation state 또는 routing 구조 도입
 - 추천 / 내 리뷰 / 리뷰 작성 / 네이버 이동 UI 재도입
@@ -55,6 +59,7 @@
 
 # Selected Specs
 
+- `docs/03-specs/03-list-browse.md`
 - `docs/03-specs/04-place-detail.md`
 
 # Related Product / Design / Architecture Docs
@@ -132,6 +137,8 @@
   - 추가자 row(`added_by_name`) 노출 여부 검증
   - review 본문 있는 variant / rating-only variant 검증
   - review/평가 최신순 정렬 검증
+  - browse row 상단 QR icon / 하단 type meta 구조 검증
+  - browse row 제로페이 QR icon hover `1초` tooltip 검증
   - review 0건일 때 empty-state 카피/placeholder 없이 섹션 본문이 비워지는지 검증
   - 기존 back/history/loading/error/legacy module 비노출 회귀 검증
   - 장소 추가 header가 상세 header와 같은 back affordance 구조를 유지하는지 회귀 검증
@@ -183,7 +190,8 @@
   - fixed header, info block, review block, review variant 구조와 최신순 정렬 정책을 planning 기준으로 고정한다.
 - Touched Docs:
   - `docs/05-sprints/sprint-16/planning.md`
-  - `docs/03-specs/04-place-detail.md`
+  - `docs/03-specs/03-list-browse.md`
+- `docs/03-specs/04-place-detail.md`
   - `docs/04-design/browse-and-detail.md`
   - `docs/01-product/user-flows/browse-and-detail.md`
 - Verify:

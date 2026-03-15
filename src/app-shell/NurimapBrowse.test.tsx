@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
@@ -15,7 +15,7 @@ const setViewport = (width: number) => {
   })
 }
 
-describe('Sprint 15 browse refresh', () => {
+describe('Sprint 16 browse refresh', () => {
   beforeEach(() => {
     resetAppShellStore()
     delete window.kakao
@@ -38,7 +38,7 @@ describe('Sprint 15 browse refresh', () => {
     expect(screen.getByTestId('desktop-add-button')).toHaveAccessibleName('장소 추가')
     expect(screen.getByTestId('desktop-add-button')).toHaveClass('cursor-pointer')
     expect(screen.getByTestId('desktop-add-button')).toHaveClass('h-9')
-    expect(screen.getByTestId('desktop-add-button')).toHaveClass('font-semibold')
+    expect(screen.getByTestId('desktop-add-button')).toHaveClass('font-[600]')
     expect(screen.getByTestId('desktop-add-button').className).not.toContain('shadow-[')
     expect(screen.getByTestId('desktop-browse-topbar')).toHaveClass('-mt-6')
     expect(screen.getByTestId('desktop-browse-topbar')).toHaveClass('z-10')
@@ -111,7 +111,7 @@ describe('Sprint 15 browse refresh', () => {
     expect(screen.getByTestId('map-label-place-restaurant-1')).toBeInTheDocument()
   })
 
-  it('renders the refreshed browse cards with rating/review metadata and optional zeropay text', () => {
+  it('renders the refreshed browse cards with place name top row and rating review type meta row', () => {
     setViewport(1280)
     render(<App />)
 
@@ -119,31 +119,79 @@ describe('Sprint 15 browse refresh', () => {
     const zeropayRestaurantCard = screen.getByTestId('place-list-item-place-restaurant-1')
     const unavailableRestaurantCard = screen.getByTestId('place-list-item-place-restaurant-2')
     const cafeCard = screen.getByTestId('place-list-item-place-cafe-1')
+    const zeropayCafeCard = screen.getByTestId('place-list-item-place-review-fail')
 
     expect(list.className).not.toContain('space-y-3')
+
     expect(zeropayRestaurantCard).toHaveTextContent('누리 식당')
     expect(zeropayRestaurantCard).toHaveClass('cursor-pointer')
     expect(zeropayRestaurantCard.className).not.toContain('hover:bg-')
     expect(zeropayRestaurantCard).toHaveTextContent('4.7')
     expect(zeropayRestaurantCard).toHaveTextContent('리뷰')
     expect(zeropayRestaurantCard).toHaveTextContent('12')
-    expect(zeropayRestaurantCard).toHaveTextContent('제로페이')
+    expect(zeropayRestaurantCard).toHaveTextContent('음식점')
+    expect(zeropayRestaurantCard).not.toHaveTextContent('제로페이')
     expect(zeropayRestaurantCard).not.toHaveTextContent('서울 마포구 양화로19길 22-16 1층')
-    expect(screen.getByTestId('place-list-type-icon-place-restaurant-1')).toBeInTheDocument()
+    expect(screen.getByTestId('place-list-type-icon-place-restaurant-1')).toHaveAttribute('src', '/assets/icons/icon-place-type-restaurant-muted.svg')
     expect(screen.getByTestId('place-list-rating-icon-place-restaurant-1')).toHaveAttribute('src', '/assets/icons/icon-rating-star-red-16.svg')
+    expect(screen.getByTestId('place-list-zeropay-icon-place-restaurant-1')).toHaveAttribute('src', '/assets/icons/icon-payment-zeropay-accent.svg')
 
     expect(unavailableRestaurantCard).toHaveTextContent('합정 점심집')
     expect(unavailableRestaurantCard).toHaveTextContent('4.1')
     expect(unavailableRestaurantCard).toHaveTextContent('리뷰')
     expect(unavailableRestaurantCard).toHaveTextContent('5')
+    expect(unavailableRestaurantCard).toHaveTextContent('음식점')
     expect(unavailableRestaurantCard).not.toHaveTextContent('제로페이')
-    expect(screen.getByTestId('place-list-type-icon-place-restaurant-2')).toBeInTheDocument()
+    expect(screen.getByTestId('place-list-type-icon-place-restaurant-2')).toHaveAttribute('src', '/assets/icons/icon-place-type-restaurant-muted.svg')
+    expect(screen.queryByTestId('place-list-zeropay-icon-place-restaurant-2')).not.toBeInTheDocument()
 
     expect(cafeCard).toHaveTextContent('양화로 카페')
     expect(cafeCard).toHaveTextContent('4.3')
+    expect(cafeCard).toHaveTextContent('리뷰')
     expect(cafeCard).toHaveTextContent('8')
+    expect(cafeCard).toHaveTextContent('카페')
+    expect(cafeCard).not.toHaveTextContent('제로페이')
     expect(cafeCard).not.toHaveTextContent('서울 마포구 양화로19길 20 2층')
-    expect(screen.getByTestId('place-list-type-icon-place-cafe-1')).toBeInTheDocument()
+    expect(screen.getByTestId('place-list-type-icon-place-cafe-1')).toHaveAttribute('src', '/assets/icons/icon-place-type-cafe-muted.svg')
+    expect(screen.queryByTestId('place-list-zeropay-icon-place-cafe-1')).not.toBeInTheDocument()
+
+    expect(zeropayCafeCard).toHaveTextContent('리뷰 저장 실패 장소')
+    expect(zeropayCafeCard).toHaveTextContent('3.9')
+    expect(zeropayCafeCard).toHaveTextContent('리뷰')
+    expect(zeropayCafeCard).toHaveTextContent('3')
+    expect(zeropayCafeCard).toHaveTextContent('카페')
+    expect(zeropayCafeCard).not.toHaveTextContent('제로페이')
+    expect(screen.getByTestId('place-list-type-icon-place-review-fail')).toHaveAttribute('src', '/assets/icons/icon-place-type-cafe-muted.svg')
+    expect(screen.getByTestId('place-list-zeropay-icon-place-review-fail')).toHaveAttribute('src', '/assets/icons/icon-payment-zeropay-accent.svg')
+  })
+
+  it('shows the zeropay tooltip after hovering the qr icon for 400ms', async () => {
+    vi.useFakeTimers()
+
+    try {
+      setViewport(1280)
+      render(<App />)
+
+      const trigger = screen.getByTestId('place-list-zeropay-trigger-place-restaurant-1')
+
+      expect(screen.queryByTestId('place-list-zeropay-tooltip-place-restaurant-1')).not.toBeInTheDocument()
+
+      fireEvent.mouseEnter(trigger)
+      act(() => {
+        vi.advanceTimersByTime(399)
+      })
+      expect(screen.queryByTestId('place-list-zeropay-tooltip-place-restaurant-1')).not.toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(1)
+      })
+      expect(screen.getByTestId('place-list-zeropay-tooltip-place-restaurant-1')).toHaveTextContent('제로페이 가능')
+
+      fireEvent.mouseLeave(trigger)
+      expect(screen.queryByTestId('place-list-zeropay-tooltip-place-restaurant-1')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('opens the detail flow when a desktop list item is selected', async () => {
