@@ -19,24 +19,27 @@
   - 배경색: `#fff`
   - 폰트: `Pretendard`
 - 사이드바에는 접기/펼치기 버튼이 있다.
-- 장소 추가 버튼은 사이드바 상단에 배치한다.
-  - 크기: `342px x 48px`
+- 사이드바 최상단에는 compact top bar를 배치한다.
+  - wrapper card 없이 header처럼 동작해야 한다.
+  - sidebar 상단 padding에 밀리지 않고 top edge에 바로 붙어야 한다.
+  - 장소 목록이 scroll되어도 고정된 header처럼 유지되어야 한다.
+  - 왼쪽: 36px 정사각 로고와 `누리맵` wordmark
+  - 오른쪽: `추가` 라벨의 compact CTA button
   - floating button은 사용하지 않는다.
+- browse title 텍스트는 별도 row로 두지 않는다.
+- `추가` button은 shadow 없이 pointer cursor로 동작한다.
+- `추가` button label weight는 `600`으로 유지한다.
+- `추가` button height는 `36px`로 유지한다.
+- `로그아웃`은 장소 목록 최하단의 작은 text action으로 footer처럼 계속 접근 가능해야 하며, sidebar bottom edge에 바로 붙어 vertical center 정렬을 유지해야 한다.
+- `로그아웃` text action은 hover 시 `#E52E30`로 변하고 pointer cursor를 보여주며, 클릭 시 browser confirm으로 로그아웃 여부를 먼저 확인해야 한다.
 - 기본 상태에서는 장소 목록을 보여준다.
 - `장소 추가`를 누르면 별도 panel을 띄우지 않고, **같은 사이드바 내용이 등록 화면으로 전환**된다.
 
 ### Detail State
-- 목록 또는 지도에서 장소 선택 시 상세 패널을 연다.
-- 상세 패널은 사이드바 오른쪽의 지도 위에 떠 있는 floating panel로 표시한다.
-  - 너비: `390px`
-  - 높이: `calc(100vh - 48px)`
-  - 상단 inset: `24px`
-  - 하단 inset: `24px`
-  - 사이드바와 간격: `24px`
-  - `48px`는 상단 bar 높이가 아니라 `24px + 24px` inset 합이다.
-- 상세 패널은 둥근 모서리와 그림자를 가진다.
-- 지도는 상세 패널 뒤에서 계속 보여야 한다.
-- X 버튼으로 닫는다.
+- 목록 또는 지도에서 장소 선택 시 목록 영역 안의 내용이 상세 화면으로 전환된다.
+- 데스크톱 상세는 별도 floating panel을 띄우지 않는다.
+- 상세 화면 상단에는 뒤로 가기 affordance를 두고, 뒤로 가기 시 목록 상태로 복귀한다.
+- 지도는 상세와 병렬로 계속 보이지만, 상세 UI는 사이드바 내부에서만 전환된다.
 
 ## Mobile Layout `< 768px`
 
@@ -62,15 +65,20 @@
 - 등록 화면을 닫으면 이전 목록 상태로 돌아간다.
 
 ## Interaction Notes
-- 장소 목록 item에는 이름, 평균 별점, 리뷰 수를 표시한다.
-- 장소 목록 item에는 `zeropay_status = available`인 경우 제로페이 로고를 함께 표시한다.
-- 목록의 제로페이 로고 높이는 평균 별점 UI 높이와 동일해야 한다.
-- `zeropay_status = unavailable | needs_verification`이면 목록에서 제로페이 로고를 표시하지 않는다.
-- 데스크톱 상세는 지도 위에 떠 있는 floating panel로 표시한다.
-- 데스크톱에서도 지도는 상세 패널 뒤에서 계속 보여야 한다.
+- 장소 목록 item 상단 row에는 이름을 왼쪽에, blue place type icon을 오른쪽에 배치한다.
+- Sprint 15 목록 row는 Figma 기준으로 road address를 카드 본문에 직접 노출하지 않는다.
+- 장소 목록 item 하단 row에는 평균 별점, 리뷰 수, optional `제로페이` 텍스트를 같은 메타 라인에 배치한다.
+- 평균 별점 아이콘은 `public/assets/icons/icon-rating-star-red-16.svg` asset을 사용한다.
+- 목록 row는 sidebar 안에서 full-bleed white row처럼 보이도록 배치하고, place 사이에는 `#F0F0F0` divider line을 둔다.
+- 목록 row는 hover 시 background color를 바꾸지 않고 pointer cursor만 보여준다.
+- divider line은 위아래 `4px` margin을 유지한다.
+- `zeropay_status = available`인 경우에만 `제로페이` 텍스트를 표시한다.
+- `zeropay_status = unavailable | needs_verification`이면 목록에서 `제로페이` 텍스트를 표시하지 않는다.
+- 데스크톱 상세는 사이드바 내부 전환 방식으로 표시한다.
 - 모바일 장소 상세 화면은 전체 화면 페이지로 표시한다.
 - 모바일 장소 상세 화면의 뒤로 가기 버튼과 브라우저 기본 뒤로 가기는 같은 동작을 해야 한다.
 - 모바일 장소 상세 화면에서 지도 화면으로 복귀할 때 선택한 장소는 유지한다.
 - 모바일 장소 상세 화면에서 지도 화면으로 복귀할 때 지도는 선택한 장소 위치를 기준으로 보여준다.
+- 이번 1차 상세 UI는 리뷰 읽기 중심 구조이며, 네이버 이동 / 추천 / 내 리뷰 / 리뷰 작성 UI는 포함하지 않는다.
 - 지도 라벨은 기본적으로 `level 1-5`에서 표시하고 `level 6`부터 숨긴다.
 - 모바일에서 지도 화면, 장소 목록 페이지, 상세 화면의 전환은 사용자가 맥락을 잃지 않도록 유지해야 한다.
