@@ -51,8 +51,10 @@
 - SDK, framework, API를 사용할 때는 먼저 공식 문서를 확인한다.
 - 프론트엔드 구현은 spec에 다른 지시가 없으면 Vite + React + Tailwind CSS + daisyUI를 따른다.
 - frontend state가 필요하면 React-oriented library로 Zustand를 사용할 수 있다.
-- React/frontend 구현 전 `vercel-react-best-practices`, `frontend-design`을 먼저 쓰고, 시각 방향 확장이 크면 `ui-ux-pro-max`를 추가한다.
-- frontend UI review, UX audit, accessibility/design review에는 `web-design-guidelines`를 함께 쓰고, redesign이 크면 `ui-ux-pro-max`를 추가한다.
+- UI 작업에서 사용자 제공 screenshot / Figma / annotated capture가 있으면 그것을 source of truth로 사용하고, 자율적 디자인 해석은 하지 않는다.
+- UI fidelity가 중요한데 screenshot reference가 없으면, 비자명한 시각 변경 전에 사용자에게 desktop/mobile screenshot 제공을 먼저 요청한다.
+- screenshot이 제공되면 `/prompts:vision`으로 레이아웃/spacing/text/icon 요구를 먼저 분석하고, 구현 결과 비교가 필요하면 `$visual-verdict`를 사용한다.
+- frontend UI review, UX audit, accessibility/design review에는 `web-design-guidelines`를 참고한다.
 - 관련 spec이 `docs/03-specs/`에 있으면 TDD 순서로 failing test -> 구현 -> 검증을 따른다.
 
 ### QA / Docs

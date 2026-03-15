@@ -43,6 +43,38 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 
 ## Entries
 
+## 2026-03-15 Governance - Make UI implementation screenshot-first and stop default creative design skill guidance
+- Context: 최근 Sprint 15 UI 작업에서 사용자 의도는 “제공한 디자인을 그대로 반영”이었지만, 기존 AGENTS / workflow 가이드에는 `frontend-design`, `ui-ux-pro-max`처럼 창의적 확장이나 시각 해석을 유도하는 문구가 남아 있었다. 이 상태는 reference fidelity가 중요한 작업에서 agent가 과도한 디자인 판단을 섞을 위험이 있었다.
+- Options considered:
+  - Option A: 기존 가이드를 유지하고, 각 UI 요청마다 개별적으로 “임의 판단 금지”를 반복한다.
+  - Option B: `docs/00-governance/agent-workflow.md`를 screenshot-first UI fidelity의 canonical 위치로 두고, AGENTS.md에서는 중복 규칙 대신 workflow 참조만 유지한다.
+- Decision: Option B를 선택한다.
+- Rationale: UI fidelity 기준은 작업마다 반복해서 상기시키는 임시 규칙보다, canonical workflow 문서에 고정하는 편이 일관성과 재현성이 높다. screenshot/Figma 기반 작업에서는 reference를 source of truth로 고정하고, reference가 없을 때는 먼저 screenshot을 요청하는 흐름이 사용자의 의도와 가장 잘 맞는다. 같은 규칙을 AGENTS와 workflow 양쪽에 중복으로 두면 언어/내용 drift가 생기기 쉬우므로 canonical 위치를 하나로 줄이는 편이 안전하다.
+- Impact: 앞으로 UI 구현에서는 사용자 제공 screenshot / Figma / annotated capture를 우선 source of truth로 사용한다. UI fidelity가 중요한데 reference screenshot이 없으면 비자명한 시각 변경 전에 사용자에게 screenshot 제공을 먼저 요청한다. `/prompts:vision`과 `$visual-verdict`는 screenshot 기반 UI 구현/검증의 기본 prompt/skill로 안내하고, `frontend-design`, `ui-ux-pro-max` 사용 유도 문구는 기본 가이드에서 제거한다. 상세 규칙은 `docs/00-governance/agent-workflow.md`에만 유지하고, AGENTS.md는 workflow 참조를 통해 간접 적용한다.
+- Revisit trigger: 팀이 향후 screenshot fidelity보다 창의적 redesign을 기본값으로 삼는 별도 UI workflow를 공식 도입하면, 현재 screenshot-first 원칙과 skill guidance를 다시 조정한다.
+- Related docs:
+  - AGENTS.md
+  - docs/00-governance/agent-workflow.md
+  - docs/04-design/browse-and-detail.md
+  - docs/05-sprints/sprint-15/planning.md
+- Related commit: TBD
+
+## 2026-03-15 Sprint 15 - Consolidate UI assets under `public/assets/` with semantic kebab-case naming
+- Context: Sprint 15 browse/detail UI refactor 동안 아이콘과 이미지가 `public/sprint15/` 아래에 ad-hoc하게 쌓이면서, build 결과도 `dist/sprint15/` 기준으로 분산됐다. 이후 같은 유형의 자산이 늘어나면 경로 예측성과 네이밍 일관성이 떨어질 수 있어, 지금 관리 루트와 naming rule을 고정할 필요가 생겼다.
+- Options considered:
+  - Option A: 기존 `public/sprint15/branding`, `public/sprint15/icons` 구조를 유지하고 파일명만 부분 수정한다.
+  - Option B: browse/detail UI 자산의 tracked root를 `public/assets/`로 통일하고, `branding/`, `icons/` 하위 폴더 + lowercase kebab-case semantic naming 규칙으로 재정렬한다.
+  - Option C: 정적 자산을 `src/` 아래로 옮겨 bundler import 기반으로만 관리한다.
+- Decision: Option B를 선택한다.
+- Rationale: `public/assets/`는 브라우저 runtime 경로와 build 결과(`dist/assets/...`)를 함께 예측 가능하게 만들고, branding/icon 구분도 명확하다. semantic kebab-case naming은 파일명만 보고도 역할과 variant를 이해할 수 있어 이후 Sprint의 자산 추가/교체 비용을 줄인다. Option A는 임시 정리에 가깝고, Option C는 현재 public 정적 자산 관리 패턴과 문서 범위를 불필요하게 넓힌다.
+- Impact: browse/detail UI 자산은 `public/assets/branding/*`, `public/assets/icons/*` 기준으로 관리한다. 파일명은 `brand-*`, `icon-*` prefix와 semantic kebab-case를 사용한다. 기존 `/sprint15/...` runtime 참조는 `/assets/...`로 교체하고, build 결과도 `dist/assets/...` 기준으로 정렬된다.
+- Revisit trigger: 앱 전역에서 image optimization pipeline, bundler import 정책, 또는 CDN fingerprint 전략을 새로 도입해 `public/` 기반 정적 자산 관리보다 더 적합한 표준이 생기면 현재 규칙을 재검토한다.
+- Related docs:
+  - docs/04-design/browse-and-detail.md
+  - docs/05-sprints/sprint-15/planning.md
+  - docs/05-sprints/sprint-15/qa.md
+  - docs/05-sprints/sprint-15/review.md
+- Related commit: TBD
 
 ## 2026-03-08 Plan 01 - React scaffold baseline
 - Context: 현재 저장소에는 실제 앱 코드가 없고 package.json은 최소 설정만 가진 상태다. Plan 01은 Vite + React + Tailwind CSS + daisyUI 기반의 앱 셸을 빠르게 세팅하면서 이후 Plan 02~08 확장을 위한 안정적인 프론트엔드 기반이 필요하다.

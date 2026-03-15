@@ -196,8 +196,6 @@ Agent Shortcuts:
 - `git-master` -> git-master: Git commit and history management
 
 Design Skills:
-- `frontend-design`: Distinctive, production-grade frontend UI implementation and styling
-- `ui-ux-pro-max`: Design-system generation and searchable UI/UX intelligence for style, color, typography, layout, charts, and stack-specific guidance
 - `web-design-guidelines`: UI/UX review against web interface guidelines
 
 Utilities:
