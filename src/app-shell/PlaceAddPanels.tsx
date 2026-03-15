@@ -41,6 +41,7 @@ const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-ba
 const INPUT_CLASSES = `input h-10 ${BASE_TEXT_FIELD_CLASSES}`
 const TEXTAREA_CLASSES = `textarea min-h-[88px] resize-none overflow-hidden ${BASE_TEXT_FIELD_CLASSES}`
 const REVIEW_TEXTAREA_MIN_HEIGHT = 88
+const PLACE_ADD_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 
 const PLACE_TYPE_OPTIONS: SegmentedOption<PlaceType>[] = [
   { value: 'restaurant', label: '음식점', testId: 'place-type-option-restaurant' },
@@ -54,12 +55,7 @@ const ZEROPAY_OPTIONS: SegmentedOption<ZeropayStatus>[] = [
 ]
 
 const BackArrowIcon = () => (
-  <svg aria-hidden="true" height="24" viewBox="0 0 24 24" width="24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M19 11H7.83L12.71 6.12C13.1 5.73 13.1 5.09 12.71 4.7C12.6175 4.60729 12.5076 4.53375 12.3866 4.48357C12.2657 4.43338 12.136 4.40755 12.005 4.40755C11.874 4.40755 11.7443 4.43338 11.6234 4.48357C11.5024 4.53375 11.3925 4.60729 11.3 4.7L4.71 11.29C4.6173 11.3825 4.54375 11.4924 4.49357 11.6134C4.44339 11.7343 4.41756 11.864 4.41756 11.995C4.41756 12.126 4.44339 12.2556 4.49357 12.3766C4.54375 12.4976 4.6173 12.6075 4.71 12.7L11.3 19.29C11.3926 19.3826 11.5025 19.456 11.6235 19.5061C11.7444 19.5562 11.8741 19.582 12.005 19.582C12.1359 19.582 12.2656 19.5562 12.3865 19.5061C12.5075 19.456 12.6174 19.3826 12.71 19.29C12.8026 19.1974 12.876 19.0875 12.9261 18.9665C12.9762 18.8456 13.002 18.7159 13.002 18.585C13.002 18.4541 12.9762 18.3244 12.9261 18.2035C12.876 18.0825 12.8026 17.9726 12.71 17.88L7.83 13H19C19.55 13 20 12.55 20 12C20 11.45 19.55 11 19 11Z"
-      fill="#1C1C1C"
-    />
-  </svg>
+  <img alt="" aria-hidden="true" height="24" src={PLACE_ADD_BACK_ICON_SRC} width="24" />
 )
 
 const SegmentedField = <T extends string>({
@@ -330,20 +326,22 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 
   return (
     <div className="flex h-full flex-col" data-testid="place-add-form">
-      <div className="flex items-center">
-        <button
-          aria-label="뒤로가기"
-          className="place-add-back-button flex h-6 w-6 items-center justify-center"
-          data-testid="place-add-back-button"
-          onClick={handleClose}
-          type="button"
-        >
-          <BackArrowIcon />
-        </button>
+      <div className="sticky top-0 z-10 h-14 bg-white" data-testid="place-add-header">
+        <div className="relative h-full">
+          <button
+            aria-label="뒤로가기"
+            className="place-add-back-button absolute left-6 top-6 inline-flex h-6 w-6 cursor-pointer items-center justify-center"
+            data-testid="place-add-back-button"
+            onClick={handleClose}
+            type="button"
+          >
+            <BackArrowIcon />
+          </button>
+        </div>
       </div>
       <h2 className="sr-only">직접 장소 등록</h2>
 
-      <div className="mt-6 flex-1 overflow-auto">
+      <div className="mt-6 flex-1 overflow-auto px-6 pb-4">
         <div data-testid="place-add-form-content">
           <div className="space-y-6" data-testid="place-add-form-fields">
             <div className="w-full" data-testid="place-name-field">
@@ -425,14 +423,14 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 }
 
 export const DesktopPlaceAddPanel = ({ onClose }: PlaceAddPanelProps) => (
-  <div className="mt-6 flex-1 overflow-hidden" data-testid="desktop-place-add-panel">
+  <div className="flex-1 overflow-hidden" data-testid="desktop-place-add-panel">
     <PlaceAddForm onClose={onClose} />
   </div>
 )
 
 export const MobilePlaceAddPage = ({ onClose }: PlaceAddPanelProps) => (
   <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-base-100" data-testid="mobile-place-add-page">
-    <div className="flex-1 overflow-hidden px-4 py-4">
+    <div className="flex-1 overflow-hidden">
       <PlaceAddForm onClose={onClose} />
     </div>
   </section>

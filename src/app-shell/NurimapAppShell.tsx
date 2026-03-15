@@ -37,6 +37,9 @@ const PLACE_TYPE_MUTED_ICON: Record<PlaceType, string> = {
 const PLUS_ICON_SRC = '/assets/icons/icon-action-add.svg'
 const ZEROPAY_ICON_SRC = '/assets/icons/icon-payment-zeropay-muted.svg'
 const LIST_STAR_ICON_SRC = '/assets/icons/icon-rating-star-red-16.svg'
+const PLACE_ADDRESS_ICON_SRC = '/assets/icons/icon-place-address-muted.svg'
+const PLACE_ADDED_BY_ICON_SRC = '/assets/icons/icon-place-added-by-muted.svg'
+const DETAIL_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 const LOGOUT_CONFIRM_MESSAGE = '로그아웃할까요?'
 const STAR_PATH =
   'M11.9995 19.3643L6.46613 22.6977C6.22168 22.8532 5.96613 22.9199 5.69946 22.8977C5.4328 22.8754 5.19946 22.7865 4.99946 22.631C4.79946 22.4754 4.64391 22.2812 4.5328 22.0483C4.42168 21.8154 4.39946 21.5541 4.46613 21.2643L5.9328 14.9643L1.0328 10.731C0.810573 10.531 0.671906 10.303 0.616795 10.047C0.561684 9.79099 0.578129 9.54121 0.666129 9.29766C0.754129 9.0541 0.887462 8.8541 1.06613 8.69766C1.2448 8.54121 1.48924 8.44121 1.79946 8.39766L8.26613 7.83099L10.7661 1.89766C10.8772 1.63099 11.0497 1.43099 11.2835 1.29766C11.5172 1.16432 11.7559 1.09766 11.9995 1.09766C12.243 1.09766 12.4817 1.16432 12.7155 1.29766C12.9492 1.43099 13.1217 1.63099 13.2328 1.89766L15.7328 7.83099L22.1995 8.39766C22.5106 8.4421 22.755 8.5421 22.9328 8.69766C23.1106 8.85321 23.2439 9.05321 23.3328 9.29766C23.4217 9.5421 23.4386 9.79232 23.3835 10.0483C23.3284 10.3043 23.1892 10.5319 22.9661 10.731L18.0661 14.9643L19.5328 21.2643C19.5995 21.5532 19.5772 21.8145 19.4661 22.0483C19.355 22.2821 19.1995 22.4763 18.9995 22.631C18.7995 22.7857 18.5661 22.8745 18.2995 22.8977C18.0328 22.9208 17.7772 22.8541 17.5328 22.6977L11.9995 19.3643Z'
@@ -116,6 +119,31 @@ const ZeroPayIndicator = () => (
     src={ZEROPAY_ICON_SRC}
   />
 )
+
+const BackIcon = ({ className = 'h-6 w-6' }: { className?: string }) => (
+  <img alt="" aria-hidden="true" className={className} src={DETAIL_BACK_ICON_SRC} />
+)
+
+const LocationIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
+  <img alt="" aria-hidden="true" className={className} src={PLACE_ADDRESS_ICON_SRC} />
+)
+
+const PersonIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
+  <img alt="" aria-hidden="true" className={className} src={PLACE_ADDED_BY_ICON_SRC} />
+)
+
+const MetaReviewStarIcon = ({ className = 'h-4 w-4 text-[#8b8894]' }: { className?: string }) => (
+  <StarIcon className={className} />
+)
+
+const formatReviewDate = (value: string) => value.replaceAll('-', '.')
+
+const parseReviewTimestamp = (value: string) => {
+  const normalized = value.includes('.') ? value.replaceAll('.', '-') : value
+  const timestamp = Date.parse(normalized)
+
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
 
 const BrandBlock = ({ compact = false }: { compact?: boolean }) => (
   <div className="flex items-center gap-3">
@@ -414,78 +442,102 @@ export const DetailRecommendationControl = ({
   )
 }
 
-const ReviewCard = ({ review }: { review: PlaceSummary['reviews'][number] }) => (
-  <article className="rounded-[26px] border border-[#ededf2] bg-white p-4 shadow-[0_16px_40px_rgba(39,45,89,0.06)]">
+const DetailMetaRow = ({
+  children,
+  icon,
+  testId,
+}: {
+  children: ReactNode
+  icon: ReactNode
+  testId?: string
+}) => (
+  <div className="flex items-center gap-2 text-sm font-medium leading-4 text-[#8b8894]" data-testid={testId}>
+    {icon}
+    <div>{children}</div>
+  </div>
+)
+
+const ReviewStars = ({ rating }: { rating: number }) => (
+  <div className="flex items-center gap-1" data-testid="detail-review-stars">
+    {Array.from({ length: 5 }, (_, index) => (
+      <StarIcon
+        key={index}
+        className={`h-4 w-4 ${index < Math.round(rating) ? 'text-[#e53935]' : 'text-[#8b8894]'}`}
+      />
+    ))}
+  </div>
+)
+
+const ReviewItem = ({ review }: { review: PlaceSummary['reviews'][number] }) => (
+  <article className="flex flex-col gap-2" data-testid={`detail-review-item-${review.id}`}>
     <div className="flex items-start justify-between gap-3">
-      <div>
-        <p className="text-sm font-semibold text-[#222127]">{review.author_name}</p>
-        <div className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#625f6d]">
-          <StarIcon className="h-3.5 w-3.5 text-[#ff6f7a]" />
-          {review.rating_score.toFixed(1)}
-        </div>
-      </div>
-      <span className="text-xs text-[#9a97a7]">{review.created_at}</span>
+      <p className="text-base font-medium leading-6 text-[#1f1f1f]">{review.author_name}</p>
+      <span className="text-xs leading-4 text-[#8b8894]">{formatReviewDate(review.created_at)}</span>
     </div>
-    <p className="mt-3 text-sm leading-6 text-[#5f5b6a]">{review.content}</p>
+    <span className="sr-only">{review.rating_score.toFixed(1)}</span>
+    <ReviewStars rating={review.rating_score} />
+    {review.content.trim() !== '' ? (
+      <p className="text-sm leading-6 text-[#1f1f1f]" data-testid={`detail-review-content-${review.id}`}>
+        {review.content}
+      </p>
+    ) : null}
   </article>
 )
 
-const DetailCard = ({ place }: { place: PlaceSummary }) => (
-  <div data-testid="place-detail-ready">
-    <div className="rounded-[32px] bg-[linear-gradient(180deg,#ffffff_0%,#f6f4ff_100%)] p-6 shadow-[0_24px_80px_rgba(39,45,89,0.08)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8e89a1]">Place detail</p>
-          <h2 className="mt-3 text-[28px] font-semibold leading-8 tracking-[-0.03em] text-[#222127]">{place.name}</h2>
-        </div>
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
-          <PlaceTypeIcon className="h-5 w-5" placeType={place.place_type} />
-        </div>
-      </div>
+const DetailCard = ({ place }: { place: PlaceSummary }) => {
+  const sortedReviews = [...place.reviews].sort(
+    (left, right) => parseReviewTimestamp(right.created_at) - parseReviewTimestamp(left.created_at),
+  )
 
-      <div className="mt-5 flex flex-wrap items-center gap-2.5 text-sm text-[#625f6d]">
-        <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-semibold">
-          <PlaceTypeIcon className="h-4 w-4" placeType={place.place_type} />
-          <span data-testid="detail-meta-type">{PLACE_TYPE_LABEL[place.place_type]}</span>
-        </span>
-        {place.zeropay_status === 'available' ? (
-          <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-semibold text-[#625f6d]">
-            <ZeroPayIndicator />
-            제로페이
-          </span>
-        ) : null}
-        <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-semibold text-[#625f6d]" data-testid="detail-meta-rating">
-          <StarIcon className="h-4 w-4 text-[#ff6f7a]" />
-          {place.average_rating.toFixed(1)} · 리뷰 {place.review_count}
-        </span>
-      </div>
+  return (
+    <div data-testid="place-detail-ready">
+      <section className="px-6 pb-6 pt-4" data-testid="detail-info-section">
+        <div className="flex flex-col gap-6">
+          <h2 className="text-lg font-medium leading-7 text-[#1f1f1f]">{place.name}</h2>
 
-      <p className="mt-5 text-sm leading-6 text-[#5f5b6a]" data-testid="detail-address">
-        {place.road_address}
-      </p>
-    </div>
+          <div className="flex flex-col gap-4">
+            <DetailMetaRow icon={<LocationIcon />} testId="detail-address-row">
+              <span data-testid="detail-address">{place.road_address}</span>
+            </DetailMetaRow>
 
-    <section className="mt-6" data-testid="detail-review-section">
-      <div className="mb-4 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8e89a1]">Review notes</p>
-          <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#222127]">리뷰 {place.review_count}</h3>
+            <DetailMetaRow icon={<PersonIcon />} testId="detail-added-by">
+              <span>{place.added_by_name}님이 추가한 장소</span>
+            </DetailMetaRow>
+
+            <DetailMetaRow icon={<PlaceTypeIcon className="h-4 w-4 opacity-70" placeType={place.place_type} />}>
+              <span data-testid="detail-meta-type">{PLACE_TYPE_LABEL[place.place_type]}</span>
+            </DetailMetaRow>
+
+            {place.zeropay_status === 'available' ? (
+              <DetailMetaRow icon={<ZeroPayIndicator />} testId="detail-zeropay-row">
+                <span>제로페이 가능</span>
+              </DetailMetaRow>
+            ) : null}
+
+            <DetailMetaRow icon={<MetaReviewStarIcon />} testId="detail-meta-rating">
+              <span>{place.average_rating.toFixed(1)} ({place.review_count})</span>
+            </DetailMetaRow>
+          </div>
         </div>
-      </div>
-      {place.reviews.length > 0 ? (
-        <div className="space-y-3" data-testid="detail-review-list">
-          {place.reviews.map((review) => (
-            <ReviewCard key={review.id} review={review} />
+      </section>
+
+      <div className="h-1 bg-[#F0F0F0]" />
+
+      <section className="px-6 py-6" data-testid="detail-review-section">
+        <div className="mb-6">
+          <p className="text-sm font-medium leading-5 text-[#8b8894]">평가 및 리뷰</p>
+          <span className="sr-only">리뷰 {place.review_count}</span>
+        </div>
+
+        <div className="flex flex-col gap-6" data-testid="detail-review-list">
+          {sortedReviews.map((review) => (
+            <ReviewItem key={review.id} review={review} />
           ))}
         </div>
-      ) : (
-        <div className="rounded-[26px] border border-dashed border-[#dbdbe6] bg-white px-5 py-6 text-sm text-[#7e7b8b]" data-testid="detail-review-list">
-          아직 등록된 리뷰가 없어요.
-        </div>
-      )}
-    </section>
-  </div>
-)
+      </section>
+    </div>
+  )
+}
 
 const DetailBody = ({
   onRetry,
@@ -516,25 +568,31 @@ const DetailBody = ({
   return <DetailCard place={place} />
 }
 
-const SidebarHeader = ({
-  subtitle,
+const DetailHeader = ({
+  ariaLabel,
+  onBack,
   title,
-  action,
+  useNegativeInset = false,
 }: {
-  action?: ReactNode
-  subtitle: string
+  ariaLabel: string
+  onBack: () => void
   title: string
+  useNegativeInset?: boolean
 }) => (
-  <div className="rounded-[32px] bg-[linear-gradient(180deg,#f9f8ff_0%,#ffffff_100%)] px-4 py-4 shadow-[0_18px_50px_rgba(39,45,89,0.05)]">
-    <div className="flex items-start justify-between gap-4">
-      <div className="space-y-4">
-        <BrandBlock compact />
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8e89a1]">{subtitle}</p>
-          <h2 className="mt-2 text-[26px] font-semibold leading-8 tracking-[-0.03em] text-[#222127]">{title}</h2>
-        </div>
-      </div>
-      {action}
+  <div
+    className={`${useNegativeInset ? '-mx-6 -mt-6' : ''} sticky top-0 z-10 h-14 bg-white`}
+    data-testid="detail-header"
+  >
+    <div className="relative h-full">
+      <button
+        aria-label={ariaLabel}
+        className="absolute left-6 top-6 inline-flex h-6 w-6 cursor-pointer items-center justify-center text-[#1f1f1f]"
+        onClick={onBack}
+        type="button"
+      >
+        <BackIcon />
+      </button>
+      <h2 className="sr-only">{title}</h2>
     </div>
   </div>
 )
@@ -613,17 +671,8 @@ const DesktopDetailSidebar = ({
   status: PlaceDetailLoadState
 }) => (
   <section className="flex h-full flex-col" data-testid="desktop-detail-panel">
-    <SidebarHeader
-      action={
-        <button aria-label="목록으로 돌아가기" className="btn btn-ghost btn-sm rounded-full text-[#5f5b6a]" onClick={onBack} type="button">
-          ← 목록
-        </button>
-      }
-      subtitle="Selected place"
-      title="장소 상세"
-    />
-
-    <div className="mt-5 flex-1 overflow-auto pb-3">
+    <DetailHeader ariaLabel="목록으로 돌아가기" onBack={onBack} title="장소 상세" />
+    <div className="flex-1 overflow-auto">
       <DetailBody onRetry={useAppShellStore.getState().retryPlaceDetail} place={place} status={status} />
     </div>
   </section>
@@ -643,9 +692,12 @@ const DesktopSidebar = ({
   const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
   const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
   const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
+  const sidebarClassName = `place-add-surface flex h-screen w-[390px] flex-col border-r border-[#ececf3] bg-[#fff] ${
+    navigationState === 'place_detail_open' || navigationState === 'place_add_open' ? '' : 'px-5 py-5 md:px-6 md:py-6'
+  }`
 
   return (
-    <aside className="place-add-surface flex h-screen w-[390px] flex-col border-r border-[#ececf3] bg-[#fff] px-5 py-5 md:px-6 md:py-6" data-testid="desktop-sidebar">
+    <aside className={sidebarClassName} data-testid="desktop-sidebar">
       {navigationState === 'place_add_open' ? (
         <DesktopPlaceAddPanel onClose={closePlaceAdd} />
       ) : navigationState === 'place_detail_open' ? (
@@ -724,22 +776,9 @@ const MobileDetailPage = ({
   place: PlaceSummary | undefined
   status: PlaceDetailLoadState
 }) => (
-  <section className="absolute inset-0 z-30 flex min-h-screen flex-col bg-[#fcfbff]" data-testid="mobile-detail-page">
-    <div className="border-b border-[#efedf6] px-4 pb-5 pt-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-4">
-          <BrandBlock compact />
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8e89a1]">Selected place</p>
-            <h2 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-[#222127]">장소 상세</h2>
-          </div>
-        </div>
-        <button className="btn btn-ghost btn-sm rounded-full text-[#5f5b6a]" onClick={onBack} type="button">
-          ← 뒤로
-        </button>
-      </div>
-    </div>
-    <div className="flex-1 overflow-auto px-4 py-5">
+  <section className="absolute inset-0 z-30 flex min-h-screen flex-col bg-white" data-testid="mobile-detail-page">
+    <DetailHeader ariaLabel="뒤로 가기" onBack={onBack} title="장소 상세" />
+    <div className="flex-1 overflow-auto">
       <DetailBody onRetry={useAppShellStore.getState().retryPlaceDetail} place={place} status={status} />
     </div>
   </section>

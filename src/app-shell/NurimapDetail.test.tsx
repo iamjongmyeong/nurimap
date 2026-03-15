@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
+import type { PlaceSummary } from './types'
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
@@ -15,12 +16,12 @@ const setViewport = (width: number) => {
   })
 }
 
-describe('Sprint 15 place detail refresh', () => {
+describe('Sprint 16 place detail refresh', () => {
   beforeEach(() => {
     resetAppShellStore()
   })
 
-  it('shows the simplified desktop detail fields and removes legacy modules', async () => {
+  it('shows the redesigned desktop detail fields and removes legacy modules', async () => {
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
@@ -30,11 +31,14 @@ describe('Sprint 15 place detail refresh', () => {
     const detail = screen.getByTestId('desktop-detail-panel')
     expect(detail).toHaveTextContent('누리 식당')
     expect(screen.getByTestId('detail-address')).toHaveTextContent('서울 마포구 양화로19길 22-16 1층')
+    expect(screen.getByTestId('detail-added-by')).toHaveTextContent('김누리님이 추가한 장소')
     expect(screen.getByTestId('detail-meta-type')).toHaveTextContent('식당')
-    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.7 · 리뷰 12')
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.7 (12)')
     expect(screen.getByTestId('detail-zeropay-indicator')).toBeInTheDocument()
-    expect(screen.getByTestId('detail-review-section')).toHaveTextContent('리뷰 12')
+    expect(screen.getByTestId('detail-review-section')).toHaveTextContent('평가 및 리뷰')
+    expect(screen.getByTestId('detail-review-list')).toHaveTextContent('김누리')
     expect(screen.getByTestId('detail-review-list')).toHaveTextContent('박지도')
+    expect(screen.queryByTestId('detail-review-content-review-2')).not.toBeInTheDocument()
     expect(detail).not.toHaveTextContent('네이버 지도 이동')
     expect(detail).not.toHaveTextContent('추천 수')
     expect(detail).not.toHaveTextContent('내 리뷰')
@@ -42,6 +46,19 @@ describe('Sprint 15 place detail refresh', () => {
     expect(screen.queryByTestId('detail-my-review')).not.toBeInTheDocument()
     expect(screen.queryByTestId('detail-recommendation-control')).not.toBeInTheDocument()
     expect(screen.queryByTestId('detail-naver-link')).not.toBeInTheDocument()
+  })
+
+  it('shows reviews newest first in the detail list', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
+
+    const reviewListText = screen.getByTestId('detail-review-list').textContent ?? ''
+    expect(reviewListText.indexOf('김누리')).toBeLessThan(reviewListText.indexOf('박지도'))
+    expect(reviewListText).toContain('2026.03.07')
+    expect(reviewListText).toContain('2026.03.05')
   })
 
   it('shows no zeropay qr icon for places without available zeropay', async () => {
@@ -87,10 +104,10 @@ describe('Sprint 15 place detail refresh', () => {
     await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
 
     expect(screen.getByTestId('mobile-detail-page')).toBeInTheDocument()
-    expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('장소 상세')
     expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('누리 식당')
     expect(screen.getByTestId('detail-address')).toHaveTextContent('서울 마포구 양화로19길 22-16 1층')
-    expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('리뷰 12')
+    expect(screen.getByTestId('detail-added-by')).toHaveTextContent('김누리님이 추가한 장소')
+    expect(screen.getByLabelText('뒤로 가기')).toBeInTheDocument()
   })
 
   it('returns to the map screen on mobile back and keeps the selected place', async () => {
@@ -100,7 +117,7 @@ describe('Sprint 15 place detail refresh', () => {
 
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
     await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
-    await user.click(screen.getByRole('button', { name: '← 뒤로' }))
+    await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
 
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
     expect(useAppShellStore.getState().selectedPlaceId).toBe('place-restaurant-1')
@@ -147,5 +164,39 @@ describe('Sprint 15 place detail refresh', () => {
 
     expect(screen.getByTestId('place-detail-error')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
+  })
+
+  it('leaves the review section body empty when there are no reviews', () => {
+    setViewport(390)
+    const emptyReviewPlace: PlaceSummary = {
+      id: 'place-empty-review',
+      naver_place_id: '10099',
+      naver_place_url: 'https://map.naver.com/p/entry/place/10099',
+      name: '빈 리뷰 장소',
+      road_address: '서울 마포구 빈리뷰로 1',
+      latitude: 37.5581,
+      longitude: 126.9241,
+      place_type: 'restaurant',
+      zeropay_status: 'available',
+      average_rating: 0,
+      review_count: 0,
+      added_by_name: '테스트 등록자',
+      recommendation_count: 0,
+      my_recommendation_active: false,
+      my_review: null,
+      reviews: [],
+    }
+
+    useAppShellStore.setState({
+      navigationState: 'place_detail_open',
+      placeDetailLoad: 'ready',
+      selectedPlaceId: emptyReviewPlace.id,
+      places: [emptyReviewPlace],
+    })
+    render(<App />)
+
+    expect(screen.getByTestId('detail-review-section')).toHaveTextContent('평가 및 리뷰')
+    expect(screen.getByTestId('detail-review-list')).toBeEmptyDOMElement()
+    expect(screen.queryByText('아직 등록된 리뷰가 없어요.')).not.toBeInTheDocument()
   })
 })

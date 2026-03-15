@@ -226,7 +226,7 @@ const buildCreatedPlace = ({
     zeropay_status: draft.zeropay_status,
     average_rating: draft.rating_score,
     review_count: 1,
-    created_by_name: CURRENT_USER_NAME,
+    added_by_name: CURRENT_USER_NAME,
     recommendation_count: 0,
     my_recommendation_active: false,
     my_review: review,

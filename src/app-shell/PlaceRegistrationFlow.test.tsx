@@ -194,7 +194,7 @@ describe('Plan 06 place registration flow', () => {
 
     expect(screen.queryByText('리뷰는 500자 이하로 입력해주세요.')).not.toBeInTheDocument()
     expect(await screen.findByTestId('detail-review-list')).toHaveTextContent('a'.repeat(500))
-    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('5.0 · 리뷰 1')
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('5.0 (1)')
   })
 
   it('shows browser alert plus inline address error and keeps values on geocode failure', async () => {
@@ -235,7 +235,7 @@ describe('Plan 06 place registration flow', () => {
     await user.click(screen.getByTestId('place-submit-button'))
 
     expect(await screen.findByTestId('detail-review-list')).toHaveTextContent('새 장소 첫 리뷰')
-    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('5.0 · 리뷰 1')
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('5.0 (1)')
     expect(window.alert).toHaveBeenCalledWith('장소를 추가했어요.')
     expect(screen.queryByTestId('registration-message')).not.toBeInTheDocument()
     expect(screen.queryByTestId('detail-my-review')).not.toBeInTheDocument()
@@ -269,7 +269,7 @@ describe('Plan 06 place registration flow', () => {
     expect(confirmSpy).toHaveBeenCalledWith(DUPLICATE_CONFIRM_MESSAGE)
     expect(await screen.findByTestId('desktop-detail-panel')).toHaveTextContent('양화로 카페 리프레시')
     expect(screen.getByTestId('detail-review-list')).toHaveTextContent('병합 테스트 리뷰')
-    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.4 · 리뷰 9')
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.4 (9)')
     expect(screen.getByTestId('detail-zeropay-indicator')).toBeInTheDocument()
     expect(window.alert).toHaveBeenCalledWith('기존 장소에 정보를 합쳤어요.')
     expect(screen.queryByTestId('registration-message')).not.toBeInTheDocument()
@@ -301,7 +301,7 @@ describe('Plan 06 place registration flow', () => {
     expect(await screen.findByTestId('desktop-detail-panel')).toHaveTextContent('누리 식당')
     expect(screen.getByTestId('detail-review-list')).toHaveTextContent('점심 모임으로 가기 좋은 식당이에요.')
     expect(screen.getByTestId('detail-review-list')).toHaveTextContent('3.0')
-    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.5 · 리뷰 12')
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.5 (12)')
     expect(window.alert).toHaveBeenCalledWith('기존 장소에 정보를 반영했어요.')
     expect(screen.queryByTestId('registration-message')).not.toBeInTheDocument()
     expect(screen.queryByTestId('detail-my-rating-status')).not.toBeInTheDocument()
