@@ -70,14 +70,14 @@ describe('Nurimap app shell', () => {
     expect(screen.queryByTestId('mobile-floating-actions')).not.toBeInTheDocument()
   })
 
-  it('renders the desktop add button with the required size', () => {
+  it('renders the compact desktop add button inside the refreshed top bar', () => {
     setViewport(1280)
     render(<App />)
 
-    expect(screen.getByTestId('desktop-add-button')).toHaveStyle({
-      width: '342px',
-      height: '48px',
-    })
+    expect(screen.getByTestId('desktop-browse-topbar')).toContainElement(screen.getByTestId('desktop-add-button'))
+    expect(screen.getByTestId('desktop-add-button')).toHaveTextContent('추가')
+    expect(screen.getByTestId('desktop-add-button')).toHaveAccessibleName('장소 추가')
+    expect(screen.getByTestId('desktop-add-button')).toHaveClass('h-9')
   })
 
   it('renders the empty state when the list state is empty', () => {

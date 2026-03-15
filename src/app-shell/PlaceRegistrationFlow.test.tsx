@@ -193,7 +193,8 @@ describe('Plan 06 place registration flow', () => {
     await user.click(screen.getByTestId('place-submit-button'))
 
     expect(screen.queryByText('리뷰는 500자 이하로 입력해주세요.')).not.toBeInTheDocument()
-    expect(await screen.findByTestId('detail-my-review')).toHaveTextContent('a'.repeat(500))
+    expect(await screen.findByTestId('detail-review-list')).toHaveTextContent('a'.repeat(500))
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('5.0 · 리뷰 1')
   })
 
   it('shows browser alert plus inline address error and keeps values on geocode failure', async () => {
@@ -233,8 +234,11 @@ describe('Plan 06 place registration flow', () => {
     await user.type(screen.getByTestId('review-content-input'), '새 장소 첫 리뷰')
     await user.click(screen.getByTestId('place-submit-button'))
 
-    expect(await screen.findByTestId('detail-my-review')).toHaveTextContent('새 장소 첫 리뷰')
-    expect(screen.getByTestId('registration-message')).toHaveTextContent('장소를 추가했어요.')
+    expect(await screen.findByTestId('detail-review-list')).toHaveTextContent('새 장소 첫 리뷰')
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('5.0 · 리뷰 1')
+    expect(window.alert).toHaveBeenCalledWith('장소를 추가했어요.')
+    expect(screen.queryByTestId('registration-message')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('detail-my-review')).not.toBeInTheDocument()
   })
 
   it('shows one browser confirm and merges the existing place when confirmed', async () => {
@@ -263,8 +267,12 @@ describe('Plan 06 place registration flow', () => {
       expect(confirmSpy).toHaveBeenCalledTimes(1)
     })
     expect(confirmSpy).toHaveBeenCalledWith(DUPLICATE_CONFIRM_MESSAGE)
-    expect(await screen.findByTestId('registration-message')).toHaveTextContent('기존 장소에 정보를 합쳤어요.')
-    expect(screen.getByTestId('desktop-detail-panel')).toHaveTextContent('양화로 카페 리프레시')
+    expect(await screen.findByTestId('desktop-detail-panel')).toHaveTextContent('양화로 카페 리프레시')
+    expect(screen.getByTestId('detail-review-list')).toHaveTextContent('병합 테스트 리뷰')
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.4 · 리뷰 9')
+    expect(screen.getByTestId('detail-zeropay-indicator')).toBeInTheDocument()
+    expect(window.alert).toHaveBeenCalledWith('기존 장소에 정보를 합쳤어요.')
+    expect(screen.queryByTestId('registration-message')).not.toBeInTheDocument()
   })
 
   it('allows overwrite through the same confirm and preserves old review text when new review is blank', async () => {
@@ -290,9 +298,13 @@ describe('Plan 06 place registration flow', () => {
       expect(confirmSpy).toHaveBeenCalledTimes(1)
     })
     expect(confirmSpy).toHaveBeenCalledWith(OVERWRITE_CONFIRM_MESSAGE)
-    expect(await screen.findByTestId('registration-message')).toHaveTextContent('기존 장소에 정보를 반영했어요.')
-    expect(screen.getByTestId('detail-my-review')).toHaveTextContent('점심 모임으로 가기 좋은 식당이에요.')
-    expect(screen.getByTestId('detail-my-rating-status')).toHaveTextContent('3점')
+    expect(await screen.findByTestId('desktop-detail-panel')).toHaveTextContent('누리 식당')
+    expect(screen.getByTestId('detail-review-list')).toHaveTextContent('점심 모임으로 가기 좋은 식당이에요.')
+    expect(screen.getByTestId('detail-review-list')).toHaveTextContent('3.0')
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.5 · 리뷰 12')
+    expect(window.alert).toHaveBeenCalledWith('기존 장소에 정보를 반영했어요.')
+    expect(screen.queryByTestId('registration-message')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('detail-my-rating-status')).not.toBeInTheDocument()
   })
 
   it('keeps form values and stays on screen when duplicate confirm is cancelled', async () => {
@@ -357,7 +369,8 @@ describe('Plan 06 place registration flow', () => {
     const clickPromise = user.click(submitButton)
 
     await waitFor(() => {
-      expect(submitButton).toHaveTextContent('등록 중')
+      expect(submitButton).not.toHaveTextContent('등록 중')
+      expect(submitButton).toHaveAccessibleName('등록 중')
       expect(screen.getByTestId('place-submit-spinner')).toBeInTheDocument()
       expect(screen.queryByTestId('place-submit-loading')).not.toBeInTheDocument()
       expect(submitButton).toBeDisabled()
@@ -369,7 +382,7 @@ describe('Plan 06 place registration flow', () => {
     await screen.findByTestId('desktop-detail-panel')
   })
 
-  it('shows a spinner next to the submitting label while the request is in progress', async () => {
+  it('shows only a spinner while the request is in progress', async () => {
     globalThis.fetch = vi.fn(() => new Promise<Response>(() => {})) as typeof fetch
     setViewport(1280)
     render(<App />)
@@ -382,7 +395,8 @@ describe('Plan 06 place registration flow', () => {
     const submitButton = screen.getByTestId('place-submit-button')
     fireEvent.click(submitButton)
 
-    expect(submitButton).toHaveTextContent('등록 중')
+    expect(submitButton).not.toHaveTextContent('등록 중')
+    expect(submitButton).toHaveAccessibleName('등록 중')
     expect(screen.getByTestId('place-submit-spinner')).toBeInTheDocument()
   })
 
@@ -418,8 +432,14 @@ describe('Plan 06 place registration flow', () => {
     await user.type(screen.getByTestId('review-content-input'), '목록 반영 테스트')
     await user.click(screen.getByTestId('place-submit-button'))
 
-    expect(await screen.findByTestId('place-list-item-place-direct-entry-123456789')).toBeInTheDocument()
-    expect(screen.getByTestId('desktop-detail-panel')).toHaveTextContent('등록 테스트 장소')
+    expect(await screen.findByTestId('desktop-detail-panel')).toHaveTextContent('등록 테스트 장소')
     expect(screen.getByTestId('map-marker-place-direct-entry-123456789')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '목록으로 돌아가기' }))
+
+    const listItem = await screen.findByTestId('place-list-item-place-direct-entry-123456789')
+    expect(listItem).toHaveTextContent('등록 테스트 장소')
+    expect(listItem).toHaveTextContent('리뷰')
+    expect(listItem).toHaveTextContent('1')
   })
 })

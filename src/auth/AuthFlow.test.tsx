@@ -73,6 +73,7 @@ describe('Sprint 12 auth flow', () => {
         },
       },
     })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   afterEach(() => {
@@ -710,6 +711,20 @@ describe('Sprint 12 auth flow', () => {
 
     expect(await screen.findByRole('button', { name: '이메일로 로그인 링크 전송' })).toBeInTheDocument()
     expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
+  })
+
+  it('keeps the authenticated shell open when logout is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+    const signOutCallCountBeforeClick = signOutMock.mock.calls.length
+
+    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+
+    expect(window.confirm).toHaveBeenCalledWith('로그아웃할까요?')
+    expect(signOutMock).toHaveBeenCalledTimes(signOutCallCountBeforeClick)
+    expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
   })
 
 })

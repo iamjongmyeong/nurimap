@@ -193,7 +193,6 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   const { accessToken } = useAuth()
   const { isDesktop } = useViewportMode()
   const applyRegistrationResult = useAppShellStore((state) => state.applyRegistrationResult)
-  const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
   const places = useAppShellStore((state) => state.places)
 
   const [draft, setDraft] = useState<RegistrationDraft>(createInitialDraft)
@@ -318,11 +317,8 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
         places,
       })
 
-      if (registrationResult.status === 'updated' || registrationResult.status === 'merged') {
-        openPlaceDetail(registrationResult.place.id)
-      }
-
       applyRegistrationResult(registrationResult)
+      window.alert(formatDialogMessage(registrationResult.message))
       setSubmitState('idle')
     } catch (error) {
       const message = error instanceof Error && error.message ? error.message : GENERIC_SUBMIT_ERROR_MESSAGE
@@ -410,6 +406,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
           {fieldErrors.form ? <p className="mt-4 text-sm text-error">{fieldErrors.form}</p> : null}
 
           <button
+            aria-label={submitState === 'submitting' ? '등록 중' : '등록'}
             className="btn btn-primary place-submit-button mt-6 h-10 w-full rounded-xl"
             data-required-fields={hasRequiredFields ? 'complete' : 'incomplete'}
             data-testid="place-submit-button"
@@ -418,10 +415,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
             type="button"
           >
             {submitState === 'submitting' ? (
-              <span className="inline-flex items-center gap-2">
-                <span>등록 중</span>
-                <span aria-hidden="true" className="loading loading-spinner loading-xs" data-testid="place-submit-spinner" />
-              </span>
+              <span aria-hidden="true" className="loading loading-spinner loading-xs" data-testid="place-submit-spinner" />
             ) : '등록'}
           </button>
         </div>

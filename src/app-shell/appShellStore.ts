@@ -27,7 +27,6 @@ type AppShellState = {
   selectedPlaceId: string | null
   mapLevel: number
   places: PlaceSummary[]
-  registrationMessage: string | null
   openMobilePlaceList: () => void
   openPlaceAdd: () => void
   closePlaceAdd: () => void
@@ -38,7 +37,6 @@ type AppShellState = {
   setPlaceDetailLoad: (status: PlaceDetailLoadState) => void
   setMapLevel: (level: number) => void
   setPlaces: (places: PlaceSummary[]) => void
-  setRegistrationMessage: (message: string | null) => void
   applyRegistrationResult: (result: PlaceRegistrationResult) => void
   submitPlaceReview: (placeId: string, draft: ReviewDraft) => ReviewSubmissionResult
   togglePlaceRecommendation: (placeId: string) => RecommendationToggleResult
@@ -54,13 +52,12 @@ const buildInitialState = () => ({
   selectedPlaceId: DEFAULT_SELECTED_PLACE_ID,
   mapLevel: 5,
   places: createInitialPlaces(),
-  registrationMessage: null,
 })
 
 export const useAppShellStore = create<AppShellState>((set, get) => ({
   ...buildInitialState(),
   openMobilePlaceList: () => set({ navigationState: 'mobile_place_list_open' }),
-  openPlaceAdd: () => set({ navigationState: 'place_add_open', registrationMessage: null }),
+  openPlaceAdd: () => set({ navigationState: 'place_add_open' }),
   closePlaceAdd: () => set({ navigationState: 'map_browse' }),
   openPlaceDetail: (placeId) =>
     set({
@@ -74,14 +71,12 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   setPlaceDetailLoad: (placeDetailLoad) => set({ placeDetailLoad }),
   setMapLevel: (mapLevel) => set({ mapLevel }),
   setPlaces: (places) => set({ places }),
-  setRegistrationMessage: (registrationMessage) => set({ registrationMessage }),
   applyRegistrationResult: (result) =>
     set({
       places: result.places,
       selectedPlaceId: result.place.id,
       navigationState: 'place_detail_open',
       placeDetailLoad: 'ready',
-      registrationMessage: result.message,
     }),
   submitPlaceReview: (placeId, draft) => {
     const result = submitReviewForPlace({
