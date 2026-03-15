@@ -76,7 +76,7 @@
 - 장소 등록 저장 중에는 제출 버튼을 비활성화한다.
 - 저장 중에는 버튼 안의 `등록 중` visible label을 제거하고 spinner 애니메이션만 보여준다.
 - 장소 등록 저장 중에는 별도 안내 박스를 추가로 보여주지 않는다.
-- dirty state에서 뒤로가기/닫기를 누르면 browser confirm으로 `작성을 그만하시겠어요?\n입력한 내용이 사라져요.`를 보여준다.
+- dirty state에서 뒤로가기/닫기를 누르면 browser confirm으로 `입력을 그만하시겠어요?\n입력한 내용은 저장되지 않아요.`를 보여준다.
 
 ## Duplicate Handling
 - 중복 장소가 발견되면 browser confirm 한 번으로 기존 장소에 입력한 내용을 반영할지 묻는다.
