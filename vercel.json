@@ -9,5 +9,15 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/auth/verify",
+      "destination": "/"
+    },
+    {
+      "source": "/places/:match*",
+      "destination": "/"
+    }
   ]
 }
