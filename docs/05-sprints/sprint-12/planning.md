@@ -30,10 +30,10 @@
 - `docs/01-product/product-overview.md`
 - `docs/01-product/product-principles.md`
 - `docs/01-product/user-flows/auth-and-name-entry.md`
-- `docs/04-design/foundations.md`
+- `docs/99-archive/04-design/foundations.md`
 - `docs/04-design/auth-and-name-entry.md`
 - `docs/02-architecture/security-and-ops.md`
-- `docs/02-architecture/system-context.md`
+- `docs/99-archive/02-architecture/system-context.md`
 - `docs/00-governance/definition-of-ready.md`
 - `docs/00-governance/definition-of-done.md`
 

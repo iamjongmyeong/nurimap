@@ -7,9 +7,9 @@
 # In Scope
 
 - `docs/01-product/user-flows/place-submission.md`, `docs/01-product/user-flows/browse-and-detail.md`
-- `docs/04-design/place-submission.md`, `docs/04-design/browse-and-detail.md`, `docs/04-design/foundations.md`
+- `docs/04-design/place-submission.md`, `docs/04-design/browse-and-detail.md`, `docs/99-archive/04-design/foundations.md`
 - `docs/03-specs/01-app-shell-and-layout.md`, `docs/03-specs/03-list-browse.md`, `docs/03-specs/07-place-data-extraction.md`, `docs/03-specs/08-place-registration.md`, `docs/03-specs/09-place-merge.md`
-- `docs/02-architecture/system-context.md`, `docs/02-architecture/integrations.md`, `docs/02-architecture/domain-model.md`
+- `docs/99-archive/02-architecture/system-context.md`, `docs/99-archive/02-architecture/integrations.md`, `docs/02-architecture/domain-model.md`
 - `docs/01-product/product-overview.md`, `docs/01-product/product-principles.md`
 - `docs/06-history/decisions.md`에 **직접 입력 전환 decision만** 기록
 
@@ -37,9 +37,9 @@
 - `docs/01-product/user-flows/place-submission.md`
 - `docs/04-design/browse-and-detail.md`
 - `docs/04-design/place-submission.md`
-- `docs/04-design/foundations.md`
-- `docs/02-architecture/system-context.md`
-- `docs/02-architecture/integrations.md`
+- `docs/99-archive/04-design/foundations.md`
+- `docs/99-archive/02-architecture/system-context.md`
+- `docs/99-archive/02-architecture/integrations.md`
 - `docs/02-architecture/domain-model.md`
 - `docs/00-governance/definition-of-ready.md`
 - `docs/00-governance/definition-of-done.md`

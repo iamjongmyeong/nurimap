@@ -13,9 +13,9 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 
 ## Functional Requirements
 - 목록에는 이름, 평균 별점, 리뷰 수, 장소 유형을 표시한다.
-- 목록에는 `zeropay_status = available`인 place에만 이름 row 우측에 제로페이 로고를 표시한다.
-- 목록의 제로페이 로고는 이름 row에 배치하고, 평균 별점 UI 높이와 동일한 `16px` 기준을 사용한다.
-- desktop pointer 환경에서는 제로페이 로고 hover가 `1초` 이상 유지되면 `제로페이 가능` tooltip을 표시한다.
+- 목록에는 `zeropay_status = available`인 place에만 제로페이 가능 표시를 노출한다.
+- 제로페이 가능 표시는 사용자가 목록 메타 정보를 해치지 않고 인지할 수 있는 위치에 둔다.
+- desktop pointer 환경에서는 제로페이 가능 표시의 의미를 보조적으로 설명할 수 있어야 한다.
 - `zeropay_status = unavailable | needs_verification`인 place는 목록에서 제로페이 로고를 표시하지 않는다.
 - 목록에서 place를 선택하면 상세 화면과 canonical detail URL(`/places/:placeId`)이 함께 연동된다.
 - 목록은 place를 빠르게 비교할 수 있어야 한다.
@@ -31,8 +31,8 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 
 ## Acceptance Criteria
 - 목록에 평균 별점과 리뷰 수, 장소 유형이 보인다.
-- `zeropay_status = available`인 place 목록 item에는 이름 row 우측에 `16px` 기준의 제로페이 로고가 보인다.
-- desktop pointer 환경에서는 제로페이 로고 hover `1초` 이후 `제로페이 가능` tooltip이 보인다.
+- `zeropay_status = available`인 place 목록 item에는 제로페이 가능 표시가 보인다.
+- desktop pointer 환경에서는 제로페이 가능 표시의 의미를 확인할 수 있다.
 - `zeropay_status = unavailable | needs_verification`인 place 목록 item에는 제로페이 로고가 보이지 않는다.
 - 목록 선택 시 상세 화면이 열리고 canonical detail URL이 반영된다.
 - 모바일 목록 페이지에서 place 선택 시 전체 화면 상세 페이지가 열린다.
@@ -56,8 +56,8 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 
 ## Required Test Cases
 - 이름/평균 별점/리뷰 수/장소 유형 표시
-- `zeropay_status = available`일 때 제로페이 로고 표시
-- desktop pointer hover `1초` 이후 제로페이 tooltip 표시
+- `zeropay_status = available`일 때 제로페이 가능 표시
+- desktop pointer 환경에서 제로페이 보조 설명 확인 가능
 - `zeropay_status = unavailable | needs_verification`일 때 제로페이 로고 미표시
 - 목록 선택 시 상세 연동 + canonical route 반영
 - 모바일 목록 페이지에서 place 선택 시 전체 화면 상세 이동
@@ -70,8 +70,8 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 ## Manual QA Checklist
 - 목록에서 place 비교가 가능하다.
 - row 하단 메타 라인에서 장소 유형까지 함께 보인다.
-- 제로페이 가능 place에는 평균 별점 UI 높이와 같은 제로페이 로고가 보인다.
-- desktop pointer hover `1초` 이후 `제로페이 가능` tooltip이 보인다.
+- 제로페이 가능 place에는 제로페이 가능 표시가 보인다.
+- desktop pointer 환경에서는 제로페이 보조 설명을 확인할 수 있다.
 - 제로페이 미확인 또는 불가 place에는 제로페이 로고가 보이지 않는다.
 - 클릭 시 상세가 열리고 URL이 해당 place detail로 바뀐다.
 - 모바일 목록 페이지에서 place를 누르면 전체 화면 상세 페이지가 열린다.

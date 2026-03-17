@@ -1,6 +1,7 @@
 # Domain Model
 
-This document is the source of truth for domain rules.
+이 문서는 Nurimap의 canonical 도메인 엔터티, 파생 뷰, 데이터 무결성 규칙의 source of truth다.
+런타임 구조, route/state ownership, 외부 연동 파이프라인은 [System Runtime](./system-runtime.md), 인증/세션/운영 정책은 [Security And Ops](./security-and-ops.md)에서 다룬다.
 
 ## Naming Rule
 - 내부 대표 도메인 객체는 `place`다.
@@ -9,15 +10,16 @@ This document is the source of truth for domain rules.
 - `zeropay_status`는 `available | unavailable | needs_verification`다.
 - `recommendation`은 내부 도메인 용어다. UI에서는 `추천` 또는 `좋아요`로 표현할 수 있다.
 - 내부 집계 필드명은 `review_count`를 사용하고, UI에서는 필요할 때 `리뷰 수` 또는 `별점 수`로 표현할 수 있다.
-- 현재 사용자 기준 review 파생 필드명은 `my_review`를 사용한다.
-- 현재 사용자 기준 recommendation 상태 파생 필드명은 `my_recommendation_active`를 사용한다.
+- viewer 기준 review 파생 필드명은 `my_review`를 사용한다.
+- viewer 기준 rating 파생 필드명은 `my_rating_score`를 사용한다.
+- viewer 기준 recommendation 상태 파생 필드명은 `my_recommendation_active`를 사용한다.
 
 ## Core Entities
 
 ### Place
 사내 사용자가 지도에서 탐색하는 canonical 장소 엔터티다.
 
-후보 필드:
+대표 필드:
 - `id`
 - `name`
 - `road_address`
@@ -32,17 +34,18 @@ This document is the source of truth for domain rules.
 
 핵심 규칙:
 - 로그인 사용자만 place를 등록할 수 있다.
-- 현재 릴리즈의 canonical 중복 판정 기준은 정규화된 `name + road_address` 조합이다.
+- place duplicate 판정의 canonical 기준은 정규화된 `name + road_address` 조합이다.
 - `road_address`는 필수값이다.
 - `land_lot_address`는 선택값이다.
 - place_type은 식당/카페 2종만 사용한다.
 - zeropay_status는 3상태로 관리한다.
-- 저장되는 place는 반드시 `latitude`, `longitude`를 가져야 한다.
+- 저장이 완료된 place는 반드시 `latitude`, `longitude`를 가진다.
+- 좌표 확보 순서와 geocoding fallback은 [System Runtime](./system-runtime.md)의 place write pipeline을 따른다.
 
 ### Review
 사용자가 place에 남기는 텍스트 의견이다.
 
-후보 필드:
+대표 필드:
 - `id`
 - `place_id`
 - `author_user_id`
@@ -60,13 +63,12 @@ This document is the source of truth for domain rules.
 - `content`는 500자 이하만 허용한다.
 - place 등록 시 입력한 초기 리뷰와 별점은 동일 Review 엔터티로 저장한다.
 - 작성자와 작성일이 상세 화면에 보여야 한다.
-- 이번 릴리즈에서는 이미 review가 있는 사용자가 같은 place에 새 review를 추가할 수 없다.
-- 수정/삭제는 이번 릴리즈 범위에 포함하지 않는다.
+- review lifecycle의 세부 허용 범위(추가/수정/삭제 지원 여부)는 selected spec이 정한다.
 
 ### Recommendation
 사용자의 place 추천 액션을 나타내는 엔터티다.
 
-후보 필드:
+대표 필드:
 - `id`
 - `place_id`
 - `user_id`
@@ -81,7 +83,7 @@ This document is the source of truth for domain rules.
 ### User
 인증된 사내 사용자 엔터티다.
 
-후보 필드:
+대표 필드:
 - `id`
 - `email`
 - `email_domain`
@@ -99,7 +101,7 @@ This document is the source of truth for domain rules.
 ### LoginLink
 이메일 로그인에 사용하는 일회성 인증 링크 엔터티다.
 
-후보 필드:
+대표 필드:
 - `id`
 - `email`
 - `issued_at`
@@ -109,17 +111,16 @@ This document is the source of truth for domain rules.
 
 핵심 규칙:
 - 허용 도메인 이메일에 대해서만 발급한다.
-- 발급 후 5분 동안만 유효하다.
+- 제한된 시간 동안만 유효하다.
 - 새 login_link를 발급하면 같은 이메일의 이전 미사용 login_link는 무효화한다.
 - 한 번 사용한 login_link는 다시 사용할 수 없다.
-- 동일 이메일은 active cooldown cycle 안에서 최대 5회까지 대기 시간 없이 login_link를 다시 요청할 수 있다.
-- 동일 이메일의 6번째 요청부터는 5분 cooldown을 적용하고, cooldown이 끝나면 resend burst count를 reset한다.
+- 재요청 제한과 cooldown 같은 세부 보호 수치는 auth/security 정책이 정한다.
 - 만료, 사용 완료, 무효화된 login_link는 session을 생성할 수 없다.
 
 ### Session
 로그인 상태를 나타내는 세션 문맥이다.
 
-후보 필드:
+대표 필드:
 - `user_id`
 - `access_token`
 - `refresh_token`
@@ -128,8 +129,8 @@ This document is the source of truth for domain rules.
 - `browser_storage_key`
 
 핵심 규칙:
-- 같은 브라우저에서만 최대 90일 동안 유지한다.
-- 브라우저 저장소 삭제, 로그아웃, 90일 절대 만료 시 재로그인이 필요하다.
+- 같은 브라우저 문맥에서 복원 가능한 세션이다.
+- 만료/갱신/절대 수명 같은 세부 정책은 auth/security 문서가 정한다.
 
 ## Relationships
 | From | To | Relation |
@@ -150,17 +151,16 @@ This document is the source of truth for domain rules.
   - `latitude`, `longitude`, `place_type`, `name`
 
 ## Data Integrity Rules
-- `normalized_name + normalized_road_address`는 현재 canonical duplicate 후보 키다.
+- `normalized_name + normalized_road_address`는 canonical duplicate 후보 키다.
 - review는 `(place_id, author_user_id)` 조합으로 하나만 허용한다.
 - recommendation은 `(place_id, user_id)` 조합으로 하나만 허용한다.
-- 현재 도메인 규칙에서는 `review_count`를 리뷰 수와 별점 수의 canonical 집계 필드로 사용한다.
+- `review_count`는 리뷰 수와 별점 수를 대표하는 canonical 집계 필드로 사용한다.
 - `average_rating`은 review들의 `rating_score` 집계값으로만 계산한다.
 - `recommendation_count`는 active recommendation 상태 수만 집계한다.
-- `my_review`는 현재 사용자의 review 전체 또는 null이다.
-- `my_recommendation_active`는 현재 사용자의 active recommendation 존재 여부를 나타낸다.
-- place 저장 전 좌표를 확보해야 한다.
-- 좌표 추출 실패 시 `road_address`, 이후 `land_lot_address` 순서로 geocoding fallback을 시도한다.
-- geocoding까지 실패하면 place를 저장하지 않는다.
+- `my_review`는 요청 사용자 기준 review 전체 또는 null이다.
+- `my_rating_score`는 요청 사용자 기준 review가 있으면 그 review의 `rating_score`를, 없으면 null을 나타낸다.
+- `my_recommendation_active`는 요청 사용자 기준 active recommendation 존재 여부를 나타낸다.
+- place commit 전에는 좌표를 확보해야 하며, 좌표 확보 절차는 [System Runtime](./system-runtime.md)의 runtime contract를 따른다.
 - `name`, 주소, 좌표는 최신 사용자 확인값을 우선한다.
 - `place_type`은 최신 사용자 입력값을 우선한다.
 - `zeropay_status`는 확인된 상태가 `needs_verification`보다 우선하고, 확인된 상태끼리 충돌하면 최신 사용자 입력값을 우선한다.

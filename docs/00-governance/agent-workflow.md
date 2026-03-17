@@ -12,10 +12,11 @@
 2. `docs/00-governance/docs-structure.md`
 3. 현재 Sprint의 `docs/05-sprints/sprint-XX/planning.md`
 4. 현재 Sprint에서 선택된 `docs/03-specs/*.md`
-5. 현재 작업과 관련된 `docs/01-product/user-flows/*.md`, `docs/04-design/*.md`, `docs/02-architecture/*.md`
-6. `docs/00-governance/definition-of-ready.md`
-7. `docs/00-governance/definition-of-done.md`
-8. 필요 시 `docs/06-history/decisions.md`, `docs/06-history/change-log.md`
+5. UI fidelity가 중요한 작업이면 사용자 제공 screenshot / Figma / annotated capture 같은 external handoff
+6. 현재 작업과 관련된 `docs/01-product/user-flows/*.md`, `docs/04-design/*.md`, `docs/02-architecture/*.md`
+7. `docs/00-governance/definition-of-ready.md`
+8. `docs/00-governance/definition-of-done.md`
+9. 필요 시 `docs/06-history/decisions.md`, `docs/06-history/change-log.md`
 
 ## Source Of Truth Hierarchy
 문서 충돌이 없다는 가정에서 아래 순서로 해석한다.
@@ -23,37 +24,50 @@
 1. 현재 Sprint의 `planning.md`
 2. 현재 Sprint에서 명시적으로 선택된 `docs/03-specs/*.md`
 3. 관련 `docs/01-product/user-flows/*.md`
-4. 관련 `docs/04-design/*.md`
-5. 관련 `docs/02-architecture/*.md`
-6. `docs/01-product/product-principles.md`
-7. `docs/01-product/product-overview.md`
-8. `docs/00-governance/definition-of-ready.md`
-9. `docs/00-governance/definition-of-done.md`
-10. `docs/06-history/decisions.md`
-11. `docs/06-history/change-log.md`
+4. UI fidelity-sensitive 작업의 external screenshot / Figma / annotated capture
+5. 관련 `docs/04-design/*.md` thin contract
+6. 관련 `docs/02-architecture/*.md`
+7. `docs/01-product/product-principles.md`
+8. `docs/01-product/product-overview.md`
+9. `docs/00-governance/definition-of-ready.md`
+10. `docs/00-governance/definition-of-done.md`
+11. `docs/06-history/decisions.md`
+12. `docs/06-history/change-log.md`
 
 ### Conflict Rule
 - 현재 Sprint의 `planning.md`는 이번 실행 범위와 작업 지시를 고정한다.
 - `docs/03-specs/*.md`는 기능 요구사항과 검증 기준을 고정한다.
 - `docs/01-product/user-flows/*.md`는 사용자 흐름과 실패 흐름을 고정한다.
-- `docs/04-design/*.md`는 공통 레이아웃, 상태 모델, 화면 구조와 상호작용 규칙을 고정한다.
-- `docs/02-architecture/*.md`는 공통 도메인, integration, security 규칙을 고정한다.
+- UI 작업에 external handoff가 있으면 screenshot / Figma / annotated capture가 layout, spacing, text, icon, visual priority의 source of truth다.
+- `docs/04-design/*.md`는 thin contract로서 surface boundary, transition, hidden invariant, failure/context rule만 고정한다.
+- `docs/02-architecture/*.md`는 공통 도메인, runtime, security 규칙을 고정한다.
 - `docs/06-history/*`는 이력 문서이며 현재 범위를 확장하는 근거가 아니다.
 - `docs/99-archive/`는 역사 기록이다. 현재 구현의 source of truth로 사용하지 않는다.
+- handoff와 thin contract가 시각 detail에서 충돌하면 handoff를 우선하되, thin contract의 boundary/invariant가 바뀐 경우에만 문서를 갱신한다.
 - spec, design, architecture가 정면충돌하면 추정으로 메우지 말고 문서 충돌로 보고한다.
+- handoff가 spec / user-flow / architecture의 behavior, state, security 계약과 충돌하면 handoff만으로 덮지 말고 문서 충돌로 보고한다.
 
 ## Task Guidance
 ### Planning / Scoping
 - 범위나 selected spec이 비어 있으면 구현보다 문서 보강을 우선한다.
 - broad하거나 ambiguous한 작업은 구현 전에 먼저 plan을 만들고, 구조/거버넌스처럼 trade-off가 큰 변경은 필요하면 `$ralplan`으로 합의한다.
 
+### Durable Doc Writing
+- `docs/` 아래 라이브 문서를 쓸 때는 현재 구현 결과보다 역할, 판단 기준, 변경 트리거가 먼저 보이도록 쓴다.
+- 파일명, 현재 분할 방식, 현재 조합은 쉽게 바뀔 수 있으므로 규칙처럼 고정하지 말고 필요하면 예시로만 적는다.
+- 장기 문서에는 Sprint 한정 결정이나 임시 workaround를 쓰지 말고, 그런 내용은 현재 Sprint 문서나 history 문서에 남긴다.
+- 문서가 “무엇을 정의하는가”뿐 아니라 “무엇을 정의하지 않는가”도 함께 적어 다음 작업자가 추정으로 채우지 않게 한다.
+- 문서 수정 전에는 이 문장이 구조가 바뀌어도 유효한지, 아니면 이번 작업에만 유효한지를 먼저 구분한다.
+
 ### Design / Development
 - SDK, framework, API를 사용할 때는 먼저 공식 문서를 확인한다.
 - 프론트엔드 구현은 spec에 다른 지시가 없으면 Vite + React + Tailwind CSS + daisyUI를 따른다.
 - frontend state가 필요하면 React-oriented library로 Zustand를 사용할 수 있다.
-- UI 작업에서 사용자 제공 screenshot / Figma / annotated capture가 있으면 그것을 source of truth로 사용하고, 자율적 디자인 해석은 하지 않는다.
+- UI 작업에서 사용자 제공 screenshot / Figma / annotated capture가 있으면 그것을 visual source of truth로 사용하고, 자율적 디자인 해석은 하지 않는다.
 - UI fidelity가 중요한데 screenshot reference가 없으면, 비자명한 시각 변경 전에 사용자에게 desktop/mobile screenshot 제공을 먼저 요청한다.
 - screenshot이 제공되면 `/prompts:vision`으로 레이아웃/spacing/text/icon 요구를 먼저 분석하고, 구현 결과 비교가 필요하면 `$visual-verdict`를 사용한다.
+- design 문서는 visual guide가 아니라 thin contract로 유지한다. 시각 구현 디테일은 external handoff 또는 해당 Sprint QA evidence에 두고, design 문서에는 surface/transition/invariant/failure boundary만 남긴다.
+- 특정 UI 계약이 더 큰 surface나 flow에 종속되면 별도 문서로 과분화하지 말고 관련 thin contract에 흡수한다. 공통 route/layout/view-state/integration runtime 규칙은 관련 architecture 문서를 기준으로 본다.
 - frontend UI review, UX audit, accessibility/design review에는 `web-design-guidelines`를 참고한다.
 - 관련 spec이 `docs/03-specs/`에 있으면 TDD 순서로 failing test -> 구현 -> 검증을 따른다.
 
@@ -63,7 +77,9 @@
   - 2차: PATH에서 사용할 수 있는 `agent-browser`
   - 둘 다 사용할 수 없거나 실행에 실패하면 사용자에게 즉시 알리고 QA blocker로 보고한다.
 - QA 결과의 canonical 기록 위치는 현재 Sprint의 `qa.md`다.
-- `docs/`를 수정할 때는 현재 디렉터리 구조와 기존 참조 경로를 먼저 확인하고, `docs/00-governance/docs-structure.md`의 placement/naming과 이 문서의 절차를 따른다.
+- `docs/`를 수정할 때는 현재 디렉터리 구조와 기존 참조 경로를 먼저 확인하고, `docs/00-governance/docs-structure.md`의 placement/naming과 문서 경계, 이 문서의 절차를 따른다.
+- `docs/`를 수정할 때는 `docs/00-governance/doc-writing-checklist.md`를 먼저 확인하고, 현재 문장이 장기 규칙인지 현재 작업 상태인지를 구분한다.
+- design 문서를 수정할 때는 visual detail을 새 canonical 문서로 복제하지 말고, 필요하면 external handoff reference 또는 Sprint QA evidence 경로를 남긴다.
 - `docs/06-history/` 아래 문서에 새 내용을 추가하거나 기존 entry의 의미를 바꾸는 수정이 필요하면, 먼저 사용자에게 추가 목적과 대상 문서를 짧게 설명하고 확인을 받는다.
 - 단, 오탈자 수정, 깨진 링크 수정, 관련 commit hash 보강처럼 의미를 바꾸지 않는 기계적 갱신은 사용자 확인 없이 진행할 수 있다.
 - 비자명한 autonomous decision은 `docs/06-history/decisions.md`에 context, options considered, decision, rationale, impact, revisit trigger, related docs, related commit 형식으로 남긴다.
@@ -84,10 +100,10 @@
 
 ### 3. Relevant Docs 읽기
 작업 유형에 따라 관련 문서를 좁혀 읽는다.
-- UI/레이아웃: `docs/04-design/foundations.md`, `docs/04-design/browse-and-detail.md`, `docs/02-architecture/system-context.md`
-- 데이터/등록: `docs/04-design/place-submission.md`, `docs/02-architecture/domain-model.md`, `docs/02-architecture/integrations.md`
-- 인증/보안: `docs/04-design/auth-and-name-entry.md`, `docs/02-architecture/security-and-ops.md`, `docs/02-architecture/system-context.md`
-- 리뷰/추천: `docs/04-design/review.md`, `docs/04-design/recommendation.md`, `docs/02-architecture/domain-model.md`
+- UI/레이아웃: 관련 thin contract, 관련 architecture runtime 문서, 필요 시 external screenshot/Figma handoff
+- 데이터/등록: 관련 submission 또는 입력 surface thin contract, 관련 domain/runtime 문서
+- 인증/보안: 관련 auth thin contract, 관련 security/runtime 문서
+- 리뷰/추천: 해당 surface를 소유하는 thin contract, 관련 domain/runtime 문서
 
 ### 4. Spec 중심 구현
 선택된 spec에서 아래 순서로 내용을 소비한다.

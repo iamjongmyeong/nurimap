@@ -66,7 +66,7 @@
 
 - `docs/01-product/user-flows/browse-and-detail.md`
 - `docs/04-design/browse-and-detail.md`
-- `docs/04-design/foundations.md`
+- `docs/99-archive/04-design/foundations.md`
 - `docs/03-specs/01-app-shell-and-layout.md` (legacy floating detail wording 참고용)
 - `docs/00-governance/agent-workflow.md`
 - `docs/00-governance/definition-of-ready.md`

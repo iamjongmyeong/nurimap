@@ -15,15 +15,15 @@
 - 로그인 사용자만 리뷰를 작성할 수 있다.
 - 한 사용자는 같은 place에 review 하나만 작성할 수 있다.
 - 리뷰 작성 단계에서 별점 평가를 함께 입력한다.
-- 별점 입력 UI는 5개의 별 모양 버튼을 사용한다.
+- 별점 입력 UI는 5단계 평가 affordance를 사용한다.
 - review는 place에 대한 사용자의 단일 `rating_score`를 함께 가진다.
 - 별점은 1점에서 5점 사이 정수만 허용한다.
 - place 등록 시 입력한 초기 리뷰와 별점은 동일 Review 엔터티로 저장한다.
-- place 등록 경로에서 이미 review가 있는 사용자가 같은 place를 다시 등록하려 하면 browser confirm으로 내 리뷰를 업데이트할지 묻는다.
-- 이번 릴리즈에서는 이미 review가 있는 사용자가 같은 place에 새 review를 추가하는 대신 기존 review를 덮어쓸 수 있다.
+- place 등록 경로에서 이미 review가 있는 사용자가 같은 place를 다시 등록하려 하면, 기존 review를 업데이트할지 판단할 수 있는 확인 단계를 둔다.
+- review lifecycle의 세부 허용 범위(기존 review overwrite 허용 여부 등)는 selected spec과 place registration/merge spec이 함께 정한다.
 - 일반 리뷰 작성 경로에서는 이미 review가 있는 사용자가 새 review를 추가할 수 없지만, place 등록 경로의 overwrite confirm에서는 기존 review의 별점/후기를 갱신할 수 있다.
 - 리뷰는 place 상세에 작성자와 작성일과 함께 표시한다.
-- 리뷰 수정/삭제는 이번 범위에 포함하지 않는다.
+- 리뷰 수정/삭제 지원 여부는 selected spec이 정한다.
 - 리뷰 저장 상태는 `review_submit = idle | submitting | error`로 관리한다.
 - 리뷰 저장 중에는 저장 버튼을 다시 누를 수 없다.
 - 리뷰 저장 실패 시 입력한 리뷰와 별점 값을 유지한다.
@@ -34,7 +34,7 @@
 - 한 사용자는 같은 place에 review 1건만 가진다.
 - 리뷰 작성 시 입력된 별점은 평균 별점과 별점 수에 반영된다.
 - place 등록 시 입력한 초기 리뷰와 별점이 같은 review 규칙으로 저장된다.
-- place 등록 경로에서 이미 review가 있는 사용자는 browser confirm을 통해 기존 review를 업데이트할 수 있다.
+- place 등록 경로에서 이미 review가 있는 사용자는 확인 단계를 통해 기존 review를 업데이트할 수 있다.
 - 이미 review를 작성한 사용자는 새 review를 추가할 수 없다.
 - 리뷰는 작성자와 작성일과 함께 상세에 표시된다.
 - 리뷰 저장 중에는 진행 중 상태가 보인다.
@@ -62,7 +62,7 @@
 - 비로그인 사용자 실패
 - 리뷰 저장 후 평균 별점/별점 수 갱신
 - place 등록 초기 review 연동
-- place 등록 경로의 중복 리뷰 confirm
+- place 등록 경로의 중복 리뷰 확인 단계
 - 이미 review가 있는 사용자의 추가 review 차단
 - 작성자/작성일 표시
 - 리뷰 저장 중 진행 상태 표시
@@ -75,7 +75,7 @@
 - 리뷰 작성 후 상세에 즉시 보인다.
 - 평균 별점과 별점 수가 갱신된다.
 - place 등록 후 초기 리뷰와 별점이 같은 review 규칙으로 반영된다.
-- place 등록 경로에서 이미 review가 있으면 browser confirm이 보인다.
+- place 등록 경로에서 이미 review가 있으면 업데이트 여부를 판단할 수 있는 확인 단계가 보인다.
 - 작성자와 작성일이 함께 보인다.
 - 리뷰 저장 중 진행 상태가 보인다.
 - 리뷰 저장 중 버튼이 비활성화된다.

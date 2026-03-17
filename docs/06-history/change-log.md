@@ -63,7 +63,7 @@
   - `docs/03-specs/05-auth-email-login-link.md`
   - `docs/01-product/user-flows/auth-and-name-entry.md`
   - `docs/04-design/auth-and-name-entry.md`
-  - `docs/04-design/foundations.md`
+  - `docs/99-archive/04-design/foundations.md`
   - `docs/05-sprints/sprint-12/planning.md`
 - Decision:
   - Sprint 12에서는 6자리 코드 로그인으로 전환하지 않고 기존 Supabase magic link + app-managed nonce wrapper 방식을 유지한다.
@@ -92,7 +92,7 @@
   - `docs/06-history/`
   - `AGENTS.md`
 - Decision:
-  - 공통 디자인 기준은 `docs/04-design/foundations.md`로 분리하고, 흐름별 화면 규칙은 `docs/04-design/*.md`로 대응 분리한다.
+  - 공통 디자인 기준은 `docs/99-archive/04-design/foundations.md`로 분리하고, 흐름별 화면 규칙은 `docs/04-design/*.md`로 대응 분리한다.
   - 기존 `docs/04-sprints/`는 `docs/05-sprints/`로, `docs/05-history/`는 `docs/06-history/`로 이동한다.
 - Sprint impact:
   - 문서 해석 경계와 참조 경로가 바뀌므로 이후 Sprint 문서와 design 관련 문서는 새 경로를 기준으로 작성한다.

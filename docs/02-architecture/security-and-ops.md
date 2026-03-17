@@ -1,17 +1,26 @@
 # Security And Ops
 
+이 문서는 Nurimap의 인증, 세션, 접근 제어, 검색 차단, abuse 방지, 운영 로그/환경변수 규칙의 source of truth다.
+route/state ownership과 integration pipeline은 [System Runtime](./system-runtime.md), 도메인 엔터티와 무결성은 [Domain Model](./domain-model.md)에서 다룬다.
+
 ## Security Goals
 - 서비스는 사내 구성원만 사용한다.
 - 인증되지 않은 사용자는 앱과 API를 사용할 수 없다.
 - 이메일 입력과 로그인 링크 요청 흐름은 abuse 방지 정책을 가진다.
 - 검색 엔진과 외부 크롤러 노출을 최소화한다.
 
+## Protected Surface Policy
+- 전체 앱은 로그인 뒤에만 접근 가능하다.
+- `place` 등록, 리뷰 작성, 추천 같은 변경성 액션은 모두 인증된 사용자만 수행한다.
+- auth verify entry는 로그인 링크 검증을 위한 transient surface일 뿐이며, 보호된 app shell 접근 권한을 우회하지 않는다.
+- 브라우저와 API는 같은 인증 기준을 적용한다.
+
 ## Authentication Policy
 
 ### Login Gate
-- 전체 앱은 로그인 뒤에만 접근 가능하다.
 - 비로그인 사용자는 로그인 화면 외의 화면을 볼 수 없다.
 - API도 동일하게 인증을 강제한다.
+- verify route 진입 후에도 session adoption이 완료되기 전까지는 app shell을 열지 않는다.
 
 ### Email Domain Restriction
 - 허용 이메일 도메인은 `@nurimedia.co.kr` 하나다.
@@ -52,7 +61,7 @@
 - 다른 브라우저, 시크릿 창, 저장소 삭제, 로그아웃 시에는 세션이 유지되지 않는다.
 - 앱 시작 시 저장 세션이 있어도 `getUser()` 또는 보호된 API 확인으로 유효성을 재검증한다.
 
-Supabase 설정 기본안:
+Supabase 설정 reference defaults:
 - `persistSession: true`
 - `autoRefreshToken: true`
 - `SESSIONS_TIMEBOX = 2160 hours`
@@ -78,7 +87,9 @@ Supabase 설정 기본안:
 
 ## Operational Rules
 - 민감한 환경변수는 Vercel 환경변수와 서버 런타임에서만 사용한다.
-- 브라우저에는 공개 가능한 Kakao Map key만 노출한다.
+- 브라우저에는 JavaScript SDK처럼 클라이언트 사용이 전제된 플랫폼 키만 노출한다. Kakao Map 연동 시에는 JavaScript 키를 등록된 JavaScript SDK 도메인에서만 사용하고, REST API 키·어드민 키·service role key·secret은 브라우저에 노출하지 않는다.
 - 이메일 주소 로그는 전체 원문 대신 마스킹된 형태를 우선 사용한다.
 - 인증 실패와 원격 조회 실패는 운영 로그로 남긴다.
 - 로그인 링크 요청 제한 초과와 무효/만료 링크 사용은 별도 보안 이벤트로 기록한다.
+- bypass 로그인 사용, request-link 수락/전달 실패, verify/consume 실패는 운영 로그에서 구분 가능해야 한다.
+- 실제 bypass 이메일 값은 tracked code/docs/tests/examples에 직접 쓰지 않는다.

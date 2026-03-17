@@ -2,7 +2,7 @@
 
 ## Purpose
 이 문서는 Nurimap 개발 중 AI Agent가 자율적으로 내린 판단뿐 아니라, 사용자와 함께 확정한 추가 판단이 필요한 의사결정도 기록하는 로그다.
-요구사항 자체를 대체하는 문서는 아니며, `docs/00-governance/definition-of-done.md`, `docs/02-architecture/*.md`, `docs/03-specs/*.md`, `docs/99-archive/plans.md`를 해석·적용하는 과정에서 생긴 판단 근거와 결정 배경을 남기는 용도다.
+요구사항 자체를 대체하는 문서는 아니며, `docs/00-governance/definition-of-done.md`, `docs/architecture/*.md`, `docs/03-specs/*.md`, `docs/99-archive/plans.md`를 해석·적용하는 과정에서 생긴 판단 근거와 결정 배경을 남기는 용도다.
 Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan XX` 형식을 그대로 남긴다.
 
 ## When To Record
@@ -55,7 +55,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Related docs:
   - AGENTS.md
   - docs/00-governance/agent-workflow.md
-  - docs/04-design/browse-and-detail.md
+  - docs/design/browse-and-detail.md
   - docs/05-sprints/sprint-15/planning.md
 - Related commit: TBD
 
@@ -70,7 +70,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Impact: browse/detail UI 자산은 `public/assets/branding/*`, `public/assets/icons/*` 기준으로 관리한다. 파일명은 `brand-*`, `icon-*` prefix와 semantic kebab-case를 사용한다. 기존 `/sprint15/...` runtime 참조는 `/assets/...`로 교체하고, build 결과도 `dist/assets/...` 기준으로 정렬된다.
 - Revisit trigger: 앱 전역에서 image optimization pipeline, bundler import 정책, 또는 CDN fingerprint 전략을 새로 도입해 `public/` 기반 정적 자산 관리보다 더 적합한 표준이 생기면 현재 규칙을 재검토한다.
 - Related docs:
-  - docs/04-design/browse-and-detail.md
+  - docs/design/browse-and-detail.md
   - docs/05-sprints/sprint-15/planning.md
   - docs/05-sprints/sprint-15/qa.md
   - docs/05-sprints/sprint-15/review.md
@@ -87,7 +87,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: 추후 빌드/테스트 툴체인이 현재 저장소 제약과 충돌하거나, TypeScript가 과도한 복잡성을 만든다고 판단될 때 재검토한다.
 - Related docs:
   - docs/03-specs/01-app-shell-and-layout.md
-  - docs/04-design/foundations.md
+  - docs/99-archive/design/foundations.md
   - docs/00-governance/definition-of-done.md
 - Related commit: 30b00cc
 
@@ -103,7 +103,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: Plan 02~03 구현 중 라우팅 또는 전역 상태 경계가 현재 store 구조와 크게 어긋난다고 판단될 때 재검토한다.
 - Related docs:
   - docs/03-specs/01-app-shell-and-layout.md
-  - docs/04-design/foundations.md
+  - docs/99-archive/design/foundations.md
   - docs/01-product/user-flows/browse-and-detail.md
 - Related commit: 30b00cc
 
@@ -120,8 +120,8 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Related docs:
   - docs/03-specs/02-map-rendering.md
   - docs/03-specs/03-list-browse.md
-  - docs/02-architecture/integrations.md
-  - docs/04-design/browse-and-detail.md
+  - docs/99-archive/architecture/integrations.md
+  - docs/design/browse-and-detail.md
 - Related commit: 3a0ef39
 
 
@@ -136,8 +136,8 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: Plan 11에서 env naming 규칙을 정리할 때 `PUBLIC_` 대신 다른 공개 prefix 정책이 필요하다고 판단되면 재검토한다.
 - Related docs:
   - docs/03-specs/02-map-rendering.md
-  - docs/02-architecture/integrations.md
-  - docs/02-architecture/security-and-ops.md
+  - docs/99-archive/architecture/integrations.md
+  - docs/architecture/security-and-ops.md
 - Related commit: 3a0ef39
 
 
@@ -152,7 +152,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: Plan 08 이후 보호 라우트/링크 기반 탐색이 본격화되면 state-only navigation 대신 라우터 기반 구조로 재검토한다.
 - Related docs:
   - docs/03-specs/04-place-detail.md
-  - docs/04-design/browse-and-detail.md
+  - docs/design/browse-and-detail.md
   - docs/01-product/user-flows/browse-and-detail.md
 - Related commit: 89bb3dd
 
@@ -168,13 +168,13 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: Plan 06 구현 시 2단계 등록 UI가 현재 panel/page 구조로는 자연스럽게 확장되지 않는다고 판단되면 재조정한다.
 - Related docs:
   - docs/03-specs/06-naver-url-normalization.md
-  - docs/04-design/place-submission.md
+  - docs/design/place-submission.md
   - docs/01-product/user-flows/place-submission.md
 - Related commit: c8bd3ec
 
 
 ## 2026-03-08 Plan 05 - Server-side place lookup starts with fixture-backed adapter
-- Context: 문서는 server-side Naver place lookup과 Kakao geocoding fallback을 요구하지만, 현재 저장소에는 공식 Naver place detail API 계약이 확정돼 있지 않다. `docs/02-architecture/integrations.md`도 내부 API 후보는 있으나 안정성과 약관을 구현 단계에서 재검증해야 한다고 적고 있다.
+- Context: 문서는 server-side Naver place lookup과 Kakao geocoding fallback을 요구하지만, 현재 저장소에는 공식 Naver place detail API 계약이 확정돼 있지 않다. `docs/99-archive/architecture/integrations.md`도 내부 API 후보는 있으나 안정성과 약관을 구현 단계에서 재검증해야 한다고 적고 있다.
 - Options considered:
   - Option A: 실제 Naver 비공식 source를 바로 붙여서 Plan 05를 끝낸다.
   - Option B: server-side lookup boundary와 geocoding fallback 계약을 먼저 구현하고, place source는 fixture-backed adapter로 시작한다. 이후 실제 Naver source를 같은 interface 뒤에 교체한다.
@@ -184,7 +184,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: 실제 Naver source를 안전하게 재현할 수 있는 계약이 확보되면 fixture adapter를 실 source adapter로 교체한다.
 - Related docs:
   - docs/03-specs/07-place-data-extraction.md
-  - docs/02-architecture/integrations.md
+  - docs/99-archive/architecture/integrations.md
   - docs/01-product/user-flows/place-submission.md
 - Related commit: a7d759e
 
@@ -200,7 +200,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: 추후 별도 backend나 edge/server framework를 도입하면 Vite middleware는 제거하고 실제 API server 하나로 통합할 수 있다.
 - Related docs:
   - docs/03-specs/07-place-data-extraction.md
-  - docs/02-architecture/integrations.md
+  - docs/99-archive/architecture/integrations.md
   - docs/00-governance/definition-of-done.md
 - Related commit: a7d759e
 
@@ -232,8 +232,8 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: verified sending domain 확보 후 실제 이메일 검증에서 wrapper flow가 과도하게 복잡하다고 판단되면 단순화 여부를 재검토한다.
 - Related docs:
   - docs/03-specs/05-auth-email-login-link.md
-  - docs/02-architecture/security-and-ops.md
-  - docs/02-architecture/system-context.md
+  - docs/architecture/security-and-ops.md
+  - docs/99-archive/architecture/system-context.md
 - Related commit: 6ff97ad
 
 
@@ -248,7 +248,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: 사용자 사진, 이름 수정, profile 확장 요구가 커지면 dedicated profile table로 분리한다.
 - Related docs:
   - docs/03-specs/05-auth-email-login-link.md
-  - docs/02-architecture/domain-model.md
+  - docs/architecture/domain-model.md
   - docs/00-governance/definition-of-done.md
 - Related commit: 6ff97ad
 
@@ -298,7 +298,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Related docs:
   - docs/03-specs/10-review.md
   - docs/03-specs/08-place-registration.md
-  - docs/02-architecture/domain-model.md
+  - docs/architecture/domain-model.md
 - Related commit: aeed182
 
 
@@ -313,8 +313,8 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: 추후 recommendation API가 실제 서버 round-trip/optimistic UI를 요구하면 local optimistic update와 rollback 전략을 다시 도입할 수 있다.
 - Related docs:
   - docs/03-specs/11-recommendation.md
-  - docs/02-architecture/domain-model.md
-  - docs/04-design/recommendation.md
+  - docs/architecture/domain-model.md
+  - docs/99-archive/design/recommendation.md
 - Related commit: 12b73ef
 
 
@@ -329,8 +329,8 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: 추후 CDN 또는 shared cache 계층이 도입되면 lookup cache를 process-local Map에서 공통 cache 계층으로 옮길 수 있다.
 - Related docs:
   - docs/03-specs/12-release-hardening.md
-  - docs/02-architecture/security-and-ops.md
-  - docs/02-architecture/integrations.md
+  - docs/architecture/security-and-ops.md
+  - docs/99-archive/architecture/integrations.md
 - Related commit: 31f1ac2
 
 
@@ -347,7 +347,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Related docs:
   - .omx/plans/plan-global-bypass-email-and-make.md
   - docs/99-archive/local-development.md
-  - docs/02-architecture/security-and-ops.md
+  - docs/architecture/security-and-ops.md
   - docs/00-governance/definition-of-done.md
 - Related commit: 65f9910
 
@@ -365,28 +365,28 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/03-specs/05-auth-email-login-link.md
   - docs/05-sprints/sprint-12/planning.md
   - docs/01-product/user-flows/auth-and-name-entry.md
-  - docs/04-design/auth-and-name-entry.md
+  - docs/design/auth-and-name-entry.md
 - Related commit:
 
 
 ## 2026-03-10 Docs structure - Split design docs out of architecture and align them with user flows
-- Context: 기존에는 `docs/02-architecture/ui-design.md` 하나에 공통 레이아웃, 상태 모델, 인증 화면, 탐색 화면, 장소 등록, 리뷰/추천 디자인 규칙이 함께 들어 있었다. 사용자는 user-flow 문서와 UI design 문서의 역할을 더 명확히 분리하고, 공통 기준과 흐름별 디자인 문서를 따로 관리하길 원했다.
+- Context: 기존에는 `docs/architecture/ui-design.md` 하나에 공통 레이아웃, 상태 모델, 인증 화면, 탐색 화면, 장소 등록, 리뷰/추천 디자인 규칙이 함께 들어 있었다. 사용자는 user-flow 문서와 UI design 문서의 역할을 더 명확히 분리하고, 공통 기준과 흐름별 디자인 문서를 따로 관리하길 원했다.
 - Options considered:
-  - Option A: 기존 `docs/02-architecture/ui-design.md`를 유지하고 필요한 문단만 정리한다.
-  - Option B: `04-design/` 폴더를 새로 만들고, 공통 기준은 `foundations.md`, 흐름별 화면 규칙은 대응하는 flow slug 문서로 분리한다. 이후 `04-sprints`, `05-history`도 `05-sprints`, `06-history`로 민다.
+  - Option A: 기존 `docs/architecture/ui-design.md`를 유지하고 필요한 문단만 정리한다.
+  - Option B: `design/` 폴더를 새로 만들고, 공통 기준은 `foundations.md`, 흐름별 화면 규칙은 대응하는 flow slug 문서로 분리한다. 이후 `04-sprints`, `05-history`도 `05-sprints`, `06-history`로 민다.
 - Decision: Option B를 선택한다.
 - Rationale: 디자인 문서는 architecture의 도메인/보안/시스템 경계와 성격이 다르고, 사용자 흐름과 더 가까운 화면 구조 규칙을 따로 읽을 수 있어야 문서 책임이 분명해진다. 공통 기준과 흐름별 규칙을 분리하면 이후 auth, browse, submission, review, recommendation 변경도 영향 범위를 더 쉽게 좁힐 수 있다.
-- Impact: `docs/04-design/foundations.md`가 전역 breakpoint/state model source of truth가 된다. `docs/04-design/auth-and-name-entry.md`, `browse-and-detail.md`, `place-submission.md`, `review.md`, `recommendation.md`가 흐름별 UI 기준을 담당한다. Sprint와 history 문서 경로는 각각 `docs/05-sprints/`, `docs/06-history/`로 이동한다.
+- Impact: `docs/99-archive/design/foundations.md`가 전역 breakpoint/state model source of truth가 된다. `docs/design/auth-and-name-entry.md`, `browse-and-detail.md`, `place-submission.md`, `review.md`, `recommendation.md`가 흐름별 UI 기준을 담당한다. Sprint와 history 문서 경로는 각각 `docs/05-sprints/`, `docs/06-history/`로 이동한다.
 - Revisit trigger: 향후 design 문서가 다시 한 파일에 과도하게 집중되거나, flow별 문서보다 컴포넌트 시스템 문서가 더 적합해지면 design 정보 구조를 다시 조정한다.
 - Related docs:
   - docs/00-governance/docs-structure.md
   - docs/00-governance/agent-workflow.md
-  - docs/04-design/foundations.md
-  - docs/04-design/auth-and-name-entry.md
-  - docs/04-design/browse-and-detail.md
-  - docs/04-design/place-submission.md
-  - docs/04-design/review.md
-  - docs/04-design/recommendation.md
+  - docs/99-archive/design/foundations.md
+  - docs/design/auth-and-name-entry.md
+  - docs/design/browse-and-detail.md
+  - docs/design/place-submission.md
+  - docs/99-archive/design/review.md
+  - docs/99-archive/design/recommendation.md
 - Related commit:
 
 ## 2026-03-10 Sprint 12 - Refuse auth email delivery when PUBLIC_APP_URL is missing or invalid
@@ -402,7 +402,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Related docs:
   - docs/05-sprints/sprint-12/planning.md
   - docs/03-specs/05-auth-email-login-link.md
-  - docs/02-architecture/security-and-ops.md
+  - docs/architecture/security-and-ops.md
   - docs/05-sprints/sprint-12/qa.md
 - Related commit:
 
@@ -420,7 +420,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/05-sprints/sprint-13/planning.md
   - docs/03-specs/06-naver-url-normalization.md
   - docs/03-specs/07-place-data-extraction.md
-  - docs/02-architecture/integrations.md
+  - docs/99-archive/architecture/integrations.md
 - Related commit: 38d69a4
 
 ## 2026-03-12 Sprint 13 - Existing session wins over stale verify query on refresh
@@ -437,7 +437,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/05-sprints/sprint-13/planning.md
   - docs/03-specs/05-auth-email-login-link.md
   - docs/01-product/user-flows/auth-and-name-entry.md
-  - docs/04-design/auth-and-name-entry.md
+  - docs/design/auth-and-name-entry.md
 - Related commit: 0960939
 
 ## 2026-03-13 Auth - Avoid refresh/bootstrap deadlock and bypass verify hangs
@@ -452,7 +452,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: auth 진입 경로를 router-level route로 분리하거나, Supabase auth 이벤트 처리 전략을 다시 설계하게 되면 현재 `session.user` 우선 복원 + 후속 보강 조회 구조를 재검토한다.
 - Related docs:
   - docs/03-specs/05-auth-email-login-link.md
-  - docs/04-design/auth-and-name-entry.md
+  - docs/design/auth-and-name-entry.md
   - docs/05-sprints/sprint-13/planning.md
 - Related commit:
 
@@ -548,9 +548,9 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Related docs:
   - docs/01-product/product-overview.md
   - docs/01-product/user-flows/place-submission.md
-  - docs/02-architecture/system-context.md
-  - docs/02-architecture/integrations.md
-  - docs/02-architecture/domain-model.md
+  - docs/99-archive/architecture/system-context.md
+  - docs/99-archive/architecture/integrations.md
+  - docs/architecture/domain-model.md
   - docs/03-specs/07-place-data-extraction.md
   - docs/03-specs/08-place-registration.md
   - docs/03-specs/09-place-merge.md
@@ -575,7 +575,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/03-specs/05-auth-email-login-link.md
   - docs/01-product/user-flows/browse-and-detail.md
   - docs/01-product/user-flows/auth-and-name-entry.md
-  - docs/04-design/browse-and-detail.md
+  - docs/design/browse-and-detail.md
 - Related commit: TBD
 
 ## 2026-03-15 Sprint 17 - Replace immediate cooldown + daily limit with resend burst then cooldown
@@ -592,7 +592,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/05-sprints/sprint-17/planning.md
   - docs/03-specs/05-auth-email-login-link.md
   - docs/01-product/user-flows/auth-and-name-entry.md
-  - docs/04-design/auth-and-name-entry.md
+  - docs/design/auth-and-name-entry.md
 - Related commit: TBD
 
 ## 2026-03-15 Sprint 17 - Separate runtime map loading/failure UX from deterministic test fallback renderer
@@ -608,7 +608,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/05-sprints/sprint-17/planning.md
   - docs/03-specs/02-map-rendering.md
   - docs/01-product/user-flows/browse-and-detail.md
-  - docs/04-design/browse-and-detail.md
+  - docs/design/browse-and-detail.md
   - docs/06-history/decisions.md
 - Related commit: TBD
 
@@ -626,7 +626,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/05-sprints/sprint-17/planning.md
   - docs/03-specs/05-auth-email-login-link.md
   - docs/01-product/user-flows/auth-and-name-entry.md
-  - docs/04-design/auth-and-name-entry.md
+  - docs/design/auth-and-name-entry.md
 - Related commit: TBD
 
 ## 2026-03-15 Sprint 17 - Enforce explicit `.js` specifiers in Vercel API helper imports
@@ -655,7 +655,7 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
 - Revisit trigger: verify failure reason을 `invalidated`와 `expired`로 다시 명확히 구분해야 한다는 사용자 피드백이나 운영 혼란이 생기면, copy는 별도 재검토한다.
 - Related docs:
   - docs/03-specs/05-auth-email-login-link.md
-  - docs/04-design/auth-and-name-entry.md
+  - docs/design/auth-and-name-entry.md
   - docs/01-product/user-flows/auth-and-name-entry.md
   - docs/05-sprints/sprint-17/planning.md
   - docs/05-sprints/sprint-17/review.md

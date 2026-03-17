@@ -82,8 +82,8 @@ importers:
         specifier: ^28.1.0
         version: 28.1.0
       oh-my-codex:
-        specifier: ^0.9.0
-        version: 0.9.0
+        specifier: ^0.10.2
+        version: 0.10.2
       playwright:
         specifier: ^1.58.2
         version: 1.58.2
@@ -2369,8 +2369,8 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
-  hono@4.12.7:
-    resolution: {integrity: sha512-jq9l1DM0zVIvsm3lv9Nw9nlJnMNPOcAtsbsgiUhWcFzPE99Gvo6yRTlszSLLYacMeQ6quHD6hMfId8crVHvexw==}
+  hono@4.12.8:
+    resolution: {integrity: sha512-VJCEvtrezO1IAR+kqEYnxUOoStaQPGrCmX3j4wDTNOcD1uRPFpGlwQUIW8niPuvHXaTUxeOUl5MMDGrl+tmO9A==}
     engines: {node: '>=16.9.0'}
 
   hosted-git-info@7.0.2:
@@ -2970,8 +2970,8 @@ packages:
   obug@2.1.1:
     resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
 
-  oh-my-codex@0.9.0:
-    resolution: {integrity: sha512-8LU2HyYSVaRmLhn5iO9Zp8IoelV7hXVohVOlOWo/Bde0S+MKLjjTFWDhPq5HTjrIcK5JQQj2q4mn4XRLeenzZw==}
+  oh-my-codex@0.10.2:
+    resolution: {integrity: sha512-uQoWRIReshdqDkbGkEI7x8E6nDuRH/6bSQhvtihbGKtsKbcfbDrXYeqXr/fOgNmQuU19kKDZdEoTxSJ6XOiuLA==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -4415,9 +4415,9 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@hono/node-server@1.19.11(hono@4.12.7)':
+  '@hono/node-server@1.19.11(hono@4.12.8)':
     dependencies:
-      hono: 4.12.7
+      hono: 4.12.8
 
   '@humanfs/core@0.19.1': {}
 
@@ -4485,7 +4485,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.27.1(zod@4.3.6)':
     dependencies:
-      '@hono/node-server': 1.19.11(hono@4.12.7)
+      '@hono/node-server': 1.19.11(hono@4.12.8)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -4495,7 +4495,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.2.1
       express-rate-limit: 8.3.1(express@5.2.1)
-      hono: 4.12.7
+      hono: 4.12.8
       jose: 6.2.1
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -6311,7 +6311,7 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  hono@4.12.7: {}
+  hono@4.12.8: {}
 
   hosted-git-info@7.0.2:
     dependencies:
@@ -6912,7 +6912,7 @@ snapshots:
 
   obug@2.1.1: {}
 
-  oh-my-codex@0.9.0:
+  oh-my-codex@0.10.2:
     dependencies:
       '@iarna/toml': 2.2.5
       '@modelcontextprotocol/sdk': 1.27.1(zod@4.3.6)

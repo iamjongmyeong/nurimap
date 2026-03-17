@@ -45,9 +45,9 @@
 
 - `docs/01-product/user-flows/browse-and-detail.md`
 - `docs/04-design/browse-and-detail.md`
-- `docs/04-design/foundations.md`
-- `docs/04-design/review.md`
-- `docs/02-architecture/system-context.md`
+- `docs/99-archive/04-design/foundations.md`
+- `docs/99-archive/04-design/review.md`
+- `docs/99-archive/02-architecture/system-context.md`
 - `docs/00-governance/definition-of-ready.md`
 - `docs/00-governance/definition-of-done.md`
 
@@ -175,7 +175,7 @@
   - `docs/05-sprints/sprint-15/planning.md`
   - `docs/03-specs/04-place-detail.md` (필요 시)
   - `docs/04-design/browse-and-detail.md`
-  - `docs/04-design/review.md` (필요 시)
+  - `docs/99-archive/04-design/review.md` (필요 시)
 - Verify:
   - `src/app-shell/NurimapDetail.test.tsx`
   - 모바일 뒤로 가기 / 기존 상세 행동 회귀 검증

@@ -41,11 +41,11 @@
 - `docs/01-product/user-flows/auth-and-name-entry.md`
 - `docs/01-product/user-flows/place-submission.md`
 - `docs/04-design/auth-and-name-entry.md`
-- `docs/04-design/foundations.md`
+- `docs/99-archive/04-design/foundations.md`
 - `docs/04-design/browse-and-detail.md`
 - `docs/04-design/place-submission.md`
-- `docs/02-architecture/integrations.md`
-- `docs/02-architecture/system-context.md`
+- `docs/99-archive/02-architecture/integrations.md`
+- `docs/99-archive/02-architecture/system-context.md`
 - `docs/00-governance/definition-of-ready.md`
 - `docs/00-governance/definition-of-done.md`
 - `docs/06-history/decisions.md`
@@ -64,7 +64,7 @@
 
 # Agent Instructions
 
-- 구현 시작 전 `docs/03-specs/02-map-rendering.md`, `docs/03-specs/06-naver-url-normalization.md`, `docs/03-specs/07-place-data-extraction.md`, `docs/02-architecture/integrations.md`에서 Sprint 13 delta를 먼저 흡수한다.
+- 구현 시작 전 `docs/03-specs/02-map-rendering.md`, `docs/03-specs/06-naver-url-normalization.md`, `docs/03-specs/07-place-data-extraction.md`, `docs/99-archive/02-architecture/integrations.md`에서 Sprint 13 delta를 먼저 흡수한다.
 - 프런트엔드 구현 단계에 들어가면 `vercel-react-best-practices`와 `frontend-design` skill을 먼저 적용한다.
 - 목록 클릭 후 상세 패널 비가시화는 JSDOM fallback에서만 판단하지 말고, 로그인 후 실제 Kakao SDK 런타임에서 재현/검증한다.
 - `src/app-shell/MapPane.tsx`의 지도 surface와 `src/app-shell/NurimapAppShell.tsx`의 상세 패널/추가 패널 사이 stacking context, `z-index`, `backdrop-blur`, repaint/compositing 영향을 먼저 확인한다.
@@ -77,7 +77,7 @@
 
 1. **문서/계약 동기화 선행**
    - Sprint 13에서 지원해야 하는 지도 control, hero copy 제거, URL 형식 확장 범위를 planning/spec/architecture 문서에 반영한다.
-   - 관련 파일: `docs/05-sprints/sprint-13/planning.md`, `docs/03-specs/02-map-rendering.md`, `docs/03-specs/06-naver-url-normalization.md`, `docs/03-specs/07-place-data-extraction.md`, `docs/02-architecture/integrations.md`
+   - 관련 파일: `docs/05-sprints/sprint-13/planning.md`, `docs/03-specs/02-map-rendering.md`, `docs/03-specs/06-naver-url-normalization.md`, `docs/03-specs/07-place-data-extraction.md`, `docs/99-archive/02-architecture/integrations.md`
    - 완료 기준: Sprint 범위와 acceptance 기준이 문서 충돌 없이 읽히고, 새 URL 형식 및 zoom control 요구가 source of truth에 반영된다.
 
 2. **회귀 테스트 먼저 추가**

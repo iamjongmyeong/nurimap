@@ -7,6 +7,7 @@
 ## Structure Overview
 현재 라이브 문서 구조는 아래 계층을 기준으로 유지한다.
 가변적으로 늘어나는 디렉터리(`user-flows/`, `03-specs/`, `sprint-XX/`)는 예시만 표시한다.
+`02-architecture/`, `04-design/` 아래 파일명은 바뀔 수 있지만, 각 폴더가 맡는 문서 역할과 분할 원칙은 이 문서를 기준으로 유지한다.
 
 ```text
 docs/
@@ -14,8 +15,12 @@ docs/
   01-product/
     user-flows/
   02-architecture/
+    <domain-model>.md
+    <runtime-contract>.md
+    <security-and-ops>.md
   03-specs/
   04-design/
+    <flow-or-surface-contract>.md
   05-sprints/
     template/
     sprint-XX/
@@ -36,6 +41,10 @@ docs/
   - `planning.md`
   - `qa.md`
   - `review.md`
+- `02-architecture/`의 라이브 문서는 소수의 안정된 concern 묶음만 유지한다.
+  - 예: domain model / runtime contract / security-and-ops
+- `04-design/`의 라이브 문서는 major flow 또는 surface 기준의 thin contract만 유지한다.
+  - 예: auth / browse-detail / submission
 
 ## Placement Rules
 
@@ -50,8 +59,10 @@ docs/
 - 자주 바뀌지 않는 상위 문서를 유지한다.
 
 ### `02-architecture/`
-- 도메인 모델, 시스템 경계, integration, security 규칙을 둔다.
-- 구현 제약과 공통 규칙은 이 폴더에서 관리한다.
+- 도메인 모델, 시스템 runtime, security/ops 규칙을 둔다.
+- 도메인 엔터티/관계/무결성 규칙, runtime 경계/상태 소유권, 보안/운영 규칙처럼 성격이 다른 concern을 분리해 둔다.
+- 파일 경계는 문서 수를 최소화하되, 한 문서 안에 concern이 과도하게 섞이지 않도록 유지한다.
+- 구현 제약과 공통 runtime 규칙은 이 폴더에서 관리하고, 시각 상세는 두지 않는다.
 
 ### `03-specs/`
 - 장기 기능 spec만 둔다.
@@ -59,9 +70,10 @@ docs/
 - QA 전용 일회성 문서는 두지 않는다.
 
 ### `04-design/`
-- 공통 레이아웃, breakpoint, UI 상태 모델, 흐름별 화면 구조를 둔다.
-- `foundations.md`에는 전역 디자인 기준을 둔다.
-- 흐름별 디자인 문서는 가능한 한 대응하는 `user-flows/` slug와 같은 이름을 사용한다.
+- 라이브 UI 문서는 thin contract만 둔다.
+- thin contract는 major flow 또는 surface 기준으로 나눈다.
+- 특정 UI가 더 큰 surface에 종속되면 별도 문서로 분리하지 말고 상위 thin contract에 흡수한다.
+- thin contract의 상세 작성 원칙은 `docs/00-governance/agent-workflow.md`를 따른다.
 
 ### `05-sprints/`
 - 현재 또는 과거 Sprint의 실행 문서를 둔다.
@@ -83,12 +95,15 @@ docs/
 
 ## Document Creation Rules
 - 새로운 기능 요구사항은 `03-specs/`에 다음 번호로 추가한다.
-- 새로운 디자인 기준이나 화면 구조를 만들거나 바꿀 때는 `04-design/`을 우선 검토한다.
+- 새로운 디자인 기준이나 화면 구조를 만들거나 바꿀 때는 먼저 기존 thin contract에 흡수할 수 있는지 검토한다.
 - 새로운 Sprint를 시작할 때는 `05-sprints/template/`를 기준으로 `05-sprints/sprint-XX/`를 만든다.
 - 운영 규칙을 추가할 때는 `00-governance/`에 둔다.
 - runtime/orchestration 규칙은 `AGENTS.md`에 두고, repository-specific AI Agent task guidance는 기본적으로 `agent-workflow.md`에 둔다.
+- 문서 작성 체크리스트와 change-coupled 표현 회피 기준은 `docs/00-governance/doc-writing-checklist.md`를 따른다.
 - 제품 설명이나 흐름을 바꿀 때는 `01-product/`를 우선 검토한다.
-- 기술 구조나 제약을 바꿀 때는 `02-architecture/`를 우선 검토한다.
+- route, layout, integration, state ownership 같은 공통 runtime contract를 바꿀 때는 관련 architecture 문서를 우선 검토한다.
+- 인증/보안/운영 제약을 바꿀 때는 관련 security/ops 문서를 우선 검토한다.
+- 특정 surface에 종속된 UI 변경은 별도 design 문서를 만들기보다 관련 thin contract에 흡수한다.
 - 변경 요청이나 비자명한 판단은 각각 `06-history/change-log.md`, `06-history/decisions.md`에 기록한다.
 - 사용자의 명시적 요청이 없으면 `README` 같은 보조 문서를 새로 만들지 않는다.
 
@@ -185,5 +200,6 @@ docs/
 ## Live And Archive Boundary
 - 라이브 문서는 `00-governance/`부터 `06-history/`까지다.
 - `99-archive/`는 읽을 수는 있지만 현재 구현 기준이 아니다.
+- 구조 개편으로 retired 된 문서는 라이브 contract를 병렬로 유지하지 않고, 필요한 내용은 현재 source-of-truth 문서에 흡수한 뒤 archive 경계로 이동한다.
 - 라이브 문서를 대체하는 구조 변경이 생기면 먼저 archive snapshot을 만든 뒤 새 구조를 반영한다.
 - `99-archive/`의 문서는 파일 상단에 archived 상태와 대체 경로를 명시한다.

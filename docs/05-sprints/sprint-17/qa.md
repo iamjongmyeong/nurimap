@@ -13,7 +13,7 @@
   - `docs/01-product/user-flows/auth-and-name-entry.md`
   - `docs/04-design/browse-and-detail.md`
   - `docs/04-design/auth-and-name-entry.md`
-  - `docs/04-design/foundations.md`
+  - `docs/02-architecture/system-runtime.md`
 
 # Automated Checks Result
 

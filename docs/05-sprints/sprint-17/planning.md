@@ -83,7 +83,7 @@
 - `docs/01-product/user-flows/auth-and-name-entry.md`
 - `docs/04-design/browse-and-detail.md`
 - `docs/04-design/auth-and-name-entry.md`
-- `docs/04-design/foundations.md`
+- `docs/02-architecture/system-runtime.md`
 - `docs/03-specs/01-app-shell-and-layout.md` (legacy floating-detail wording / route 분리 이전 app-shell 참고용)
 - `docs/00-governance/agent-workflow.md`
 - `docs/00-governance/definition-of-ready.md`

@@ -9,7 +9,7 @@
 
 This document is the source of truth for user flows.
 
-관련 문서: [Design Foundations](../04-design/foundations.md)
+관련 문서: [Design Foundations](./04-design/foundations.md)
 
 ## Authentication Flow
 1. 사용자가 웹사이트에 접속한다.
