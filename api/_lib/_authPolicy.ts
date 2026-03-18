@@ -1,27 +1,18 @@
 export const AUTH_REQUEST_COOLDOWN_SECONDS = 60 * 5
 export const AUTH_REQUEST_BURST_LIMIT = 5
-export const AUTH_LINK_EXPIRES_MINUTES = 5
 
-export type LoginLinkState = {
+export type LoginOtpState = {
   day_key: string
   day_count: number
   last_requested_at: string | null
-  active_nonce: string | null
-  active_token_hash: string | null
-  active_verification_type: 'magiclink' | 'signup' | 'invite' | null
-  active_expires_at: string | null
-  last_consumed_nonce: string | null
+  last_verified_at: string | null
 }
 
-export const createEmptyLoginLinkState = (): LoginLinkState => ({
+export const createEmptyLoginOtpState = (): LoginOtpState => ({
   day_key: '',
   day_count: 0,
   last_requested_at: null,
-  active_nonce: null,
-  active_token_hash: null,
-  active_verification_type: null,
-  active_expires_at: null,
-  last_consumed_nonce: null,
+  last_verified_at: null,
 })
 
 export const isAllowedEmailDomain = (email: string, allowedDomain: string) => {
@@ -36,7 +27,7 @@ export const evaluateRequestPolicy = ({
   state,
 }: {
   now: Date
-  state: LoginLinkState
+  state: LoginOtpState
 }) => {
   const nowMs = now.getTime()
   const todayKey = getDayKey(now)
@@ -66,85 +57,13 @@ export const evaluateRequestPolicy = ({
   }
 }
 
-export const buildIssuedLoginLinkState = ({
-  baseState,
-  expiresAt,
-  nonce,
+export const recordVerifiedOtpState = ({
   now,
-  tokenHash,
-  verificationType,
+  state,
 }: {
-  baseState: LoginLinkState
-  expiresAt: Date
-  nonce: string
   now: Date
-  tokenHash: string
-  verificationType: 'magiclink' | 'signup' | 'invite'
-}): LoginLinkState => ({
-  ...baseState,
-  last_requested_at: now.toISOString(),
-  active_nonce: nonce,
-  active_token_hash: tokenHash,
-  active_verification_type: verificationType,
-  active_expires_at: expiresAt.toISOString(),
+  state: LoginOtpState
+}): LoginOtpState => ({
+  ...state,
+  last_verified_at: now.toISOString(),
 })
-
-export const evaluateVerificationState = ({
-  nonce,
-  now,
-  state,
-}: {
-  nonce: string
-  now: Date
-  state: LoginLinkState
-}) => {
-  if (state.last_consumed_nonce === nonce) {
-    return { status: 'used' as const }
-  }
-
-  if (!state.active_nonce || state.active_nonce !== nonce) {
-    return { status: 'invalidated' as const }
-  }
-
-  if (!state.active_expires_at || Date.parse(state.active_expires_at) < now.getTime()) {
-    return { status: 'expired' as const }
-  }
-
-  if (!state.active_token_hash || !state.active_verification_type) {
-    return { status: 'invalidated' as const }
-  }
-
-  return {
-    status: 'valid' as const,
-    tokenHash: state.active_token_hash,
-    verificationType: state.active_verification_type,
-  }
-}
-
-export const consumeVerificationState = ({
-  nonce,
-  state,
-}: {
-  nonce: string
-  state: LoginLinkState
-}) => {
-  if (state.last_consumed_nonce === nonce) {
-    return { status: 'used' as const }
-  }
-
-  if (!state.active_nonce || state.active_nonce !== nonce) {
-    return { status: 'invalidated' as const }
-  }
-
-  return {
-    status: 'consumed' as const,
-    nextState: {
-      ...state,
-      last_consumed_nonce: nonce,
-      active_nonce: null,
-      active_token_hash: null,
-      active_verification_type: null,
-      active_expires_at: null,
-    },
-  }
-}

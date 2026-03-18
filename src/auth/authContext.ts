@@ -3,7 +3,7 @@ import { createContext, useContext } from 'react'
 export type AuthPhase =
   | 'loading'
   | 'auth_required'
-  | 'auth_link_sent'
+  | 'otp_required'
   | 'verifying'
   | 'auth_failure'
   | 'name_required'
@@ -15,7 +15,7 @@ export type AuthContextValue = {
   failureReason: string | null
   message: string | null
   phase: AuthPhase
-  requestLink: (email: string) => Promise<void>
+  requestOtp: (email: string) => Promise<void>
   saveName: (name: string) => Promise<void>
   signOut: () => Promise<void>
 }

@@ -1,21 +1,16 @@
-import crypto from 'node:crypto'
 import {
-  AUTH_LINK_EXPIRES_MINUTES,
-  buildIssuedLoginLinkState,
-  consumeVerificationState,
-  createEmptyLoginLinkState,
+  createEmptyLoginOtpState,
   evaluateRequestPolicy,
-  evaluateVerificationState,
   isAllowedEmailDomain,
-  type LoginLinkState,
+  type LoginOtpState,
 } from './authPolicy.js'
 import { logAuthBypassLogin, logAuthConsumeFailure, logAuthRequestAccepted, logAuthRequestFailure } from './opsLogger.js'
 import { createSupabaseAdminClient, createSupabaseBrowserlessClient } from './supabaseAdmin.js'
 
 type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'delivery_failed' | 'bypass_required'
-type AuthVerifyErrorReason = 'expired' | 'used' | 'invalidated'
+type AuthVerifyErrorReason = 'invalidated'
 type AuthVerifyType = 'magiclink' | 'signup' | 'invite'
-type RequestLoginLinkOptions = {
+type RequestLoginOtpOptions = {
   requireBypass?: boolean
 }
 type AuthRequestError =
@@ -30,10 +25,9 @@ type AuthRequestError =
       code: Exclude<AuthRequestErrorCode, 'cooldown'>
       message: string
     }
-type SendLoginEmailResult =
+type SendLoginOtpResult =
   | {
       ok: true
-      providerMessageId: string | null
       statusCode: number
     }
   | {
@@ -45,7 +39,7 @@ type SendLoginEmailResult =
 type AuthRequestSuccess =
   | {
       status: 'success'
-      mode: 'link'
+      mode: 'otp'
       message: string
     }
   | {
@@ -100,16 +94,6 @@ const getPublicAppUrl = () => {
   }
 }
 
-const buildLoginUrl = ({ baseUrl, email, nonce }: { baseUrl: string; email: string; nonce: string }) => {
-  const url = new URL(baseUrl)
-  const normalizedPath = url.pathname === '/' ? '' : url.pathname.replace(/\/$/, '')
-  url.pathname = `${normalizedPath}/auth/verify`
-  url.search = ''
-  url.searchParams.set('email', email)
-  url.searchParams.set('nonce', nonce)
-  return url.toString()
-}
-
 const formatCooldownMessage = (remainingSeconds: number) => {
   const minutes = Math.floor(remainingSeconds / 60)
   const seconds = remainingSeconds % 60
@@ -121,27 +105,28 @@ const formatCooldownMessage = (remainingSeconds: number) => {
   return `${minutes}분 ${String(seconds).padStart(2, '0')}초 후에 다시 시도해주세요.`
 }
 
-const buildLoginEmailHtml = (loginUrl: string) => `
-  <div style="margin:0 auto;max-width:480px;padding:32px 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;color:#111827;">
-    <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:0.32em;">NURIMAP LOGIN</p>
-    <p style="margin:28px 0 0;">
-      <a href="${loginUrl}" style="display:inline-block;border-radius:999px;background:#111827;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">누리맵 로그인</a>
-    </p>
-    <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:#4b5563;">링크는 5분 동안만 유효합니다.</p>
-    <p style="margin:12px 0 0;font-size:14px;line-height:1.7;color:#4b5563;">버튼이 동작하지 않으면 아래 링크를 직접 열어주세요.</p>
-    <p style="margin:16px 0 0;font-size:13px;line-height:1.7;word-break:break-all;">
-      <a href="${loginUrl}" style="color:#2563eb;text-decoration:underline;">${loginUrl}</a>
-    </p>
-  </div>
-`
-
-const buildLoginEmailText = (loginUrl: string) =>
-  ['[NURIMAP] 로그인 링크', '', loginUrl, '', '5분 동안만 유효합니다.'].join('\n')
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-
 const getDurationMs = (startedAt: number) => Date.now() - startedAt
+
+const getErrorCode = (error: unknown) => {
+  if (!(error instanceof Error) && (typeof error !== 'object' || error === null)) {
+    return null
+  }
+
+  const candidate = 'code' in error ? error.code : 'name' in error ? error.name : null
+  return typeof candidate === 'string' ? candidate : null
+}
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string') {
+    return error.message
+  }
+
+  return null
+}
 
 const bypassRequiredResult = (email: string) => {
   logAuthRequestFailure({ code: 'bypass_required', email })
@@ -157,7 +142,7 @@ const deliveryFailedResult = (email: string, details: Record<string, unknown> = 
   return {
     status: 'error' as const,
     code: 'delivery_failed' as AuthRequestErrorCode,
-    message: '로그인 링크를 보내지 못했어요. 다시 시도해 주세요.',
+    message: '인증 코드를 보내지 못했어요. 다시 시도해 주세요.',
   }
 }
 
@@ -214,19 +199,27 @@ const findUserByEmail = async (email: string) => {
   return null
 }
 
-const getLoginState = (user: { app_metadata?: Record<string, unknown> } | null): LoginLinkState => {
+const getStringOrNull = (value: unknown) => (typeof value === 'string' ? value : null)
+const getNumberOrZero = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
+
+const getLoginState = (user: { app_metadata?: Record<string, unknown> } | null): LoginOtpState => {
   const appMetadata = user?.app_metadata ?? {}
-  const state = appMetadata.nurimap_auth
-  if (!state || typeof state !== 'object') {
-    return createEmptyLoginLinkState()
+  const rawState = appMetadata.nurimap_auth
+  if (!rawState || typeof rawState !== 'object') {
+    return createEmptyLoginOtpState()
   }
+
+  const state = rawState as Record<string, unknown>
+
   return {
-    ...createEmptyLoginLinkState(),
-    ...(state as LoginLinkState),
+    day_key: getStringOrNull(state.day_key) ?? '',
+    day_count: getNumberOrZero(state.day_count),
+    last_requested_at: getStringOrNull(state.last_requested_at),
+    last_verified_at: getStringOrNull(state.last_verified_at),
   }
 }
 
-const updateUserAuthState = async (userId: string, nextState: LoginLinkState, userMetadata?: Record<string, unknown>) => {
+const updateUserAuthState = async (userId: string, nextState: LoginOtpState, userMetadata?: Record<string, unknown>) => {
   const admin = createSupabaseAdminClient()
   const { error } = await admin.auth.admin.updateUserById(userId, {
     app_metadata: {
@@ -239,66 +232,44 @@ const updateUserAuthState = async (userId: string, nextState: LoginLinkState, us
   }
 }
 
-const sendLoginEmail = async ({
+const sendLoginOtp = async ({
   email,
-  loginUrl,
 }: {
   email: string
-  loginUrl: string
-}): Promise<SendLoginEmailResult> => {
+}): Promise<SendLoginOtpResult> => {
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
+    const client = createSupabaseBrowserlessClient()
+    const { error } = await client.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
       },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL,
-        to: [email],
-        subject: '[NURIMAP] 로그인 링크',
-        html: buildLoginEmailHtml(loginUrl),
-        text: buildLoginEmailText(loginUrl),
-      }),
     })
 
-    let responseBody: unknown = null
-
-    try {
-      const rawBody = await response.text()
-      responseBody = rawBody ? JSON.parse(rawBody) : null
-    } catch {
-      responseBody = null
-    }
-
-    if (!response.ok) {
+    if (error) {
       return {
         ok: false,
-        statusCode: response.status,
-        providerErrorCode:
-          isRecord(responseBody) && typeof responseBody.name === 'string' ? responseBody.name : null,
-        providerErrorMessage:
-          isRecord(responseBody) && typeof responseBody.message === 'string' ? responseBody.message : null,
+        statusCode: typeof error.status === 'number' ? error.status : null,
+        providerErrorCode: getErrorCode(error),
+        providerErrorMessage: getErrorMessage(error),
       }
     }
 
     return {
       ok: true,
-      statusCode: response.status,
-      providerMessageId:
-        isRecord(responseBody) && typeof responseBody.id === 'string' ? responseBody.id : null,
+      statusCode: 200,
     }
   } catch (error) {
     return {
       ok: false,
       statusCode: null,
-      providerErrorCode: 'network_error',
-      providerErrorMessage: error instanceof Error ? error.message : 'unknown_error',
+      providerErrorCode: getErrorCode(error),
+      providerErrorMessage: getErrorMessage(error) ?? 'unknown_error',
     }
   }
 }
 
-export const requestLoginLink = async (email: string, options: RequestLoginLinkOptions = {}) => {
+export const requestLoginOtp = async (email: string, options: RequestLoginOtpOptions = {}) => {
   const requestStartedAt = Date.now()
   const allowedDomain = process.env.AUTH_ALLOWED_EMAIL_DOMAIN ?? ''
   const normalizedEmail = email.trim().toLowerCase()
@@ -344,130 +315,77 @@ export const requestLoginLink = async (email: string, options: RequestLoginLinkO
     } satisfies AuthRequestError
   }
 
-  if (!publicAppUrl) {
-    return deliveryFailedResult(normalizedEmail, {
-      failure_stage: 'public_app_url',
-      find_user_ms: findUserMs,
-      total_ms: getDurationMs(requestStartedAt),
-    })
-  }
-
-  const admin = createSupabaseAdminClient()
-  const generateLinkStartedAt = Date.now()
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: 'magiclink',
-    email: normalizedEmail,
-    options: {
-      redirectTo: publicAppUrl,
-    },
-  })
-  const generateLinkMs = getDurationMs(generateLinkStartedAt)
-
-  if (error || !data.user || !data.properties.hashed_token) {
-    return deliveryFailedResult(normalizedEmail, {
-      failure_stage: 'generate_link',
-      find_user_ms: findUserMs,
-      generate_link_ms: generateLinkMs,
-      total_ms: getDurationMs(requestStartedAt),
-    })
-  }
-
-  const nonce = crypto.randomUUID()
-  const expiresAt = new Date(now.getTime() + AUTH_LINK_EXPIRES_MINUTES * 60 * 1000)
-  const verificationType = toVerificationType(data.properties.verification_type)
-  const nextState = buildIssuedLoginLinkState({
-    baseState: requestPolicy.nextState,
-    expiresAt,
-    nonce,
-    now,
-    tokenHash: data.properties.hashed_token,
-    verificationType,
-  })
-
-  const persistStateStartedAt = Date.now()
-  await updateUserAuthState(data.user.id, nextState, data.user.user_metadata ?? undefined)
-  const persistStateMs = getDurationMs(persistStateStartedAt)
-
-  const loginUrl = buildLoginUrl({ baseUrl: publicAppUrl, email: normalizedEmail, nonce })
-  const sendEmailStartedAt = Date.now()
-  const deliveryResult = await sendLoginEmail({ email: normalizedEmail, loginUrl })
-  const sendEmailMs = getDurationMs(sendEmailStartedAt)
+  const sendOtpStartedAt = Date.now()
+  const deliveryResult = await sendLoginOtp({ email: normalizedEmail })
+  const sendOtpMs = getDurationMs(sendOtpStartedAt)
 
   if (!deliveryResult.ok) {
     return deliveryFailedResult(normalizedEmail, {
-      failure_stage: 'send_email',
-      provider: 'resend',
+      failure_stage: 'send_otp',
+      provider: 'supabase',
       provider_status_code: deliveryResult.statusCode,
       provider_error_code: deliveryResult.providerErrorCode,
       provider_error_message: deliveryResult.providerErrorMessage,
       find_user_ms: findUserMs,
-      generate_link_ms: generateLinkMs,
-      persist_state_ms: persistStateMs,
-      send_email_ms: sendEmailMs,
+      send_otp_ms: sendOtpMs,
       total_ms: getDurationMs(requestStartedAt),
     })
   }
 
+  const persistedUserLookupStartedAt = Date.now()
+  const targetUser = existingUser ?? (await findUserByEmail(normalizedEmail))
+  const persistedUserLookupMs = getDurationMs(persistedUserLookupStartedAt)
+
+  if (!targetUser) {
+    return deliveryFailedResult(normalizedEmail, {
+      failure_stage: 'load_user_after_otp',
+      find_user_ms: findUserMs,
+      send_otp_ms: sendOtpMs,
+      persisted_user_lookup_ms: persistedUserLookupMs,
+      total_ms: getDurationMs(requestStartedAt),
+    })
+  }
+
+  const persistStateStartedAt = Date.now()
+  await updateUserAuthState(targetUser.id, requestPolicy.nextState, targetUser.user_metadata ?? undefined)
+  const persistStateMs = getDurationMs(persistStateStartedAt)
+
   logAuthRequestAccepted({
     email: normalizedEmail,
-    providerMessageId: deliveryResult.providerMessageId,
+    providerMessageId: null,
     providerStatusCode: deliveryResult.statusCode,
     timings: {
       findUserMs,
-      generateLinkMs,
+      generateLinkMs: persistedUserLookupMs,
       persistStateMs,
-      sendEmailMs,
+      sendEmailMs: sendOtpMs,
       totalMs: getDurationMs(requestStartedAt),
     },
   })
 
   return {
     status: 'success' as const,
-    mode: 'link' as const,
-    message: '로그인 링크를 보냈어요.',
+    mode: 'otp' as const,
+    message: '인증 코드를 보냈어요.',
   }
 }
 
-export const verifyLoginLink = async ({ email, nonce }: { email: string; nonce: string }) => {
-  const user = await findUserByEmail(email)
-  if (!user) {
-    return { status: 'error' as const, reason: 'invalidated' as AuthVerifyErrorReason }
-  }
+export const requestLoginLink = requestLoginOtp
 
-  const currentState = getLoginState(user)
-  const now = new Date()
-  const evaluation = evaluateVerificationState({ nonce, now, state: currentState })
+const legacyAuthFallbackResult = () => ({
+  status: 'error' as const,
+  reason: 'invalidated' as AuthVerifyErrorReason,
+  message: '이 경로는 더 이상 로그인 확인에 사용되지 않아요. 새 인증 코드를 요청해 주세요.',
+})
 
-  if (evaluation.status !== 'valid') {
-    return { status: 'error' as const, reason: evaluation.status }
-  }
-
-  return {
-    status: 'success' as const,
-    tokenHash: evaluation.tokenHash,
-    verificationType: evaluation.verificationType,
-  }
+export const verifyLoginLink = async (params: { email: string; nonce: string }) => {
+  void params
+  return legacyAuthFallbackResult()
 }
 
-export const consumeLoginLink = async ({ email, nonce }: { email: string; nonce: string }) => {
-  const user = await findUserByEmail(email)
-  if (!user) {
-    return { status: 'error' as const, reason: 'invalidated' as AuthVerifyErrorReason }
-  }
-
-  const currentState = getLoginState(user)
-  const evaluation = consumeVerificationState({ nonce, state: currentState })
-
-  if (evaluation.status !== 'consumed') {
-    logAuthConsumeFailure({ email, reason: evaluation.status })
-    return { status: 'error' as const, reason: evaluation.status }
-  }
-
-  await updateUserAuthState(user.id, evaluation.nextState, user.user_metadata ?? undefined)
-
-  return {
-    status: 'success' as const,
-  }
+export const consumeLoginLink = async ({ email }: { email: string; nonce: string }) => {
+  logAuthConsumeFailure({ email, reason: 'invalidated' })
+  return legacyAuthFallbackResult()
 }
 
 export const verifyAccessToken = async (accessToken: string) => {

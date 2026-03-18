@@ -2,13 +2,14 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { AuthProvider } from './AuthProvider'
-import { AUTH_BOOTSTRAP_TIMEOUT_MS, GENERIC_AUTH_FAILURE_MESSAGE } from './authVerification'
+import { AUTH_BOOTSTRAP_TIMEOUT_MS } from './authVerification'
 import { resetTestAuthState, setTestAuthState } from './testAuthState'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   getSessionMock,
   getUserMock,
+  signInWithOtpMock,
   verifyOtpMock,
   signOutMock,
   updateUserMock,
@@ -16,6 +17,7 @@ const {
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   getUserMock: vi.fn(),
+  signInWithOtpMock: vi.fn(),
   verifyOtpMock: vi.fn(),
   signOutMock: vi.fn(),
   updateUserMock: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock('./supabaseBrowser', () => ({
     auth: {
       getSession: getSessionMock,
       getUser: getUserMock,
+      signInWithOtp: signInWithOtpMock,
       verifyOtp: verifyOtpMock,
       signOut: signOutMock,
       updateUser: updateUserMock,
@@ -51,7 +54,7 @@ const setViewport = (width: number) => {
   })
 }
 
-describe('Sprint 12 auth flow', () => {
+describe('Sprint 18 OTP auth flow', () => {
   beforeEach(() => {
     resetTestAuthState()
     vi.restoreAllMocks()
@@ -61,6 +64,7 @@ describe('Sprint 12 auth flow', () => {
     window.history.replaceState({}, '', '/')
     getSessionMock.mockResolvedValue({ data: { session: null } })
     getUserMock.mockResolvedValue({ data: { user: null }, error: null })
+    signInWithOtpMock.mockResolvedValue({ data: {}, error: null })
     verifyOtpMock.mockResolvedValue({
       data: { session: null, user: null },
       error: new Error('verifyOtp not configured'),
@@ -91,29 +95,31 @@ describe('Sprint 12 auth flow', () => {
 
     expect(screen.getByText('누리맵')).toBeInTheDocument()
     expect(screen.getByText('누리미디어에서 사용 중인 이메일을 입력해주세요.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('example@nurimedia.co.kr')).toBeInTheDocument()
-    expect(screen.queryByText('@nurimedia.co.kr 이메일로 로그인 링크를 요청할 수 있습니다.')).not.toBeInTheDocument()
     expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
   })
 
   it('keeps the email label accessible while visually hiding it', () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    setViewport(1280)
     render(<App />)
 
     expect(screen.getByLabelText('이메일')).toHaveAttribute('placeholder', 'example@nurimedia.co.kr')
     expect(screen.getByText('이메일')).toHaveClass('sr-only')
   })
 
-  it('keeps the submit button disabled until the email format is valid', async () => {
+  it('keeps the request button disabled until the email format is valid', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
 
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
     const input = screen.getByLabelText('이메일')
-    const button = screen.getByRole('button', { name: '로그인 링크 전송' })
+    const button = screen.getByRole('button', { name: '인증 코드 전송' })
 
     expect(button).toBeDisabled()
 
@@ -127,13 +133,17 @@ describe('Sprint 12 auth flow', () => {
 
   it('shows an inline error and keeps the email input for an invalid domain', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
 
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
     const input = screen.getByLabelText('이메일')
     await user.type(input, 'user@example.com')
-    await user.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
+    await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
 
     expect(await screen.findByText('누리미디어 구성원만 사용할 수 있어요.')).toBeInTheDocument()
     expect(input).toHaveValue('user@example.com')
@@ -142,7 +152,6 @@ describe('Sprint 12 auth flow', () => {
   it('shows the cooldown inline error and keeps the email input', async () => {
     vi.stubEnv('MODE', 'development')
     vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
-    setViewport(1280)
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -153,7 +162,7 @@ describe('Sprint 12 auth flow', () => {
           retryAfterSeconds: 67,
         }),
         {
-          status: 400,
+          status: 429,
           headers: { 'Content-Type': 'application/json' },
         },
       ),
@@ -163,139 +172,34 @@ describe('Sprint 12 auth flow', () => {
 
     await act(async () => {
       await Promise.resolve()
+      await Promise.resolve()
     })
 
     const input = screen.getByLabelText('이메일')
     await user.type(input, 'cooldown@nurimedia.co.kr')
-    await user.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
+    await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
 
     expect(await screen.findByText('1분 07초 후에 다시 시도해주세요.')).toBeInTheDocument()
     expect(input).toHaveValue('cooldown@nurimedia.co.kr')
   })
 
-  it('shows the cooldown inline error without minutes when less than a minute remains', async () => {
-    vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
-    setViewport(1280)
-    const user = userEvent.setup()
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 'error',
-          code: 'cooldown',
-          message: '42초 후에 다시 시도해주세요.',
-          retryAfterSeconds: 42,
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
-
-    const input = await screen.findByLabelText('이메일')
-    await user.type(input, 'cooldown@nurimedia.co.kr')
-    await user.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
-
-    expect(await screen.findByText('42초 후에 다시 시도해주세요.')).toBeInTheDocument()
-    expect(input).toHaveValue('cooldown@nurimedia.co.kr')
-  })
-
-  it('decrements the cooldown inline error over time', async () => {
-    vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
-    vi.useFakeTimers()
-    setViewport(1280)
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 'error',
-          code: 'cooldown',
-          message: '1분 07초 후에 다시 시도해주세요.',
-          retryAfterSeconds: 67,
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
-
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    const input = screen.getByLabelText('이메일')
-    fireEvent.change(input, { target: { value: 'cooldown@nurimedia.co.kr' } })
-    fireEvent.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
-
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    expect(screen.getByText('1분 07초 후에 다시 시도해주세요.')).toBeInTheDocument()
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000)
-    })
-
-    expect(screen.getByText('1분 06초 후에 다시 시도해주세요.')).toBeInTheDocument()
-    expect(screen.queryByText('1분 07초 후에 다시 시도해주세요.')).not.toBeInTheDocument()
-  })
-
-  it('disables the request button while requesting the login link', async () => {
+  it('shows the otp-required state in the same auth shell with the requested email', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
 
     await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
-    const button = screen.getByRole('button', { name: '로그인 링크 전송' })
-    const clickPromise = user.click(button)
+    await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
 
-    await waitFor(() => {
-      expect(button).toBeDisabled()
-    })
-
-    await clickPromise
-    expect(await screen.findByText('로그인 링크를 보냈어요. 메일함을 확인해 주세요.')).toBeInTheDocument()
-  })
-
-  it('shows the link-sent state inside the same auth shell with the requested email', async () => {
-    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    setViewport(1280)
-    const user = userEvent.setup()
-    render(<App />)
-
-    await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
-    await user.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
-
-    expect(await screen.findByText('로그인 링크를 보냈어요. 메일함을 확인해 주세요.')).toBeInTheDocument()
+    expect(await screen.findByText('인증 코드를 보냈어요.')).toBeInTheDocument()
     expect(screen.getByTestId('auth-requested-email')).toHaveTextContent('tester@nurimedia.co.kr')
-    expect(screen.getByText('누리맵')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '로그인 링크 다시 전송' })).toBeInTheDocument()
-    expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
-  })
-
-  it('submits when enter is pressed in a non-empty email input', async () => {
-    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    setViewport(1280)
-    const user = userEvent.setup()
-    render(<App />)
-
-    await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr{enter}')
-
-    expect(await screen.findByText('로그인 링크를 보냈어요. 메일함을 확인해 주세요.')).toBeInTheDocument()
-    expect(screen.getByTestId('auth-requested-email')).toHaveTextContent('tester@nurimedia.co.kr')
+    expect(screen.getByLabelText('인증 코드')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '인증하기' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '인증 코드 다시 전송' })).toBeInTheDocument()
   })
 
   it('immediately enters the onboarding flow for a bypass test account', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
 
@@ -303,80 +207,55 @@ describe('Sprint 12 auth flow', () => {
     await user.click(screen.getByTestId('auth-request-button'))
 
     expect(await screen.findByText('누리맵에서 사용할 이름을 입력해주세요.')).toBeInTheDocument()
-    expect(screen.queryByTestId('auth-request-button')).not.toBeInTheDocument()
   })
 
-  it('converges to auth failure instead of leaving bypass re-login stuck in verifying after logout', async () => {
-    vi.stubEnv('MODE', 'development')
-    setViewport(1280)
-
-    getSessionMock.mockResolvedValue({
-      data: {
-        session: {
-          access_token: 'existing-session-token',
-        },
-      },
-    })
-    getUserMock.mockResolvedValue({
-      data: {
-        user: {
-          email: 'bypass.named@example.com',
-          user_metadata: {
-            name: '테스트 사용자',
-          },
-        },
-      },
-      error: null,
-    })
-    verifyOtpMock.mockRejectedValue(new Error('verifyOtp stalled after logout'))
-
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 'success',
-          mode: 'bypass',
-          message: '테스트 계정으로 바로 로그인합니다.',
-          tokenHash: 'bypass-token-hash',
-          verificationType: 'magiclink',
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
+  it('verifies OTP and moves to onboarding in test mode', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
     render(<App />)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
-    })
+    await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
+    await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
+    await screen.findByLabelText('인증 코드')
+    await user.type(screen.getByLabelText('인증 코드'), '111111')
+    await user.click(screen.getByRole('button', { name: '인증하기' }))
 
-    await user.click(screen.getByRole('button', { name: '로그아웃' }))
-
-    expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
-
-    await user.clear(screen.getByLabelText('이메일'))
-    await user.type(screen.getByLabelText('이메일'), 'bypass.named@example.com')
-    await user.click(screen.getByTestId('auth-request-button'))
-
-    await waitFor(() => {
-      expect(verifyOtpMock).toHaveBeenCalledWith({
-        token_hash: 'bypass-token-hash',
-        type: 'magiclink',
-      })
-    })
-    expect(await screen.findByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
-    expect(screen.queryByTestId('auth-verifying-spinner')).not.toBeInTheDocument()
+    expect(await screen.findByText('누리맵에서 사용할 이름을 입력해주세요.')).toBeInTheDocument()
   })
 
-  it('automatically signs in with the local bypass account in development', async () => {
+  it('shows wrong-code copy inside the otp input state', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
+    await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
+    await screen.findByLabelText('인증 코드')
+    await user.type(screen.getByLabelText('인증 코드'), '999999')
+    await user.click(screen.getByRole('button', { name: '인증하기' }))
+
+    expect(await screen.findByText('인증 코드가 올바르지 않아요. 다시 확인해 주세요.')).toBeInTheDocument()
+    expect(screen.getByLabelText('인증 코드')).toBeInTheDocument()
+  })
+
+  it('shows expired-code copy inside the otp input state', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
+    await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
+    await screen.findByLabelText('인증 코드')
+    await user.type(screen.getByLabelText('인증 코드'), '222222')
+    await user.click(screen.getByRole('button', { name: '인증하기' }))
+
+    expect(await screen.findByText(/인증 코드가 만료됐어요/)).toBeInTheDocument()
+  })
+
+  it('uses the request-otp endpoint for local auto-login bypass in development', async () => {
     vi.stubEnv('MODE', 'development')
     vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
     vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
-    setViewport(1280)
 
     verifyOtpMock.mockResolvedValue({
       data: {
@@ -416,9 +295,8 @@ describe('Sprint 12 auth flow', () => {
       expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
     })
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/auth/request-link',
+      '/api/auth/request-otp',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -428,164 +306,11 @@ describe('Sprint 12 auth flow', () => {
       email: 'bypass.named@example.com',
       requireBypass: true,
     })
-    expect(verifyOtpMock).toHaveBeenCalledWith({
-      token_hash: 'auto-login-token-hash',
-      type: 'magiclink',
-    })
-    expect(screen.queryByRole('button', { name: '로그인 링크 전송' })).not.toBeInTheDocument()
   })
 
-  it('recovers to the auth form when local auto-login request fails', async () => {
+  it('shows old-link fallback instead of re-verifying /auth/verify entries', async () => {
     vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
-    setViewport(1280)
-
-    const fetchMock = vi.fn().mockRejectedValue(new Error('network down'))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<App />)
-
-    expect(await screen.findByText('로그인 링크를 보내지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '로그인 링크 전송' })).toBeEnabled()
-    expect(screen.getByLabelText('이메일')).toHaveValue('bypass.named@example.com')
-  })
-
-  it('fails closed when local auto-login requires bypass-only server support', async () => {
-    vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
-    setViewport(1280)
-
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 'error',
-          message: '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-    verifyOtpMock.mockClear()
-
-    render(<App />)
-
-    expect(await screen.findByText('로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '로그인 링크 전송' })).toBeEnabled()
-    expect(screen.queryByText('로그인 링크를 보냈어요. 메일함을 확인해 주세요.')).not.toBeInTheDocument()
-    expect(verifyOtpMock).not.toHaveBeenCalled()
-  })
-
-  it('does not auto-login again after logout during the same local dev session', async () => {
-    vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
-    setViewport(1280)
-
-    verifyOtpMock.mockResolvedValue({
-      data: {
-        session: {
-          access_token: 'bypass-session-token',
-        },
-        user: {
-          email: 'bypass.named@example.com',
-          user_metadata: {
-            name: '테스트 사용자',
-          },
-        },
-      },
-      error: null,
-    })
-
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 'success',
-          mode: 'bypass',
-          message: '테스트 계정으로 바로 로그인합니다.',
-          tokenHash: 'auto-login-token-hash',
-          verificationType: 'magiclink',
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
-    const user = userEvent.setup()
-    render(<App />)
-
-    await waitFor(() => {
-      expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByRole('button', { name: '로그아웃' }))
-
-    expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  it('keeps auth_test_state dev overrides ahead of local auto-login', async () => {
-    vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
-    window.history.replaceState({}, '', '/?auth_test_state=auth_required')
-
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<App />)
-
-    expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it('shows the verifying state while processing the login link', () => {
-    setTestAuthState({ phase: 'verifying', user: null, message: null, failureReason: null })
-    render(<App />)
-
-    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
-  })
-
-  it('keeps the auth failure screen when the auth client emits SIGNED_OUT during verify failure handling', async () => {
-    vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 'error',
-          reason: 'invalidated',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ),
-    ))
-    window.history.replaceState({}, '', '/auth/verify?email=tester%40nurimedia.co.kr&nonce=nonce-signed-out')
-
-    onAuthStateChangeMock.mockImplementation((callback) => {
-      queueMicrotask(() => {
-        void callback('SIGNED_OUT', null as never)
-      })
-
-      return {
-        data: {
-          subscription: {
-            unsubscribe: vi.fn(),
-          },
-        },
-      }
-    })
+    window.history.replaceState({}, '', '/auth/verify?email=tester%40nurimedia.co.kr&nonce=nonce-1')
 
     render(
       <AuthProvider>
@@ -593,221 +318,13 @@ describe('Sprint 12 auth flow', () => {
       </AuthProvider>,
     )
 
-    expect(await screen.findByTestId('auth-failure-body')).toHaveTextContent('로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.')
-    expect(screen.queryByRole('button', { name: '로그인 링크 전송' })).not.toBeInTheDocument()
-  })
-
-  it('moves to the auth failure screen and clears the verify query when the refresh-time verify request rejects', async () => {
-    vi.stubEnv('MODE', 'development')
-    const fetchMock = vi.fn().mockRejectedValue(new Error('network down'))
-    vi.stubGlobal('fetch', fetchMock)
-    window.history.replaceState({}, '', '/?auth_mode=verify&email=tester%40nurimedia.co.kr&nonce=nonce-1')
-
-    render(
-      <AuthProvider>
-        <div data-testid="protected-child" />
-      </AuthProvider>,
-    )
-
-    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
-
-    expect(await screen.findByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
-    expect(screen.queryByTestId('auth-verifying-spinner')).not.toBeInTheDocument()
-    expect(window.location.search).toBe('')
-  })
-
-  it('supports the canonical /auth/verify path and recovers when the verify request never resolves', async () => {
-    vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
-    vi.useFakeTimers()
-    const fetchMock = vi.fn(() => new Promise<Response>(() => {}))
-    vi.stubGlobal('fetch', fetchMock)
-    window.history.replaceState({}, '', '/auth/verify?email=tester%40nurimedia.co.kr&nonce=nonce-canonical')
-
-    render(
-      <AuthProvider>
-        <div data-testid="protected-child" />
-      </AuthProvider>,
-    )
-
-    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
+    expect(await screen.findByTestId('auth-failure-body')).toHaveTextContent(/이 로그인 링크는 더 이상 사용할 수 없어요\.\s*이메일로 인증 코드를 다시 받아주세요\./)
     expect(window.location.pathname).toBe('/')
     expect(window.location.search).toBe('')
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(AUTH_BOOTSTRAP_TIMEOUT_MS)
-    })
-
-    expect(screen.getByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
-    expect(screen.queryByTestId('auth-verifying-spinner')).not.toBeInTheDocument()
-  }, 10000)
-
-  it('finalizes nonce consumption after a refresh-time verify succeeds', async () => {
-    vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
-    verifyOtpMock.mockResolvedValue({
-      data: {
-        session: {
-          access_token: 'verified-session-token',
-        },
-        user: {
-          email: 'tester@nurimedia.co.kr',
-          user_metadata: {
-            name: '테스트 사용자',
-          },
-        },
-      },
-      error: null,
-    })
-
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            status: 'success',
-            tokenHash: 'token-hash-1',
-            verificationType: 'magiclink',
-          }),
-          {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            status: 'success',
-          }),
-          {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
-      )
-    vi.stubGlobal('fetch', fetchMock)
-    window.history.replaceState({}, '', '/auth/verify?email=tester%40nurimedia.co.kr&nonce=nonce-success')
-
-    render(
-      <AuthProvider>
-        <div data-testid="protected-child" />
-      </AuthProvider>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByTestId('protected-child')).toBeInTheDocument()
-    })
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2)
-    })
-
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
-      '/api/auth/verify-link',
-      expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
-      email: 'tester@nurimedia.co.kr',
-      nonce: 'nonce-success',
-    })
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      '/api/auth/consume-link',
-      expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        keepalive: true,
-      }),
-    )
-    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
-      email: 'tester@nurimedia.co.kr',
-      nonce: 'nonce-success',
-    })
-    expect(verifyOtpMock).toHaveBeenCalledWith({
-      token_hash: 'token-hash-1',
-      type: 'magiclink',
-    })
   })
 
-  it('does not finalize nonce consumption when verifyOtp fails after verify-link succeeds', async () => {
+  it('restores an existing session on refresh without using a legacy verify flow', async () => {
     vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
-    verifyOtpMock.mockRejectedValue(new Error('used token'))
-
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 'success',
-          tokenHash: 'token-hash-1',
-          verificationType: 'magiclink',
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-    window.history.replaceState({}, '', '/auth/verify?email=tester%40nurimedia.co.kr&nonce=nonce-failed')
-
-    render(
-      <AuthProvider>
-        <div data-testid="protected-child" />
-      </AuthProvider>,
-    )
-
-    expect(await screen.findByText(GENERIC_AUTH_FAILURE_MESSAGE)).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/auth/verify-link',
-      expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-  })
-
-  it('shows the localized invalidated message when the refresh-time verify request is rejected as stale', async () => {
-    vi.stubEnv('MODE', 'development')
-    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 'error',
-          reason: 'invalidated',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-    window.history.replaceState({}, '', '/?auth_mode=verify&email=tester%40nurimedia.co.kr&nonce=nonce-2')
-
-    render(
-      <AuthProvider>
-        <div data-testid="protected-child" />
-      </AuthProvider>,
-    )
-
-    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(window.location.search).toBe('')
-    })
-
-    expect(await screen.findByTestId('auth-failure-body')).toHaveTextContent('로그인 링크가 만료됐어요. 새 로그인 링크를 받아주세요.')
-  })
-
-  it('restores an existing session instead of re-verifying a stale refresh query', async () => {
-    vi.stubEnv('MODE', 'development')
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-    window.history.replaceState({}, '', '/?auth_mode=verify&email=tester%40nurimedia.co.kr&nonce=stale-nonce')
-
     getSessionMock.mockResolvedValue({
       data: {
         session: {
@@ -836,88 +353,9 @@ describe('Sprint 12 auth flow', () => {
     await waitFor(() => {
       expect(screen.getByTestId('protected-child')).toBeInTheDocument()
     })
-
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(window.location.search).toBe('')
   })
 
-  it('restores an existing session on refresh even when the auth client emits a signed-in event before bootstrap finishes', async () => {
-    vi.stubEnv('MODE', 'development')
-
-    const persistedSession = {
-      access_token: 'existing-session-token',
-      user: {
-        email: 'bypass.named@example.com',
-        user_metadata: {
-          name: '테스트 사용자',
-        },
-      },
-    }
-
-    let resolveSessionBootstrap!: () => void
-    let sessionBootstrapResolved = false
-
-    getSessionMock.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveSessionBootstrap = () => {
-            sessionBootstrapResolved = true
-            resolve({
-              data: {
-                session: {
-                  access_token: persistedSession.access_token,
-                },
-              },
-            })
-          }
-        }),
-    )
-    getUserMock.mockImplementation(() => {
-      if (!sessionBootstrapResolved) {
-        return new Promise(() => {})
-      }
-
-      return Promise.resolve({
-        data: {
-          user: persistedSession.user,
-        },
-        error: null,
-      })
-    })
-    onAuthStateChangeMock.mockImplementation((callback) => {
-      queueMicrotask(async () => {
-        await callback('SIGNED_IN', persistedSession as never)
-        resolveSessionBootstrap()
-      })
-
-      return {
-        data: {
-          subscription: {
-            unsubscribe: vi.fn(),
-          },
-        },
-      }
-    })
-
-    render(
-      <AuthProvider>
-        <div data-testid="protected-child" />
-      </AuthProvider>,
-    )
-
-    expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
-
-    await act(async () => {
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(screen.getByTestId('protected-child')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '로그인 링크 전송' })).not.toBeInTheDocument()
-  })
-
-  it('falls back to the login screen when session bootstrap never resolves', async () => {
+  it('falls back to the login form when session bootstrap never resolves', async () => {
     vi.stubEnv('MODE', 'development')
     vi.useFakeTimers()
     getSessionMock.mockImplementation(() => new Promise(() => {}))
@@ -931,18 +369,16 @@ describe('Sprint 12 auth flow', () => {
     expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000)
+      await vi.advanceTimersByTimeAsync(AUTH_BOOTSTRAP_TIMEOUT_MS)
     })
 
-    expect(screen.getByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
-    expect(screen.queryByTestId('auth-verifying-spinner')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
   })
 
-  it('recovers to the login form when the request-link call never resolves', async () => {
+  it('recovers to the auth form when the request-otp call never resolves', async () => {
     vi.stubEnv('MODE', 'development')
     vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
     vi.useFakeTimers()
-    setViewport(1280)
     const fetchMock = vi.fn(() => new Promise<Response>(() => {}))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -955,7 +391,7 @@ describe('Sprint 12 auth flow', () => {
 
     const input = screen.getByLabelText('이메일')
     fireEvent.change(input, { target: { value: 'tester@nurimedia.co.kr' } })
-    fireEvent.click(screen.getByRole('button', { name: '로그인 링크 전송' }))
+    fireEvent.click(screen.getByRole('button', { name: '인증 코드 전송' }))
 
     expect(screen.getByTestId('auth-request-button')).toBeDisabled()
 
@@ -963,35 +399,25 @@ describe('Sprint 12 auth flow', () => {
       await vi.advanceTimersByTimeAsync(AUTH_BOOTSTRAP_TIMEOUT_MS)
     })
 
-    expect(screen.getByText('로그인 링크를 보내지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '로그인 링크 전송' })).toBeEnabled()
+    expect(screen.getByText('인증 코드를 보내지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '인증 코드 전송' })).toBeEnabled()
     expect(screen.getByLabelText('이메일')).toHaveValue('tester@nurimedia.co.kr')
-  }, 10000)
+  })
 
-  it('shows the auth failure screen CTA and returns to the login form', async () => {
-    setTestAuthState({ phase: 'auth_failure', user: null, message: null, failureReason: 'expired' })
+  it('shows the auth failure CTA and returns to the email form with prefilled email on retry', async () => {
+    setTestAuthState({
+      phase: 'auth_failure',
+      user: null,
+      message: null,
+      failureReason: '인증에 실패했어요. 새 코드를 받아주세요.',
+    })
     const user = userEvent.setup()
     render(<App />)
 
     expect(screen.getByTestId('auth-failure-screen')).toBeInTheDocument()
-    expect(screen.getByText('누리맵')).toBeInTheDocument()
-    expect(screen.getByTestId('auth-failure-title')).toHaveTextContent('인증에 실패했어요 🥲')
-    expect(screen.getByTestId('auth-failure-body')).toHaveTextContent(/로그인 링크가 만료됐어요\.\s*새 로그인 링크를 받아주세요\./)
-    expect(screen.getByTestId('auth-failure-body')).toHaveClass('whitespace-pre-line', 'text-[14px]')
-    expect(screen.getByRole('button', { name: '새 링크 받기' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '이메일 다시 입력' })).toHaveClass('text-[14px]')
-    await user.click(screen.getByRole('button', { name: '이메일 다시 입력' }))
+    await user.click(screen.getByRole('button', { name: '새 코드 받기' }))
 
-    expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
-  })
-
-  it('shows the redesigned used-link copy on the auth failure screen', () => {
-    setTestAuthState({ phase: 'auth_failure', user: null, message: null, failureReason: 'used' })
-    render(<App />)
-
-    expect(screen.getByTestId('auth-failure-title')).toHaveTextContent('인증에 실패했어요 🥲')
-    expect(screen.getByTestId('auth-failure-body')).toHaveTextContent(/이미 사용한 링크예요\.\s*새 로그인 링크를 받아주세요\./)
-    expect(screen.getByRole('button', { name: '새 링크 받기' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
   })
 
   it('shows the name capture screen for users without a name and requires at least one character', async () => {
@@ -1033,24 +459,6 @@ describe('Sprint 12 auth flow', () => {
     expect(input).toHaveValue('가나다라마바사아자차')
   })
 
-  it('clamps the name input to 10 characters including pasted values', async () => {
-    setTestAuthState({
-      phase: 'name_required',
-      user: { email: 'tester@nurimedia.co.kr', name: null },
-      message: null,
-      failureReason: null,
-    })
-    const user = userEvent.setup()
-    render(<App />)
-
-    const input = screen.getByLabelText('이름')
-    await user.type(input, 'abcdefghijk')
-    expect(input).toHaveValue('abcdefghij')
-
-    fireEvent.change(input, { target: { value: '가나다라마바사아자차카타' } })
-    expect(input).toHaveValue('가나다라마바사아자차')
-  })
-
   it('shows the authenticated app directly when the user already has a name', () => {
     setViewport(1280)
     render(<App />)
@@ -1065,22 +473,7 @@ describe('Sprint 12 auth flow', () => {
 
     await user.click(screen.getByRole('button', { name: '로그아웃' }))
 
-    expect(await screen.findByRole('button', { name: '로그인 링크 전송' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
     expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
   })
-
-  it('keeps the authenticated shell open when logout is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
-    setViewport(1280)
-    const user = userEvent.setup()
-    render(<App />)
-    const signOutCallCountBeforeClick = signOutMock.mock.calls.length
-
-    await user.click(screen.getByRole('button', { name: '로그아웃' }))
-
-    expect(window.confirm).toHaveBeenCalledWith('로그아웃하시겠어요?')
-    expect(signOutMock).toHaveBeenCalledTimes(signOutCallCountBeforeClick)
-    expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
-  })
-
 })

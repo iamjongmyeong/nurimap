@@ -11,10 +11,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const nonce = typeof req.body?.nonce === 'string' ? req.body.nonce : ''
   const result = await verifyLoginLink({ email, nonce })
 
-  if (result.status === 'error') {
-    res.status(400).json(result)
-    return
-  }
-
-  res.status(200).json(result)
+  res.status(410).json(result)
 }

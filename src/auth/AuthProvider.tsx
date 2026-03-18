@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AuthContext, type AuthContextValue, type AuthPhase } from './authContext'
 import { supabaseBrowser } from './supabaseBrowser'
-import { requestTestLoginLink, setTestAuthState, signOutTestUser, submitTestName, useTestAuthState } from './testAuthState'
-import { GENERIC_AUTH_FAILURE_MESSAGE, resolveBypassVerification, withTimeout } from './authVerification'
+import { requestTestOtp, setTestAuthState, signOutTestUser, submitTestName, useTestAuthState, verifyTestOtp } from './testAuthState'
+import { GENERIC_AUTH_FAILURE_MESSAGE, OLD_LINK_FALLBACK_MESSAGE, resolveBypassVerification, resolveOtpVerifyFailureMessage, withTimeout } from './authVerification'
 
 declare global {
   interface ImportMetaEnv {
@@ -14,20 +14,25 @@ declare global {
 const SESSION_STARTED_AT_KEY = 'nurimap_session_started_at'
 const SESSION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
 const LOCAL_AUTO_LOGIN_REQUIRES_BYPASS_MESSAGE = '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.'
-const VERIFY_PATH_SUFFIX = '/auth/verify'
-const VERIFY_FAILURE_MESSAGES = {
+const LEGACY_AUTH_PATH_SUFFIX = '/auth/verify'
+const AUTH_BRAND_ICON_SRC = '/assets/branding/brand-nurimap-logo.jpeg'
+const authBrandTextStyle = {
+  fontFamily: '"BM Jua", Pretendard, system-ui, sans-serif',
+} as const
+
+const LEGACY_FAILURE_MESSAGES = {
   expired: '로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.',
   invalidated: '로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.',
   used: '이미 사용한 링크예요.\n새 로그인 링크를 받아주세요.',
 } as const
 
-const buildBasePathFromVerifyPath = (pathname: string) => {
-  if (pathname === VERIFY_PATH_SUFFIX) {
+const buildBasePathFromLegacyAuthPath = (pathname: string) => {
+  if (pathname === LEGACY_AUTH_PATH_SUFFIX) {
     return '/'
   }
 
-  if (pathname.endsWith(VERIFY_PATH_SUFFIX)) {
-    const basePath = pathname.slice(0, -VERIFY_PATH_SUFFIX.length)
+  if (pathname.endsWith(LEGACY_AUTH_PATH_SUFFIX)) {
+    const basePath = pathname.slice(0, -LEGACY_AUTH_PATH_SUFFIX.length)
     return basePath || '/'
   }
 
@@ -36,37 +41,34 @@ const buildBasePathFromVerifyPath = (pathname: string) => {
 
 const clearAuthEntryUrl = () => {
   const url = new URL(window.location.href)
-  url.pathname = buildBasePathFromVerifyPath(url.pathname)
+  url.pathname = buildBasePathFromLegacyAuthPath(url.pathname)
   url.search = ''
   window.history.replaceState({}, '', url.toString())
 }
 
-const resolveVerifyFailureMessage = (reason: string | null | undefined) => {
+const resolveFailureReasonMessage = (reason: string | null | undefined) => {
   if (!reason) {
     return GENERIC_AUTH_FAILURE_MESSAGE
   }
 
-  return VERIFY_FAILURE_MESSAGES[reason as keyof typeof VERIFY_FAILURE_MESSAGES] ?? reason
+  return LEGACY_FAILURE_MESSAGES[reason as keyof typeof LEGACY_FAILURE_MESSAGES] ?? reason
 }
 
-const getVerifyEntryFromLocation = () => {
+const getLegacyAuthEntryFromLocation = () => {
   const url = new URL(window.location.href)
   const authEmail = url.searchParams.get('email')
-  const nonce = url.searchParams.get('nonce')
-  const hasCanonicalVerifyPath = url.pathname === VERIFY_PATH_SUFFIX || url.pathname.endsWith(VERIFY_PATH_SUFFIX)
+  const hasCanonicalLegacyPath = url.pathname === LEGACY_AUTH_PATH_SUFFIX || url.pathname.endsWith(LEGACY_AUTH_PATH_SUFFIX)
 
-  if (hasCanonicalVerifyPath && authEmail && nonce) {
+  if (hasCanonicalLegacyPath) {
     return {
       email: authEmail,
-      nonce,
     }
   }
 
   const authMode = url.searchParams.get('auth_mode')
-  if (authMode === 'verify' && authEmail && nonce) {
+  if (authMode === 'verify') {
     return {
       email: authEmail,
-      nonce,
     }
   }
 
@@ -92,11 +94,6 @@ const clearSessionStarted = () => {
   window.localStorage.removeItem(SESSION_STARTED_AT_KEY)
 }
 
-const AUTH_BRAND_ICON_SRC = '/assets/branding/brand-nurimap-logo.jpeg'
-const authBrandTextStyle = {
-  fontFamily: '"BM Jua", Pretendard, system-ui, sans-serif',
-} as const
-
 const getDevAuthOverride = () => {
   if (!import.meta.env.DEV) {
     return null
@@ -118,6 +115,15 @@ const getDevAuthOverride = () => {
       user: null,
       message: null,
       failureReason: params.get('auth_test_reason') ?? 'expired',
+    }
+  }
+
+  if (authTestState === 'otp_required') {
+    return {
+      phase: 'otp_required' as const,
+      user: { email: 'tester@nurimedia.co.kr', name: null },
+      message: '인증 코드를 보냈어요.',
+      failureReason: null,
     }
   }
 
@@ -185,6 +191,7 @@ const AuthBrand = () => (
 )
 
 const LOGIN_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const OTP_CODE_PATTERN = /^\d{6}$/
 const MAX_NAME_LENGTH = 10
 const formatCooldownMessage = (remainingSeconds: number) => {
   const minutes = Math.floor(remainingSeconds / 60)
@@ -197,74 +204,55 @@ const formatCooldownMessage = (remainingSeconds: number) => {
   return `${minutes}분 ${String(seconds).padStart(2, '0')}초 후에 다시 시도해주세요.`
 }
 
-const AuthShell = ({
+const EmailRequestShell = ({
   email,
   message,
   onEmailChange,
   onSubmit,
-  requestedEmail,
-  showLinkSentState,
   submitting,
 }: {
   email: string
   message: string | null
   onEmailChange: (value: string) => void
   onSubmit: (email: string) => void
-  requestedEmail: string | null
-  showLinkSentState: boolean
   submitting: boolean
 }) => {
-  const hasInlineError = !showLinkSentState && Boolean(message)
-  const deliveredEmail = requestedEmail ?? email
-  const submitEmail = showLinkSentState ? deliveredEmail : email
-  const emailFormatValid = LOGIN_EMAIL_PATTERN.test(submitEmail.trim())
+  const hasInlineError = Boolean(message)
+  const emailFormatValid = LOGIN_EMAIL_PATTERN.test(email.trim())
   const buttonDisabled = submitting || !emailFormatValid
-  const buttonLabel = showLinkSentState ? '로그인 링크 다시 전송' : '로그인 링크 전송'
-  const helperCopy = showLinkSentState
-    ? '로그인 링크를 보냈어요. 메일함을 확인해 주세요.'
-    : '누리미디어에서 사용 중인 이메일을 입력해주세요.'
 
   return (
     <AuthSurface>
       <div className="flex flex-col items-center gap-6">
         <AuthBrand />
         <p className="text-center text-base font-medium leading-6 text-zinc-900">
-          {helperCopy}
+          누리미디어에서 사용 중인 이메일을 입력해주세요.
         </p>
       </div>
       <form
         className="mt-6 flex flex-col items-center gap-3"
         onSubmit={(event) => {
           event.preventDefault()
-          void onSubmit(submitEmail)
+          void onSubmit(email)
         }}
       >
-        {showLinkSentState ? (
-          <div
-            className="flex h-10 w-full max-w-[320px] items-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-base leading-6 text-zinc-900"
-            data-testid="auth-requested-email"
-          >
-            {deliveredEmail}
-          </div>
-        ) : (
-          <label className="form-control w-full max-w-[320px] gap-2">
-            <span className="sr-only">이메일</span>
-            <input
-              className={`input h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${hasInlineError ? 'border-error focus:border-error' : ''}`}
-              onChange={(event) => onEmailChange(event.target.value)}
-              placeholder="example@nurimedia.co.kr"
-              type="email"
-              value={email}
-            />
-          </label>
-        )}
+        <label className="form-control w-full max-w-[320px] gap-2">
+          <span className="sr-only">이메일</span>
+          <input
+            className={`input h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${hasInlineError ? 'border-error focus:border-error' : ''}`}
+            onChange={(event) => onEmailChange(event.target.value)}
+            placeholder="example@nurimedia.co.kr"
+            type="email"
+            value={email}
+          />
+        </label>
 
         {hasInlineError ? (
           <p className="w-full max-w-[320px] text-sm text-error">{message}</p>
         ) : null}
 
         <button
-          aria-label={buttonLabel}
+          aria-label="인증 코드 전송"
           className={`btn h-10 w-full max-w-[320px] rounded-xl border-none bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none ${
             buttonDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
           }`}
@@ -275,10 +263,98 @@ const AuthShell = ({
           {submitting ? (
             <span aria-hidden="true" className="loading loading-spinner loading-sm" data-testid="auth-request-spinner" />
           ) : (
-            buttonLabel
+            '인증 코드 전송'
           )}
         </button>
       </form>
+    </AuthSurface>
+  )
+}
+
+const OtpShell = ({
+  email,
+  code,
+  message,
+  onCodeChange,
+  onResend,
+  onReset,
+  onSubmit,
+  submitting,
+}: {
+  email: string
+  code: string
+  message: string | null
+  onCodeChange: (value: string) => void
+  onResend: () => void
+  onReset: () => void
+  onSubmit: () => void
+  submitting: boolean
+}) => {
+  const buttonDisabled = submitting || !OTP_CODE_PATTERN.test(code)
+  const hasErrorMessage = Boolean(message) && message !== '인증 코드를 보냈어요.'
+
+  return (
+    <AuthSurface>
+      <div className="flex flex-col items-center gap-6">
+        <AuthBrand />
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="text-base font-medium leading-6 text-zinc-900">아래 6자리 코드를 5분 안에 입력해 주세요.</p>
+          <div
+            className="flex h-10 w-full max-w-[320px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-base leading-6 text-zinc-900"
+            data-testid="auth-requested-email"
+          >
+            {email}
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 flex flex-col items-center gap-3">
+        <label className="form-control w-full max-w-[320px] gap-2">
+          <span className="sr-only">인증 코드</span>
+          <input
+            aria-label="인증 코드"
+            className={`input h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-center text-base leading-6 tracking-[0.3em] text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${message ? 'border-error focus:border-error' : ''}`}
+            inputMode="numeric"
+            maxLength={6}
+            onChange={(event) => onCodeChange(event.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder="000000"
+            value={code}
+          />
+        </label>
+
+        {message ? (
+          <p className={`w-full max-w-[320px] text-center text-sm whitespace-pre-line ${hasErrorMessage ? 'text-error' : 'text-zinc-500'}`}>{message}</p>
+        ) : (
+          <p className="w-full max-w-[320px] text-center text-sm text-zinc-500">코드를 길게 눌러 복사하거나 직접 입력해 주세요.</p>
+        )}
+
+        <button
+          aria-label="인증하기"
+          className={`btn h-10 w-full max-w-[320px] rounded-xl border-none bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none ${
+            buttonDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+          }`}
+          data-testid="auth-verify-button"
+          disabled={buttonDisabled}
+          onClick={onSubmit}
+          type="button"
+        >
+          {submitting ? <span aria-hidden="true" className="loading loading-spinner loading-sm" data-testid="auth-verify-spinner" /> : '인증하기'}
+        </button>
+
+        <button
+          className="cursor-pointer text-center text-[14px] font-normal leading-5 text-neutral-500"
+          onClick={onResend}
+          type="button"
+        >
+          인증 코드 다시 전송
+        </button>
+        <button
+          className="cursor-pointer text-center text-[14px] font-normal leading-5 text-neutral-500"
+          onClick={onReset}
+          type="button"
+        >
+          이메일 다시 입력
+        </button>
+      </div>
     </AuthSurface>
   )
 }
@@ -316,7 +392,7 @@ const AuthFailureScreen = ({
             onClick={onRetry}
             type="button"
           >
-            새 링크 받기
+            새 코드 받기
           </button>
           <button
             className="cursor-pointer text-center text-[14px] font-normal leading-5 text-neutral-500"
@@ -389,7 +465,7 @@ const VerifyingScreen = () => (
     <div className="flex flex-col items-center justify-center py-6 text-center">
       <span className="loading loading-spinner loading-lg text-primary" />
       <div data-testid="auth-verifying-spinner">
-        <span className="sr-only">로그인 링크 검증 중</span>
+        <span className="sr-only">인증 코드 확인 중</span>
       </div>
     </div>
   </AuthSurface>
@@ -401,13 +477,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [message, setMessage] = useState<string | null>(null)
   const [failureReason, setFailureReason] = useState<string | null>(null)
   const [email, setEmail] = useState('')
-  const [cooldownState, setCooldownState] = useState<{ email: string; remainingSeconds: number } | null>(null)
   const [requestedEmail, setRequestedEmail] = useState<string | null>(null)
+  const [otpCode, setOtpCode] = useState('')
+  const [hasResentOtp, setHasResentOtp] = useState(false)
+  const [cooldownState, setCooldownState] = useState<{ email: string; remainingSeconds: number } | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const hasAttemptedLocalAutoLoginRef = useRef(false)
   const phaseRef = useRef<AuthPhase>('loading')
-  const suppressSignedOutRef = useRef(false)
 
   const devOverrideState = useMemo(() => getDevAuthOverride(), [])
   const localAutoLoginEmail = useMemo(() => getLocalAutoLoginEmail(), [])
@@ -459,18 +536,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       | null
       | undefined
   }) => {
-    suppressSignedOutRef.current = false
     markSessionStarted()
     setAccessToken(accessToken)
     setEmail(user?.email ?? '')
-    setCooldownState(null)
     setRequestedEmail(null)
+    setOtpCode('')
+    setHasResentOtp(false)
+    setCooldownState(null)
     setMessage(null)
     setFailureReason(null)
     setPhase(user?.user_metadata?.name ? 'authenticated' : 'name_required')
   }, [])
 
-  const verifyAndAdoptSession = useCallback(async ({
+  const verifyAndAdoptBypassSession = useCallback(async ({
     tokenHash,
     verificationType,
   }: {
@@ -516,35 +594,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     let isMounted = true
 
-    const bootstrap = async () => {
-      const verifyEntry = getVerifyEntryFromLocation()
-      const authEmail = verifyEntry?.email ?? null
-      const nonce = verifyEntry?.nonce ?? null
-      const hasVerifyQuery = authEmail !== null && nonce !== null
-      suppressSignedOutRef.current = hasVerifyQuery
-
-      if (hasVerifyQuery) {
-        clearAuthEntryUrl()
+    const restoreSession = async (token: string) => {
+      const { data, error } = await withTimeout(supabaseBrowser.auth.getUser())
+      if (error || !data.user) {
+        await supabaseBrowser.auth.signOut()
+        clearSessionStarted()
+        if (isMounted) {
+          setAccessToken(null)
+          setPhase('auth_required')
+        }
+        return
       }
 
-      const restoreSession = async (accessToken: string) => {
-        const { data, error } = await withTimeout(supabaseBrowser.auth.getUser())
-        if (error || !data.user) {
-          await supabaseBrowser.auth.signOut()
-          clearSessionStarted()
-          if (isMounted) {
-            setAccessToken(null)
-            setPhase('auth_required')
-          }
-          return
-        }
+      if (isMounted) {
+        applyAuthenticatedState({
+          accessToken: token,
+          user: data.user,
+        })
+      }
+    }
 
-        if (isMounted) {
-          applyAuthenticatedState({
-            accessToken,
-            user: data.user,
-          })
-        }
+    const bootstrap = async () => {
+      const legacyEntry = getLegacyAuthEntryFromLocation()
+      const legacyEmail = legacyEntry?.email ?? null
+
+      if (legacyEntry) {
+        clearAuthEntryUrl()
       }
 
       try {
@@ -557,91 +632,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           data: { session },
         } = await withTimeout(supabaseBrowser.auth.getSession())
 
-        if (hasVerifyQuery) {
-          if (session?.access_token) {
-            await restoreSession(session.access_token)
-            return
-          }
-
-          setPhase('verifying')
-          setEmail(authEmail)
-          try {
-            const timedResponse = await withTimeout(fetch('/api/auth/verify-link', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: authEmail, nonce }),
-            }))
-            const payload = (await withTimeout(timedResponse.json())) as
-              | { status: 'error'; reason: string }
-              | { status: 'success'; tokenHash: string; verificationType: 'magiclink' | 'signup' | 'invite' }
-
-            if (!timedResponse.ok || payload.status === 'error') {
-              if (isMounted) {
-                setPhase('auth_failure')
-                setFailureReason(payload.status === 'error' ? resolveVerifyFailureMessage(payload.reason) : GENERIC_AUTH_FAILURE_MESSAGE)
-              }
-              return
-            }
-
-            const verification = await withTimeout(verifyAndAdoptSession({
-              tokenHash: payload.tokenHash,
-              verificationType: payload.verificationType,
-            }))
-
-            if (verification.status === 'error') {
-              if (isMounted) {
-                setPhase('auth_failure')
-                setFailureReason(verification.message)
-              }
-              return
-            }
-
-            void withTimeout(fetch('/api/auth/consume-link', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: authEmail, nonce }),
-              keepalive: true,
-            }))
-              .then(async (consumeResponse) => {
-                const payload = (await withTimeout(consumeResponse.json())) as
-                  | { status: 'error'; reason: string }
-                  | { status: 'success' }
-
-                if (!consumeResponse.ok || payload.status === 'error') {
-                  throw new Error('consume_link_failed')
-                }
-              })
-              .catch(() => {
-                console.warn('[auth] consume-link failed after verifyOtp success')
-              })
-          } catch {
-            if (isMounted) {
-              setPhase('auth_failure')
-              setFailureReason(GENERIC_AUTH_FAILURE_MESSAGE)
-            }
-          }
+        if (session?.access_token) {
+          await restoreSession(session.access_token)
           return
         }
 
-        if (!session?.access_token) {
-          suppressSignedOutRef.current = false
+        if (legacyEntry) {
           if (isMounted) {
-            setPhase('auth_required')
+            setEmail(legacyEmail ?? '')
+            setRequestedEmail(null)
+            setOtpCode('')
+            setHasResentOtp(false)
+            setMessage(null)
+            setFailureReason(OLD_LINK_FALLBACK_MESSAGE)
+            setPhase('auth_failure')
           }
           return
         }
 
-        await restoreSession(session.access_token)
-      } catch {
         if (isMounted) {
-          if (hasVerifyQuery) {
-            setPhase('auth_failure')
-            setFailureReason(GENERIC_AUTH_FAILURE_MESSAGE)
-          } else {
-            suppressSignedOutRef.current = false
-            setPhase('auth_required')
-          }
+          setPhase('auth_required')
         }
+      } catch {
+        if (!isMounted) {
+          return
+        }
+
+        if (legacyEntry) {
+          setEmail(legacyEmail ?? '')
+          setFailureReason(OLD_LINK_FALLBACK_MESSAGE)
+          setPhase('auth_failure')
+          return
+        }
+
+        setPhase('auth_required')
       }
     }
 
@@ -652,7 +676,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         clearSessionStarted()
         setAccessToken(null)
 
-        if (suppressSignedOutRef.current || phaseRef.current === 'verifying' || phaseRef.current === 'auth_failure') {
+        if (phaseRef.current === 'verifying' || phaseRef.current === 'auth_failure') {
           return
         }
 
@@ -685,9 +709,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isMounted = false
       listener.subscription.unsubscribe()
     }
-  }, [applyAuthenticatedState, isTestMode, testState, verifyAndAdoptSession])
+  }, [applyAuthenticatedState, isTestMode])
 
-  const requestLink = useCallback(async (
+  const requestOtp = useCallback(async (
     nextEmail: string,
     options?: {
       requireBypass?: boolean
@@ -708,34 +732,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return
     }
 
+    const trimmedEmail = nextEmail.trim().toLowerCase()
+    const isResend = phaseRef.current === 'otp_required' && requestedEmail === trimmedEmail
+
     setSubmitting(true)
     setCooldownState(null)
-    setMessage(null)
-    setEmail(nextEmail)
+    setFailureReason(null)
+    setEmail(trimmedEmail)
 
     if (isTestMode) {
-      const result = await requestTestLoginLink(nextEmail)
+      const result = await requestTestOtp(trimmedEmail)
       setSubmitting(false)
       if (result.status === 'error') {
-        setRequestedEmail(null)
+        setRequestedEmail(isResend ? trimmedEmail : null)
         setMessage(result.code === 'invalid_domain' ? '누리미디어 구성원만 사용할 수 있어요.' : null)
+        setPhase(isResend ? 'otp_required' : 'auth_required')
         return
       }
-      setRequestedEmail(result.mode === 'link' ? nextEmail : null)
+      setRequestedEmail(result.mode === 'otp' ? trimmedEmail : null)
+      setOtpCode('')
+      setHasResentOtp(isResend)
       return
     }
 
     try {
-      const response = await withTimeout(fetch('/api/auth/request-link', {
+      const response = await withTimeout(fetch('/api/auth/request-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: nextEmail,
+          email: trimmedEmail,
           requireBypass: options?.requireBypass === true,
         }),
       }))
       const payload = (await response.json()) as
-        | { status: 'success'; mode: 'link'; message: string }
+        | { status: 'success'; mode: 'otp'; message: string }
         | {
             status: 'success'
             mode: 'bypass'
@@ -747,17 +777,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         | { status: 'error'; code?: string; message: string }
 
       if (!response.ok || payload.status === 'error') {
-        setRequestedEmail(null)
         if (payload.status === 'error' && payload.code === 'cooldown' && 'retryAfterSeconds' in payload) {
           setCooldownState({
-            email: nextEmail.trim().toLowerCase(),
+            email: trimmedEmail,
             remainingSeconds: payload.retryAfterSeconds,
           })
           setMessage(null)
         } else {
           setMessage(payload.message)
         }
-        setPhase('auth_required')
+        setRequestedEmail(isResend ? trimmedEmail : null)
+        setPhase(isResend ? 'otp_required' : 'auth_required')
         return
       }
 
@@ -776,7 +806,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const verification = await resolveBypassVerification({
           tokenHash: payload.tokenHash,
           verificationType: payload.verificationType,
-          verifyAndAdoptSession,
+          verifyAndAdoptSession: verifyAndAdoptBypassSession,
         })
 
         if (verification.status === 'error') {
@@ -788,17 +818,78 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return
       }
 
+      setRequestedEmail(trimmedEmail)
+      setOtpCode('')
+      setHasResentOtp(isResend)
       setMessage(payload.message)
-      setRequestedEmail(nextEmail)
-      setPhase('auth_link_sent')
+      setPhase('otp_required')
     } catch {
-      setRequestedEmail(null)
-      setMessage('로그인 링크를 보내지 못했어요. 다시 시도해 주세요.')
-      setPhase('auth_required')
+      setRequestedEmail(isResend ? trimmedEmail : null)
+      setMessage('인증 코드를 보내지 못했어요. 다시 시도해 주세요.')
+      setPhase(isResend ? 'otp_required' : 'auth_required')
     } finally {
       setSubmitting(false)
     }
-  }, [isTestMode, verifyAndAdoptSession])
+  }, [isTestMode, requestedEmail, verifyAndAdoptBypassSession])
+
+  const submitOtp = useCallback(async () => {
+    const verifyEmail = (requestedEmail ?? email).trim().toLowerCase()
+    if (!verifyEmail || !OTP_CODE_PATTERN.test(otpCode)) {
+      return
+    }
+
+    setSubmitting(true)
+    setMessage(null)
+    setFailureReason(null)
+
+    if (isTestMode) {
+      const result = await verifyTestOtp({
+        code: otpCode,
+        email: verifyEmail,
+      })
+      setSubmitting(false)
+      if (result.status === 'error') {
+        setMessage(result.message)
+        setPhase('otp_required')
+      }
+      return
+    }
+
+    try {
+      setPhase('verifying')
+      const { data, error } = await withTimeout(supabaseBrowser.auth.verifyOtp({
+        email: verifyEmail,
+        token: otpCode,
+        type: 'email',
+      }))
+
+      if (error || !data.session || !data.user) {
+        const failureMessage = resolveOtpVerifyFailureMessage({
+          errorMessage: error?.message,
+          hasResent: hasResentOtp,
+        })
+
+        if (failureMessage === GENERIC_AUTH_FAILURE_MESSAGE) {
+          setFailureReason(failureMessage)
+          setPhase('auth_failure')
+        } else {
+          setMessage(failureMessage)
+          setPhase('otp_required')
+        }
+        return
+      }
+
+      applyAuthenticatedState({
+        accessToken: data.session.access_token,
+        user: data.user,
+      })
+    } catch {
+      setFailureReason(GENERIC_AUTH_FAILURE_MESSAGE)
+      setPhase('auth_failure')
+    } finally {
+      setSubmitting(false)
+    }
+  }, [applyAuthenticatedState, email, hasResentOtp, isTestMode, otpCode, requestedEmail])
 
   useEffect(() => {
     if (!localAutoLoginEmail || isTestMode) {
@@ -815,13 +906,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     hasAttemptedLocalAutoLoginRef.current = true
     const autoLoginTimer = window.setTimeout(() => {
-      void requestLink(localAutoLoginEmail, { requireBypass: true })
+      void requestOtp(localAutoLoginEmail, { requireBypass: true })
     }, 0)
 
     return () => {
       window.clearTimeout(autoLoginTimer)
     }
-  }, [isTestMode, localAutoLoginEmail, phase, requestLink, requestedEmail, submitting])
+  }, [isTestMode, localAutoLoginEmail, phase, requestOtp, requestedEmail, submitting])
 
   const saveName = async (name: string) => {
     setSubmitting(true)
@@ -854,12 +945,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return
     }
 
-    suppressSignedOutRef.current = false
     await supabaseBrowser.auth.signOut()
     clearSessionStarted()
     setAccessToken(null)
     setCooldownState(null)
     setRequestedEmail(null)
+    setOtpCode('')
     setMessage(null)
     setFailureReason(null)
     setPhase('auth_required')
@@ -867,19 +958,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const effectiveTestState = testState
   const resolvedPhase = isTestMode ? effectiveTestState.phase : phase
-  const resolvedMessage = isTestMode ? effectiveTestState.message : resolvedCooldownMessage ?? message
-  const rawFailureReason = isTestMode ? effectiveTestState.failureReason : failureReason
-  const resolvedFailureReason = rawFailureReason ? resolveVerifyFailureMessage(rawFailureReason) : null
-  const resolvedEmail = email || (isTestMode ? effectiveTestState.user?.email ?? '' : email)
+  const rawMessage = resolvedCooldownMessage ?? message ?? (isTestMode ? effectiveTestState.message : null)
+  const rawFailureReason = failureReason ?? (isTestMode ? effectiveTestState.failureReason : null)
+  const resolvedFailureReason = resolveFailureReasonMessage(rawFailureReason)
+  const resolvedEmail = requestedEmail ?? email ?? (isTestMode ? effectiveTestState.user?.email ?? '' : '')
   const resolvedAccessToken = isTestMode && effectiveTestState.phase === 'authenticated' ? 'test-access-token' : accessToken
 
   const value: AuthContextValue = {
     accessToken: resolvedAccessToken,
     email: resolvedEmail,
-    failureReason: resolvedFailureReason,
-    message: resolvedMessage,
+    failureReason: rawFailureReason,
+    message: rawMessage,
     phase: resolvedPhase,
-    requestLink,
+    requestOtp,
     saveName,
     signOut,
   }
@@ -888,23 +979,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return <VerifyingScreen />
   }
 
-  if (resolvedPhase === 'auth_required' || resolvedPhase === 'auth_link_sent') {
+  if (resolvedPhase === 'auth_required') {
     return (
       <AuthContext.Provider value={value}>
-        <AuthShell
+        <EmailRequestShell
           email={resolvedEmail}
-          message={resolvedMessage}
+          message={rawMessage}
           onEmailChange={(nextEmail) => {
             setEmail(nextEmail)
             if (cooldownState && nextEmail.trim().toLowerCase() !== cooldownState.email) {
               setCooldownState(null)
             }
           }}
-          onSubmit={() => {
-            void requestLink(resolvedEmail)
+          onSubmit={(nextEmail) => {
+            void requestOtp(nextEmail)
           }}
-          requestedEmail={requestedEmail}
-          showLinkSentState={resolvedPhase === 'auth_link_sent'}
+          submitting={submitting}
+        />
+      </AuthContext.Provider>
+    )
+  }
+
+  if (resolvedPhase === 'otp_required') {
+    return (
+      <AuthContext.Provider value={value}>
+        <OtpShell
+          code={otpCode}
+          email={requestedEmail ?? resolvedEmail}
+          message={rawMessage}
+          onCodeChange={setOtpCode}
+          onResend={() => {
+            void requestOtp(requestedEmail ?? resolvedEmail)
+          }}
+          onReset={() => {
+            setRequestedEmail(null)
+            setOtpCode('')
+            setHasResentOtp(false)
+            setCooldownState(null)
+            setMessage(null)
+            setFailureReason(null)
+            setEmail('')
+            if (isTestMode) {
+              setTestAuthState({ phase: 'auth_required', failureReason: null, message: null, user: null })
+            } else {
+              setPhase('auth_required')
+            }
+          }}
+          onSubmit={() => {
+            void submitOtp()
+          }}
           submitting={submitting}
         />
       </AuthContext.Provider>
@@ -916,29 +1039,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       <AuthContext.Provider value={value}>
         <AuthFailureScreen
           onReset={() => {
-            if (isTestMode) {
-              setTestAuthState({ phase: 'auth_required', failureReason: null, message: null })
-            } else {
-              suppressSignedOutRef.current = false
-              suppressSignedOutRef.current = false
-              setPhase('auth_required')
-              setCooldownState(null)
-              setFailureReason(null)
-              setMessage(null)
-            }
             setRequestedEmail(null)
+            setOtpCode('')
+            setHasResentOtp(false)
+            setCooldownState(null)
+            setFailureReason(null)
+            setMessage(null)
+            setEmail('')
+            if (isTestMode) {
+              setTestAuthState({ phase: 'auth_required', failureReason: null, message: null, user: null })
+            } else {
+              setPhase('auth_required')
+            }
           }}
           onRetry={() => {
+            setRequestedEmail(null)
+            setOtpCode('')
+            setHasResentOtp(false)
+            setCooldownState(null)
+            setFailureReason(null)
+            setMessage(null)
             if (isTestMode) {
               setTestAuthState({ phase: 'auth_required', failureReason: null, message: null })
             } else {
-              suppressSignedOutRef.current = false
               setPhase('auth_required')
-              setCooldownState(null)
-              setFailureReason(null)
-              setMessage(null)
             }
-            setRequestedEmail(null)
           }}
           reason={resolvedFailureReason}
         />

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-export type TestAuthPhase = 'authenticated' | 'auth_required' | 'auth_link_sent' | 'auth_failure' | 'name_required' | 'verifying'
+export type TestAuthPhase = 'authenticated' | 'auth_required' | 'otp_required' | 'auth_failure' | 'name_required' | 'verifying'
 
 export type TestAuthUser = {
   email: string
@@ -53,7 +53,7 @@ export const useTestAuthState = () =>
     () => state,
   )
 
-export const requestTestLoginLink = async (email: string) => {
+export const requestTestOtp = async (email: string) => {
   await new Promise((resolve) => setTimeout(resolve, 10))
 
   if (email === 'bypass.user@example.com') {
@@ -92,32 +92,49 @@ export const requestTestLoginLink = async (email: string) => {
     return { status: 'error' as const, code: 'cooldown' as const }
   }
 
-  if (email.startsWith('limit@')) {
-    setTestAuthState({ phase: 'auth_required', message: '오늘은 더 이상 로그인 링크를 요청할 수 없어요.' })
-    return { status: 'error' as const, code: 'daily_limit' as const }
-  }
-
   setTestAuthState({
-    phase: 'auth_link_sent',
-    message: '로그인 링크를 보냈어요.',
-  })
-  return { status: 'success' as const, mode: 'link' as const }
-}
-
-export const verifyTestLoginLink = async (reason: string | null = null) => {
-  if (reason) {
-    setTestAuthState({ phase: 'auth_failure', failureReason: reason })
-    return { status: 'error' as const }
-  }
-
-  setTestAuthState({
-    phase: 'name_required',
+    phase: 'otp_required',
+    message: '인증 코드를 보냈어요.',
     user: {
-      email: 'tester@nurimedia.co.kr',
+      email,
       name: null,
     },
+    failureReason: null,
   })
-  return { status: 'success' as const }
+  return { status: 'success' as const, mode: 'otp' as const }
+}
+
+export const verifyTestOtp = async ({
+  code,
+  email,
+}: {
+  code: string
+  email: string
+}) => {
+  await new Promise((resolve) => setTimeout(resolve, 10))
+
+  if (code === '111111') {
+    setTestAuthState({
+      phase: 'name_required',
+      user: {
+        email,
+        name: null,
+      },
+      message: null,
+      failureReason: null,
+    })
+    return { status: 'success' as const }
+  }
+
+  if (code === '222222') {
+    return { status: 'error' as const, message: '인증 코드가 만료됐어요.\n새 코드를 받아주세요.' }
+  }
+
+  if (code === '333333') {
+    return { status: 'error' as const, message: '새 코드가 발급됐어요.\n새 코드를 입력해 주세요.' }
+  }
+
+  return { status: 'error' as const, message: '인증 코드가 올바르지 않아요. 다시 확인해 주세요.' }
 }
 
 export const submitTestName = async (name: string) => {
