@@ -6,13 +6,12 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 ## Security Goals
 - 서비스는 사내 구성원만 사용한다.
 - 인증되지 않은 사용자는 앱과 API를 사용할 수 없다.
-- 이메일 입력과 로그인 링크 요청 흐름은 abuse 방지 정책을 가진다.
+- 이메일 입력과 OTP 요청 흐름은 abuse 방지 정책을 가진다.
 - 검색 엔진과 외부 크롤러 노출을 최소화한다.
 
 ## Protected Surface Policy
 - 전체 앱은 로그인 뒤에만 접근 가능하다.
 - `place` 등록, 리뷰 작성, 추천 같은 변경성 액션은 모두 인증된 사용자만 수행한다.
-- auth verify entry는 로그인 링크 검증을 위한 transient surface일 뿐이며, 보호된 app shell 접근 권한을 우회하지 않는다.
 - 브라우저와 API는 같은 인증 기준을 적용한다.
 
 ## Authentication Policy
@@ -20,7 +19,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 ### Login Gate
 - 비로그인 사용자는 로그인 화면 외의 화면을 볼 수 없다.
 - API도 동일하게 인증을 강제한다.
-- verify route 진입 후에도 session adoption이 완료되기 전까지는 app shell을 열지 않는다.
+- OTP 검증이 완료되기 전까지는 app shell을 열지 않는다.
 
 ### Email Domain Restriction
 - 허용 이메일 도메인은 `@nurimedia.co.kr` 하나다.
@@ -29,15 +28,14 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 단, 운영자가 환경변수로 명시한 bypass 이메일 allowlist는 테스트/운영 예외로 별도 허용할 수 있다.
 - bypass 이메일 목록 값 자체는 public repository에 커밋하지 않고 환경변수에서만 관리한다.
 
-### Login Link Policy
-- 이메일 로그인 링크 방식만 지원한다.
-- 허용 도메인이 아니면 로그인 링크 발송을 시도하지 않는다.
-- 로그인 전용 URL은 발급 후 5분 동안만 유효하다.
-- 로그인 이메일에는 로그인 전용 URL을 포함한다.
-- 로그인 전용 URL은 직접 로그인에 사용할 수 있다.
-- 새 로그인 링크를 발급하면 이전 로그인 전용 URL도 즉시 무효화한다.
-- 로그인 전용 URL은 한 번 사용하면 다시 사용할 수 없다.
-- `AUTH_BYPASS_ENABLED=true` 이고 이메일이 `AUTH_BYPASS_EMAILS` allowlist에 있으면 로그인 링크 클릭 없이 즉시 로그인할 수 있다.
+### Email OTP Policy
+- 이메일 OTP 방식만 canonical 로그인 방식으로 지원한다.
+- 허용 도메인이 아니면 OTP 발송을 시도하지 않는다.
+- OTP는 발급 후 5분 동안만 유효하다.
+- 로그인 이메일에는 서비스 식별 정보와 OTP 코드를 포함한다.
+- 새 OTP를 발급하면 이전 미사용 OTP도 즉시 무효화한다.
+- OTP는 한 번 성공적으로 사용하면 다시 사용할 수 없다.
+- `AUTH_BYPASS_ENABLED=true` 이고 이메일이 `AUTH_BYPASS_EMAILS` allowlist에 있으면 OTP 입력 없이 즉시 로그인할 수 있다.
 - bypass는 기본적으로 비활성화 상태를 유지하고, 필요한 환경에서만 명시적으로 켠다.
 
 기본 보호 수치:
@@ -47,7 +45,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 제한 초과 처리:
 - cooldown에 걸린 재요청은 즉시 거절하고 남은 대기 시간을 안내한다.
 - cooldown이 끝나면 해당 이메일의 resend burst count는 reset된다.
-- 무효화되었거나 이미 사용한 로그인 전용 URL은 더 이상 사용할 수 없다.
+- 무효화되었거나 이미 사용한 OTP는 더 이상 사용할 수 없다.
 - 제한 초과 응답은 계정 존재 여부를 노출하지 않는 일반화된 메시지로 반환한다.
 - 제한 초과 이벤트와 반복 실패는 운영 로그에 남긴다.
 - bypass 로그인 사용도 운영 로그에 남긴다.
@@ -90,6 +88,6 @@ Supabase 설정 reference defaults:
 - 브라우저에는 JavaScript SDK처럼 클라이언트 사용이 전제된 플랫폼 키만 노출한다. Kakao Map 연동 시에는 JavaScript 키를 등록된 JavaScript SDK 도메인에서만 사용하고, REST API 키·어드민 키·service role key·secret은 브라우저에 노출하지 않는다.
 - 이메일 주소 로그는 전체 원문 대신 마스킹된 형태를 우선 사용한다.
 - 인증 실패와 원격 조회 실패는 운영 로그로 남긴다.
-- 로그인 링크 요청 제한 초과와 무효/만료 링크 사용은 별도 보안 이벤트로 기록한다.
-- bypass 로그인 사용, request-link 수락/전달 실패, verify/consume 실패는 운영 로그에서 구분 가능해야 한다.
+- OTP 요청 제한 초과와 잘못된/만료/무효화된 코드 사용은 별도 보안 이벤트로 기록한다.
+- bypass 로그인 사용, `request-otp` 수락/전달 실패는 운영 로그에서 구분 가능해야 한다.
 - 실제 bypass 이메일 값은 tracked code/docs/tests/examples에 직접 쓰지 않는다.

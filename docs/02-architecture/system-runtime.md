@@ -6,7 +6,7 @@
 ## Runtime Scope
 - 브라우저 앱, 서버 런타임, Supabase, Kakao Map, geocoding 경계의 책임을 정의한다.
 - durable/shareable state와 view-local state의 소유권을 구분한다.
-- place write, auth verify, map browse 같은 핵심 runtime pipeline을 정의한다.
+- place write, auth request/verify, map browse 같은 핵심 runtime pipeline을 정의한다.
 
 ## Actors
 - User
@@ -37,7 +37,6 @@ flowchart LR
 | Surface | Canonical path / state | Notes |
 |---|---|---|
 | Auth request surface | `/` + auth phase | 로그인 전 진입점이다. |
-| Auth verify surface | `/auth/verify?...` | 로그인 링크 검증을 처리하는 auth verify entry다. exact query contract는 selected spec을 따른다. |
 | Browse surface | `/` | 지도 + 목록 기본 surface다. |
 | Place detail surface | `/places/:placeId` | durable/shareable detail source of truth다. desktop은 sidebar detail, mobile은 full-screen detail을 유지한다. |
 | Place add surface | internal `place_add_open` state | 별도 `/add-place` route를 만들지 않는다. 등록 성공 후에는 결과 place의 `/places/:placeId`로 이동한다. |
@@ -47,7 +46,6 @@ flowchart LR
 - durable/shareable state는 route가 관리한다.
   - `/`
   - `/places/:placeId`
-  - `/auth/verify`
 - transient/view-local state는 local store가 관리한다.
   - `selectedPlaceId`
   - `mapLevel`
@@ -66,10 +64,10 @@ flowchart LR
 | Phase | Meaning | Notes |
 |---|---|---|
 | `loading` | bootstrap 중 | transient phase다. 장시간 유지되면 안 된다. |
-| `auth_required` | 로그인 전 상태 | 로그인 요청 surface를 표시한다. |
-| `auth_link_sent` | 로그인 링크 발송 후 대기 상태 | 같은 auth surface 안에서 재전송을 수행한다. |
-| `verifying` | 로그인 링크 검증 중 | transient phase다. refresh나 예외 상황에서도 terminal state로 수렴해야 한다. |
-| `auth_failure` | 인증 실패 화면 | 검증 실패를 처리하는 terminal auth phase다. |
+| `auth_required` | 로그인 전 상태 | 이메일 입력 및 OTP 요청 surface를 표시한다. |
+| `otp_required` | OTP 입력 대기 상태 | 같은 auth surface 안에서 재전송과 코드 입력을 수행한다. |
+| `verifying` | OTP 검증 중 | transient phase다. refresh나 예외 상황에서도 terminal state로 수렴해야 한다. |
+| `auth_failure` | 인증 실패 화면 | terminal auth phase다. |
 | `name_required` | 이름 입력이 필요한 상태 | 이름 입력 완료 후 authenticated app으로 진입한다. |
 | `authenticated` | app shell 진입 가능 상태 | 이후 browse/detail/add surface는 app-shell navigation state가 관리한다. |
 
@@ -84,8 +82,8 @@ flowchart LR
 ## Async Substate Contract
 | Key | Values | Applies To | Description |
 |---|---|---|---|
-| `auth_request` | `idle`, `submitting`, `error` | 로그인 화면 | 로그인 링크 요청 상태 |
-| `auth_link_verify` | `idle`, `verifying`, `error` | 로그인 링크 진입 | 로그인 링크 검증 상태 |
+| `auth_request` | `idle`, `submitting`, `error` | 로그인 화면 | OTP 요청 상태 |
+| `auth_otp_verify` | `idle`, `submitting`, `error` | OTP 입력 화면 | OTP 검증 상태 |
 | `name_submit` | `idle`, `submitting`, `error` | 이름 입력 화면 | 이름 저장 상태 |
 | `place_submit` | `idle`, `submitting`, `error` | 장소 등록 UI | 입력 검증, geocoding, 저장 상태 |
 | `place_list_load` | `idle`, `loading`, `empty`, `ready`, `error` | 목록 화면 | 장소 목록 로딩 상태 |
@@ -108,9 +106,9 @@ flowchart LR
 ## Responsibility Split
 | Component | Responsibility |
 |---|---|
-| Browser App | auth surface 렌더링, route/store bridge, 이름/주소 입력, 지도/목록/상세 렌더링, 세션 복원, 사용자 상호작용 |
-| App Server | 입력 검증, geocoding 프록시, 중복 판정 보조, 민감한 API 호출, 서버 검증 |
-| Supabase Auth | 이메일 로그인 링크 인증, 세션 발급 및 갱신 |
+| Browser App | auth surface 렌더링, route/store bridge, 이메일/OTP/이름 입력, 지도/목록/상세 렌더링, 세션 복원, 사용자 상호작용 |
+| App Server | OTP 요청 정책 enforcement, 입력 검증, geocoding 프록시, 중복 판정 보조, 민감한 API 호출, 서버 검증 |
+| Supabase Auth | 이메일 OTP 검증, 세션 발급 및 갱신 |
 | Supabase DB | place, review, recommendation, user 관련 데이터 저장 |
 | Kakao Map SDK | 지도 렌더링, 마커 표시, 줌/팬 이벤트 |
 | Kakao Local / Geocoder | 주소를 좌표로 변환하는 geocoding |
@@ -178,8 +176,9 @@ flowchart LR
 
 ## Auth And Session Runtime Touchpoints
 - 로그인 요청은 `auth_required` surface에서 시작한다.
-- 로그인 링크 검증은 auth verify entry를 사용한다. exact entry contract는 selected spec이 정한다.
-- auth bootstrap은 refresh, hard refresh, logout 후 재로그인에서도 `auth_required`, `auth_failure`, `name_required`, `authenticated` 중 하나의 terminal state로 수렴해야 한다.
-- `verifying`는 transient phase이며, verify-link failure나 malformed payload가 무한 대기로 남아서는 안 된다.
+- OTP 요청 성공 후에는 같은 auth surface 안에서 `otp_required` 상태로 전환된다.
+- 일반 OTP 검증은 client-side `verifyOtp({ email, token, type: 'email' })`를 사용한다.
+- auth bootstrap은 refresh, hard refresh, logout 후 재로그인에서도 `auth_required`, `otp_required`, `auth_failure`, `name_required`, `authenticated` 중 하나의 terminal state로 수렴해야 한다.
+- `verifying`는 transient phase이며, OTP verify failure가 무한 대기로 남아서는 안 된다.
 - 로그인 성공 시 저장된 세션을 같은 브라우저 프로필에서 복원하고, 앱 시작 시 `getUser()` 또는 보호된 API 확인으로 유효성을 재검증한다.
 - 세션 절대 만료와 token refresh 정책의 상세 보안 규칙은 [Security And Ops](./security-and-ops.md)를 따른다.
