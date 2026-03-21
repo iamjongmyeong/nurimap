@@ -34,6 +34,7 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('detail-address')).toHaveTextContent('서울 마포구 양화로19길 22-16 1층')
     expect(screen.getByTestId('detail-added-by')).toHaveTextContent('김누리님이 추가한 장소')
     expect(screen.getByTestId('detail-meta-type')).toHaveTextContent('식당')
+    expect(screen.getByTestId('detail-zeropay-row')).toHaveTextContent('제로페이 가능')
     expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.7 (12)')
     expect(screen.getByTestId('detail-zeropay-indicator')).toBeInTheDocument()
     expect(screen.getByTestId('detail-review-section')).toHaveTextContent('평가 및 리뷰')
@@ -62,14 +63,26 @@ describe('Sprint 16 place detail refresh', () => {
     expect(reviewListText).toContain('2026.03.05')
   })
 
-  it('shows no zeropay qr icon for places without available zeropay', async () => {
+  it('shows zeropay verification-needed status in detail', async () => {
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
 
     await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
 
-    expect(screen.queryByTestId('detail-zeropay-indicator')).not.toBeInTheDocument()
+    expect(screen.getByTestId('detail-zeropay-indicator')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-zeropay-row')).toHaveTextContent('제로페이 확인 필요')
+  })
+
+  it('shows zeropay unavailable status in detail', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByTestId('place-list-item-place-restaurant-2'))
+
+    expect(screen.getByTestId('detail-zeropay-indicator')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-zeropay-row')).toHaveTextContent('제로페이 불가능')
   })
 
   it('returns from desktop detail to browse mode with the new back control', async () => {

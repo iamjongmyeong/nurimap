@@ -9,7 +9,7 @@ import {
   type PlaceDetailLoadState,
   type PlaceListLoadState,
 } from './appShellStore'
-import type { PlaceSummary, PlaceType } from './types'
+import type { PlaceSummary, PlaceType, ZeropayStatus } from './types'
 import { useViewportMode } from './useViewportMode'
 
 type PlaceWithCoordinates = PlaceSummary & {
@@ -28,6 +28,12 @@ const PLACE_TYPE_LABEL: Record<PlaceType, string> = {
 const BROWSE_PLACE_TYPE_LABEL: Record<PlaceType, string> = {
   restaurant: '음식점',
   cafe: '카페',
+}
+
+const ZEROPAY_STATUS_LABEL: Record<ZeropayStatus, string> = {
+  available: '제로페이 가능',
+  unavailable: '제로페이 불가능',
+  needs_verification: '제로페이 확인 필요',
 }
 
 const BRAND_LOGO_SRC = '/assets/branding/brand-nurimap-logo.jpeg'
@@ -121,7 +127,7 @@ const PlusIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
 
 const ZeroPayIndicator = () => (
   <img
-    alt="제로페이 가능"
+    alt="제로페이 상태"
     className="h-4 w-4"
     data-testid="detail-zeropay-indicator"
     src={ZEROPAY_ICON_SRC}
@@ -588,11 +594,9 @@ const DetailCard = ({ place }: { place: PlaceSummary }) => {
               <span data-testid="detail-meta-type">{PLACE_TYPE_LABEL[place.place_type]}</span>
             </DetailMetaRow>
 
-            {place.zeropay_status === 'available' ? (
-              <DetailMetaRow icon={<ZeroPayIndicator />} testId="detail-zeropay-row">
-                <span>제로페이 가능</span>
-              </DetailMetaRow>
-            ) : null}
+            <DetailMetaRow icon={<ZeroPayIndicator />} testId="detail-zeropay-row">
+              <span>{ZEROPAY_STATUS_LABEL[place.zeropay_status]}</span>
+            </DetailMetaRow>
 
             <DetailMetaRow icon={<MetaReviewStarIcon />} testId="detail-meta-rating">
               <span>{place.average_rating.toFixed(1)} ({place.review_count})</span>
