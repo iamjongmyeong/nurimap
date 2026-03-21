@@ -35,7 +35,6 @@ type SegmentedOption<T extends string> = {
 
 const GENERIC_SUBMIT_ERROR_MESSAGE = '등록하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const GEOCODE_ERROR_MESSAGE = '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.'
-const DIRTY_EXIT_CONFIRM_MESSAGE = '작성 중인 내용이 사라져요. 나갈까요?'
 const REVIEW_LIMIT = 500
 const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-white px-3 text-base text-[#1f1f1f] placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
 const INPUT_CLASSES = `h-10 ${BASE_TEXT_FIELD_CLASSES}`
@@ -165,14 +164,6 @@ const buildRequiredFieldErrors = (draft: RegistrationDraft): FieldErrors => {
   return errors
 }
 
-const isDraftDirty = (draft: RegistrationDraft) =>
-  draft.name.trim() !== ''
-  || draft.road_address.trim() !== ''
-  || draft.place_type !== 'restaurant'
-  || draft.zeropay_status !== 'available'
-  || draft.rating_score !== 5
-  || draft.review_content.trim() !== ''
-
 const hasCompletedRequiredFields = (draft: RegistrationDraft) =>
   draft.name.trim() !== ''
   && draft.road_address.trim() !== ''
@@ -217,9 +208,6 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   }
 
   const handleClose = () => {
-    if (isDraftDirty(draft) && !window.confirm(formatDialogMessage(DIRTY_EXIT_CONFIRM_MESSAGE))) {
-      return
-    }
     onClose()
   }
 

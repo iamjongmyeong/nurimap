@@ -9,8 +9,6 @@ const GEOCODE_FAILURE_ALERT_MESSAGE = '주소를 찾지 못했어요.\n입력한
 const GENERIC_SAVE_FAILURE_ALERT_MESSAGE = '등록하지 못했어요.\n잠시 후 다시 시도해 주세요.'
 const DUPLICATE_CONFIRM_MESSAGE = '이미 등록된 장소예요.\n지금 입력한 정보를 이 장소에 반영할까요?'
 const OVERWRITE_CONFIRM_MESSAGE = '이미 내가 리뷰를 남긴 장소예요.\n지금 입력한 정보를 반영할까요?'
-const DIRTY_CLOSE_MESSAGE = '작성 중인 내용이 사라져요.\n나갈까요?'
-
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
@@ -340,7 +338,7 @@ describe('Plan 06 place registration flow', () => {
     expect(screen.getByTestId('review-content-input')).toHaveValue('취소 후 유지')
   })
 
-  it('shows the dirty close confirm and stays open when closing is cancelled', async () => {
+  it('closes immediately without a dirty close confirm', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     setViewport(1280)
     const user = userEvent.setup()
@@ -350,9 +348,9 @@ describe('Plan 06 place registration flow', () => {
     await user.type(screen.getByLabelText('이름'), '작성 중인 장소')
     await user.click(screen.getByRole('button', { name: '뒤로가기' }))
 
-    expect(confirmSpy).toHaveBeenCalledWith(DIRTY_CLOSE_MESSAGE)
-    expect(screen.getByTestId('desktop-place-add-panel')).toBeInTheDocument()
-    expect(screen.getByLabelText('이름')).toHaveValue('작성 중인 장소')
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('desktop-place-add-panel')).not.toBeInTheDocument()
+    expect(screen.getByTestId('place-list-ready')).toBeInTheDocument()
   })
 
   it('shows the submitting state and disables the submit button while saving', async () => {
