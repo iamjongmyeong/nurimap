@@ -52,6 +52,18 @@ const LIST_STAR_ICON_SRC = '/assets/icons/icon-rating-star-red-16.svg'
 const PLACE_ADDRESS_ICON_SRC = '/assets/icons/icon-place-address-muted.svg'
 const PLACE_ADDED_BY_ICON_SRC = '/assets/icons/icon-place-added-by-muted.svg'
 const DETAIL_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
+const MOBILE_BOTTOM_TAB_MAP_ICON = {
+  active: '/assets/icons/icon-bottom-tab-map-black.svg',
+  inactive: '/assets/icons/icon-bottom-tab-map-gray.svg',
+}
+const MOBILE_BOTTOM_TAB_LIST_ICON = {
+  active: '/assets/icons/icon-bottom-tab-list-black.svg',
+  inactive: '/assets/icons/icon-bottom-tab-list-gray.svg',
+}
+const MOBILE_BOTTOM_TAB_PLUS_ICON = {
+  active: '/assets/icons/icon-bottom-tab-plus-black.svg',
+  inactive: '/assets/icons/icon-bottom-tab-plus-gray.svg',
+}
 const LOGOUT_CONFIRM_MESSAGE = '로그아웃하시겠어요?'
 const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const DETAIL_ROUTE_PREFIX = '/places/'
@@ -130,6 +142,18 @@ const PlaceTypeIcon = ({
 
 const PlusIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
   <img alt="" aria-hidden="true" className={className} src={PLUS_ICON_SRC} />
+)
+
+const MobileBottomTabIcon = ({
+  className = 'h-5 w-5',
+  src,
+  testId,
+}: {
+  className?: string
+  src: string
+  testId?: string
+}) => (
+  <img alt="" aria-hidden="true" className={className} data-testid={testId} src={src} />
 )
 
 const ZeroPayIndicator = () => (
@@ -856,20 +880,74 @@ const DesktopSidebar = ({
   )
 }
 
-const MobileFloatingActions = () => {
+const MobileBottomTabButton = ({
+  active = false,
+  ariaLabel,
+  children,
+  onClick,
+  testId,
+}: {
+  active?: boolean
+  ariaLabel?: string
+  children: ReactNode
+  onClick?: () => void
+  testId: string
+}) => (
+  <button
+    aria-current={active ? 'page' : undefined}
+    aria-label={ariaLabel}
+    className={`mx-auto flex h-10 w-10 flex-col items-center justify-center gap-1 px-2 pb-0 pt-[2px] transition ${
+      active ? 'text-[#1c1c1c]' : 'text-[#9692a3] hover:text-[#4d4960]'
+    }`}
+    data-active={active ? 'true' : 'false'}
+    data-testid={testId}
+    onClick={onClick}
+    type="button"
+  >
+    {children}
+  </button>
+)
+
+type MobilePrimaryTab = 'map' | 'add' | 'list'
+
+const MobileBottomTabBar = ({ activeTab }: { activeTab: MobilePrimaryTab }) => {
   const openMobilePlaceList = useAppShellStore((state) => state.openMobilePlaceList)
   const openPlaceAdd = useAppShellStore((state) => state.openPlaceAdd)
+  const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
 
   return (
-    <div className="absolute inset-x-4 bottom-6 z-10 flex gap-3" data-testid="mobile-floating-actions">
-      <button className="flex-1 rounded-full bg-white px-4 py-3 text-[#222127] shadow-[0_18px_40px_rgba(39,45,89,0.18)]" onClick={openMobilePlaceList} type="button">
-        목록 보기
-      </button>
-      <button className="flex flex-1 items-center justify-center gap-1 rounded-full bg-[#5862fb] px-4 py-3 text-white shadow-[0_18px_40px_rgba(88,98,251,0.32)]" onClick={openPlaceAdd} type="button">
-        <PlusIcon className="h-4 w-4" />
-        장소 추가
-      </button>
-    </div>
+    <nav
+      aria-label="모바일 하단 탭"
+      className="absolute inset-x-0 bottom-0 z-30 h-14 bg-white shadow-[0_-12px_32px_rgba(31,31,37,0.08)] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[#ebe7f1] before:content-['']"
+      data-testid="mobile-bottom-tab-bar"
+    >
+      <div className="grid h-14 grid-cols-3 items-center" data-testid="mobile-bottom-tab-bar-grid">
+        <MobileBottomTabButton active={activeTab === 'map'} onClick={returnToMapBrowse} testId="mobile-tab-map">
+          <MobileBottomTabIcon
+            className="h-6 w-6 shrink-0"
+            src={activeTab === 'map' ? MOBILE_BOTTOM_TAB_MAP_ICON.active : MOBILE_BOTTOM_TAB_MAP_ICON.inactive}
+            testId="mobile-tab-map-icon"
+          />
+          <span className="block h-[10px] whitespace-nowrap text-center font-['Pretendard'] text-[10px] font-normal leading-[10px]">지도</span>
+        </MobileBottomTabButton>
+        <MobileBottomTabButton active={activeTab === 'add'} ariaLabel="장소 추가" onClick={openPlaceAdd} testId="mobile-tab-add">
+          <MobileBottomTabIcon
+            className="h-6 w-6 shrink-0"
+            src={activeTab === 'add' ? MOBILE_BOTTOM_TAB_PLUS_ICON.active : MOBILE_BOTTOM_TAB_PLUS_ICON.inactive}
+            testId="mobile-tab-add-icon"
+          />
+          <span className="block h-[10px] whitespace-nowrap text-center font-['Pretendard'] text-[10px] font-normal leading-[10px]">추가</span>
+        </MobileBottomTabButton>
+        <MobileBottomTabButton active={activeTab === 'list'} ariaLabel="목록 보기" onClick={openMobilePlaceList} testId="mobile-tab-list">
+          <MobileBottomTabIcon
+            className="h-6 w-6 shrink-0"
+            src={activeTab === 'list' ? MOBILE_BOTTOM_TAB_LIST_ICON.active : MOBILE_BOTTOM_TAB_LIST_ICON.inactive}
+            testId="mobile-tab-list-icon"
+          />
+          <span className="block h-[10px] whitespace-nowrap text-center font-['Pretendard'] text-[10px] font-normal leading-[10px]">목록</span>
+        </MobileBottomTabButton>
+      </div>
+    </nav>
   )
 }
 
@@ -888,7 +966,7 @@ const MobileListPage = ({
   const retryPlaceList = useAppShellStore((state) => state.retryPlaceList)
 
   return (
-    <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-[#fcfbff]" data-testid="mobile-list-page">
+    <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-[#fcfbff] pb-14" data-testid="mobile-list-page">
       <div className="border-b border-[#efedf6] px-4 pb-5 pt-4">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-4">
@@ -1023,6 +1101,13 @@ const MobileAppShell = ({
   const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
   const mapLevel = useAppShellStore((state) => state.mapLevel)
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
+  const activeMobileTab: MobilePrimaryTab =
+    navigationState === 'place_add_open'
+      ? 'add'
+      : navigationState === 'mobile_place_list_open'
+        ? 'list'
+        : 'map'
+  const showMobileBottomTabBar = navigationState !== 'place_detail_open'
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-white md:hidden" data-testid="mobile-shell">
@@ -1054,7 +1139,7 @@ const MobileAppShell = ({
         />
       ) : null}
       {navigationState === 'place_add_open' ? <MobilePlaceAddPage onClose={closePlaceAdd} /> : null}
-      {navigationState === 'map_browse' ? <MobileFloatingActions /> : null}
+      {showMobileBottomTabBar ? <MobileBottomTabBar activeTab={activeMobileTab} /> : null}
     </main>
   )
 }

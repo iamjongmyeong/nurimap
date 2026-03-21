@@ -21,7 +21,7 @@
 
 ## Surface Contract
 - desktop은 전체 지도 + 왼쪽 sidebar를 browse / detail / place add의 공용 container로 사용한다.
-- mobile은 전체 지도 surface를 유지하고, detail은 full-screen page로 열린다.
+- mobile browse는 전체 지도 surface 위에 하단 고정 3탭 바(`지도`, `추가`, `목록`)를 사용하고, map/list/add primary surface 사이를 이동할 때 active 탭이 현재 surface와 함께 바뀐다. detail은 full-screen page로 열린다.
 - desktop detail은 별도 floating panel이 아니라 기존 목록 영역 안에서 열린다.
 - place add는 desktop/mobile 모두 기존 목록 영역 계열 surface를 재사용한다.
 - mobile add-rating은 detail에 종속된 child surface이며 standalone durable page로 분리하지 않는다.

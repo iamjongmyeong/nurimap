@@ -11,6 +11,7 @@
   - `docs/03-specs/01-app-shell-and-layout.md`, `docs/03-specs/04-place-detail.md`, `docs/03-specs/10-review.md`를 Sprint 19 계약과 맞춘다.
   - `docs/01-product/user-flows/browse-and-detail.md`, `docs/01-product/user-flows/review.md`, `docs/04-design/browse-and-detail.md`, `docs/04-design/place-submission.md`, `docs/00-governance/agent-workflow.md`를 Tailwind-only + add-rating flow 기준으로 동기화한다.
 - mobile browse/detail/review flow refresh
+  - mobile map browse main surface는 approved Figma 방향의 하단 고정 3탭 바(`지도`, `추가`, `목록`)를 사용한다.
   - mobile map/list/detail/add/add-rating surface를 approved Figma handoff(`9:299`, `9:319`, `14:182`, `14:388`, `14:339`) 기준으로 정렬한다.
   - detail 하단 `평가 남기기` CTA는 `my_review === null`일 때만 노출한다.
   - add-rating은 detail-owned transient child surface로 열리고, save success 시 같은 detail로 복귀하며 새 review가 즉시 보인다.
@@ -62,6 +63,7 @@
 - `평가 남기기` CTA는 `my_review === null`일 때만 보인다.
 - add-rating은 detail-owned child surface이며, durable/shareable route는 계속 `/places/:placeId`를 유지한다.
 - add-rating save success 후에는 같은 place detail로 복귀하고 새 review/집계가 즉시 보여야 한다.
+- mobile map browse에서는 기존 floating action 대신 하단 고정 3탭 바를 visual source of truth로 사용한다.
 - Figma에 직접 없는 mobile detail/add visual detail은 desktop UI 언어를 재사용하되, 새로운 기능은 추가하지 않는다.
 - current browse/detail/back/history/runtime contract는 plan이 명시적으로 바꾸지 않는 한 유지한다.
 - source-of-truth 문서와 구현, QA evidence는 같은 Sprint 안에서 함께 동기화한다.

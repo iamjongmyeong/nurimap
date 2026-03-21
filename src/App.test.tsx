@@ -45,13 +45,30 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('desktop-detail-panel')).toBeInTheDocument()
   })
 
-  it('renders the mobile floating buttons', () => {
+  it('renders the mobile bottom tab bar over the full-screen map', () => {
     setViewport(390)
     render(<App />)
 
-    expect(screen.getByTestId('mobile-floating-actions')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '목록 보기' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '장소 추가' })).toBeInTheDocument()
+    expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-bottom-tab-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveClass('h-14')
+    expect(screen.getByTestId('mobile-bottom-tab-bar-grid')).toHaveClass('h-14')
+    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('mobile-tab-map')).toHaveClass('h-10', 'w-10', 'px-2', 'pt-[2px]', 'pb-0', 'gap-1')
+    expect(screen.getByTestId('mobile-tab-add')).toHaveClass('h-10', 'w-10', 'px-2', 'pt-[2px]', 'pb-0', 'gap-1')
+    expect(screen.getByTestId('mobile-tab-list')).toHaveClass('h-10', 'w-10', 'px-2', 'pt-[2px]', 'pb-0', 'gap-1')
+    expect(screen.getByTestId('mobile-tab-map-icon')).toHaveClass('h-6', 'w-6', 'shrink-0')
+    expect(screen.getByTestId('mobile-tab-add-icon')).toHaveClass('h-6', 'w-6', 'shrink-0')
+    expect(screen.getByTestId('mobile-tab-list-icon')).toHaveClass('h-6', 'w-6', 'shrink-0')
+    expect(screen.getByText('지도')).toHaveClass('h-[10px]', 'whitespace-nowrap', "font-['Pretendard']", 'text-[10px]', 'font-normal', 'leading-[10px]')
+    expect(screen.getByText('추가')).toHaveClass('h-[10px]', 'whitespace-nowrap', "font-['Pretendard']", 'text-[10px]', 'font-normal', 'leading-[10px]')
+    expect(screen.getByText('목록')).toHaveClass('h-[10px]', 'whitespace-nowrap', "font-['Pretendard']", 'text-[10px]', 'font-normal', 'leading-[10px]')
+    expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-black.svg')
+    expect(screen.getByTestId('mobile-tab-add-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-plus-gray.svg')
+    expect(screen.getByTestId('mobile-tab-list-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-list-gray.svg')
+    expect(screen.getByText('지도')).toBeInTheDocument()
+    expect(screen.getByText('추가')).toBeInTheDocument()
+    expect(screen.getByText('목록')).toBeInTheDocument()
   })
 
   it('moves to the mobile place list page when the list button is clicked', async () => {
@@ -62,13 +79,26 @@ describe('Nurimap app shell', () => {
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
 
     expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-bottom-tab-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'false')
+    expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-gray.svg')
+    expect(screen.getByTestId('mobile-tab-list-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-list-black.svg')
+
+    await user.click(screen.getByRole('button', { name: '지도' }))
+
+    expect(screen.queryByTestId('mobile-list-page')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'false')
+    expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-black.svg')
+    expect(screen.getByTestId('mobile-tab-list-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-list-gray.svg')
   })
 
-  it('does not render mobile floating actions on desktop', () => {
+  it('does not render the mobile bottom tab bar on desktop', () => {
     setViewport(1280)
     render(<App />)
 
-    expect(screen.queryByTestId('mobile-floating-actions')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('mobile-bottom-tab-bar')).not.toBeInTheDocument()
   })
 
   it('renders the compact desktop add button inside the refreshed top bar', () => {

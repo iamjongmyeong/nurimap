@@ -432,7 +432,7 @@ export const DesktopPlaceAddPanel = ({ onClose }: PlaceAddPanelProps) => (
 )
 
 export const MobilePlaceAddPage = ({ onClose }: PlaceAddPanelProps) => (
-  <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-white" data-testid="mobile-place-add-page">
+  <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-white pb-14" data-testid="mobile-place-add-page">
     <div className="flex-1 overflow-hidden">
       <PlaceAddForm onClose={onClose} />
     </div>
