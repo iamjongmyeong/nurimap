@@ -1,5 +1,5 @@
 export const AUTH_REQUEST_COOLDOWN_SECONDS = 60 * 5
-export const AUTH_REQUEST_BURST_LIMIT = 5
+export const AUTH_REQUEST_BURST_LIMIT = 3
 
 export type LoginOtpState = {
   day_key: string

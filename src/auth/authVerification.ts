@@ -1,6 +1,6 @@
 export const AUTH_BOOTSTRAP_TIMEOUT_MS = 5000
 export const GENERIC_AUTH_FAILURE_MESSAGE = '인증에 실패했어요. 새 코드를 받아주세요.'
-export const OLD_LINK_FALLBACK_MESSAGE = '이 로그인 링크는 더 이상 사용할 수 없어요.\n이메일로 인증 코드를 다시 받아주세요.'
+export const OTP_ENTRY_FAILURE_MESSAGE = '이 코드는 사용할 수 없어요.'
 
 export type AuthVerificationType = 'magiclink' | 'signup' | 'invite'
 
@@ -59,22 +59,18 @@ export const resolveOtpVerifyFailureMessage = ({
   const normalized = errorMessage?.toLowerCase() ?? ''
 
   if (normalized.includes('expired') || normalized.includes('otp_expired')) {
-    return hasResent
-      ? '새 코드가 발급됐어요.\n새 코드를 입력해 주세요.'
-      : '인증 코드가 만료됐어요.\n새 코드를 받아주세요.'
+    return OTP_ENTRY_FAILURE_MESSAGE
   }
 
   if (normalized.includes('invalid token') || normalized.includes('token has expired or is invalid')) {
-    return hasResent
-      ? '새 코드가 발급됐어요.\n새 코드를 입력해 주세요.'
-      : '인증 코드가 올바르지 않아요. 다시 확인해 주세요.'
+    return OTP_ENTRY_FAILURE_MESSAGE
   }
 
   if (normalized.includes('invalid') || normalized.includes('otp')) {
-    return '인증 코드가 올바르지 않아요. 다시 확인해 주세요.'
+    return OTP_ENTRY_FAILURE_MESSAGE
   }
 
-  return GENERIC_AUTH_FAILURE_MESSAGE
+  return hasResent ? OTP_ENTRY_FAILURE_MESSAGE : GENERIC_AUTH_FAILURE_MESSAGE
 }
 
 export { withTimeout }

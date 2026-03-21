@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { requestLoginLink } from './authService'
+import { requestLoginOtp } from './authService'
 import { lookupPlaceFromRawUrl } from './placeLookupService'
 
 const originalEnv = { ...process.env }
@@ -74,7 +74,7 @@ describe('Plan 11 release hardening', () => {
     process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const result = await requestLoginLink('user@example.com')
+    const result = await requestLoginOtp('user@example.com')
 
     expect(result.status).toBe('error')
     expect(warnSpy).toHaveBeenCalled()

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { OTP_ENTRY_FAILURE_MESSAGE } from './authVerification'
 
 export type TestAuthPhase = 'authenticated' | 'auth_required' | 'otp_required' | 'auth_failure' | 'name_required' | 'verifying'
 
@@ -88,8 +89,8 @@ export const requestTestOtp = async (email: string) => {
   }
 
   if (email.startsWith('cooldown@')) {
-    setTestAuthState({ phase: 'auth_required', message: '300초 후에 다시 시도해 주세요.' })
-    return { status: 'error' as const, code: 'cooldown' as const }
+    setTestAuthState({ phase: 'auth_required', message: null, failureReason: null })
+    return { status: 'error' as const, code: 'cooldown' as const, retryAfterSeconds: 300 }
   }
 
   setTestAuthState({
@@ -127,14 +128,14 @@ export const verifyTestOtp = async ({
   }
 
   if (code === '222222') {
-    return { status: 'error' as const, message: '인증 코드가 만료됐어요.\n새 코드를 받아주세요.' }
+    return { status: 'error' as const, message: OTP_ENTRY_FAILURE_MESSAGE }
   }
 
   if (code === '333333') {
-    return { status: 'error' as const, message: '새 코드가 발급됐어요.\n새 코드를 입력해 주세요.' }
+    return { status: 'error' as const, message: OTP_ENTRY_FAILURE_MESSAGE }
   }
 
-  return { status: 'error' as const, message: '인증 코드가 올바르지 않아요. 다시 확인해 주세요.' }
+  return { status: 'error' as const, message: OTP_ENTRY_FAILURE_MESSAGE }
 }
 
 export const submitTestName = async (name: string) => {

@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { defineConfig } from 'vitest/config'
-import { consumeLoginLink, requestLoginLink, requestLoginOtp, verifyAccessToken, verifyLoginLink } from './src/server/authService'
+import { requestLoginOtp, verifyAccessToken } from './src/server/authService'
 import { preparePlaceEntryFromDraft } from './src/server/placeEntryService'
 import { lookupPlaceFromRawUrl } from './src/server/placeLookupService'
 
@@ -52,34 +52,7 @@ const apiDevPlugin = (): Plugin => ({
     })
 
     server.middlewares.use('/api/auth/request-link', async (req, res, next) => {
-      await handleAuthRequest(req, res, next, requestLoginLink)
-    })
-
-    server.middlewares.use('/api/auth/verify-link', async (req, res, next) => {
-      if (req.method !== 'POST') {
-        next()
-        return
-      }
-      const body = await readJsonBody(req)
-      const parsedBody = body ? (JSON.parse(body) as { email?: string; nonce?: string }) : {}
-      const result = await verifyLoginLink({ email: parsedBody.email ?? '', nonce: parsedBody.nonce ?? '' })
-      res.statusCode = result.status === 'error' ? 400 : 200
-      res.setHeader('Content-Type', 'application/json')
-      res.end(JSON.stringify(result))
-    })
-
-
-    server.middlewares.use('/api/auth/consume-link', async (req, res, next) => {
-      if (req.method !== 'POST') {
-        next()
-        return
-      }
-      const body = await readJsonBody(req)
-      const parsedBody = body ? (JSON.parse(body) as { email?: string; nonce?: string }) : {}
-      const result = await consumeLoginLink({ email: parsedBody.email ?? '', nonce: parsedBody.nonce ?? '' })
-      res.statusCode = result.status === 'error' ? 400 : 200
-      res.setHeader('Content-Type', 'application/json')
-      res.end(JSON.stringify(result))
+      await handleAuthRequest(req, res, next, requestLoginOtp)
     })
 
     server.middlewares.use('/api/place-entry', async (req, res, next) => {

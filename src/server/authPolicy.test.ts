@@ -14,7 +14,7 @@ describe('Sprint 18 auth policy', () => {
     expect(isAllowedEmailDomain('user@example.com', 'nurimedia.co.kr')).toBe(false)
   })
 
-  it('allows an otp resend burst up to 5 times before cooldown begins', () => {
+  it('allows an otp resend burst up to 3 times before cooldown begins', () => {
     const now = new Date('2026-03-08T10:00:00.000Z')
     const state = {
       ...createEmptyLoginOtpState(),
@@ -31,7 +31,7 @@ describe('Sprint 18 auth policy', () => {
     }
   })
 
-  it('enforces cooldown on the 6th resend attempt within the active window', () => {
+  it('enforces cooldown on the 4th resend attempt within the active window', () => {
     const now = new Date('2026-03-08T10:00:00.000Z')
     const state = {
       ...createEmptyLoginOtpState(),

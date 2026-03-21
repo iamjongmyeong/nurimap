@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AuthContext, type AuthContextValue, type AuthPhase } from './authContext'
 import { supabaseBrowser } from './supabaseBrowser'
 import { requestTestOtp, setTestAuthState, signOutTestUser, submitTestName, useTestAuthState, verifyTestOtp } from './testAuthState'
-import { GENERIC_AUTH_FAILURE_MESSAGE, OLD_LINK_FALLBACK_MESSAGE, resolveBypassVerification, resolveOtpVerifyFailureMessage, withTimeout } from './authVerification'
+import { GENERIC_AUTH_FAILURE_MESSAGE, resolveBypassVerification, resolveOtpVerifyFailureMessage, withTimeout } from './authVerification'
 
 declare global {
   interface ImportMetaEnv {
@@ -14,7 +14,6 @@ declare global {
 const SESSION_STARTED_AT_KEY = 'nurimap_session_started_at'
 const SESSION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
 const LOCAL_AUTO_LOGIN_REQUIRES_BYPASS_MESSAGE = '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.'
-const LEGACY_AUTH_PATH_SUFFIX = '/auth/verify'
 const AUTH_BRAND_ICON_SRC = '/assets/branding/brand-nurimap-logo.jpeg'
 const authBrandTextStyle = {
   fontFamily: '"BM Jua", Pretendard, system-ui, sans-serif',
@@ -26,53 +25,12 @@ const LEGACY_FAILURE_MESSAGES = {
   used: '이미 사용한 링크예요.\n새 로그인 링크를 받아주세요.',
 } as const
 
-const buildBasePathFromLegacyAuthPath = (pathname: string) => {
-  if (pathname === LEGACY_AUTH_PATH_SUFFIX) {
-    return '/'
-  }
-
-  if (pathname.endsWith(LEGACY_AUTH_PATH_SUFFIX)) {
-    const basePath = pathname.slice(0, -LEGACY_AUTH_PATH_SUFFIX.length)
-    return basePath || '/'
-  }
-
-  return pathname || '/'
-}
-
-const clearAuthEntryUrl = () => {
-  const url = new URL(window.location.href)
-  url.pathname = buildBasePathFromLegacyAuthPath(url.pathname)
-  url.search = ''
-  window.history.replaceState({}, '', url.toString())
-}
-
 const resolveFailureReasonMessage = (reason: string | null | undefined) => {
   if (!reason) {
     return GENERIC_AUTH_FAILURE_MESSAGE
   }
 
   return LEGACY_FAILURE_MESSAGES[reason as keyof typeof LEGACY_FAILURE_MESSAGES] ?? reason
-}
-
-const getLegacyAuthEntryFromLocation = () => {
-  const url = new URL(window.location.href)
-  const authEmail = url.searchParams.get('email')
-  const hasCanonicalLegacyPath = url.pathname === LEGACY_AUTH_PATH_SUFFIX || url.pathname.endsWith(LEGACY_AUTH_PATH_SUFFIX)
-
-  if (hasCanonicalLegacyPath) {
-    return {
-      email: authEmail,
-    }
-  }
-
-  const authMode = url.searchParams.get('auth_mode')
-  if (authMode === 'verify') {
-    return {
-      email: authEmail,
-    }
-  }
-
-  return null
 }
 
 const getStoredSessionAgeExceeded = () => {
@@ -167,8 +125,8 @@ const getLocalAutoLoginEmail = () => {
 }
 
 const AuthSurface = ({ children }: { children: ReactNode }) => (
-  <main className="min-h-screen bg-white px-4 py-10">
-    <div className="mx-auto flex min-h-screen max-w-5xl items-center justify-center">
+  <main className="flex min-h-dvh items-center bg-white px-4 py-10">
+    <div className="mx-auto flex w-full max-w-5xl justify-center">
       <div className="w-full max-w-md">{children}</div>
     </div>
   </main>
@@ -193,44 +151,56 @@ const AuthBrand = () => (
 const AUTH_INPUT_CLASSES = 'h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none'
 const AUTH_PRIMARY_BUTTON_CLASSES = 'inline-flex h-10 w-full items-center justify-center rounded-xl bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none transition-opacity'
 const AUTH_ERROR_TEXT_CLASSES = 'text-[#e53935]'
+const OTP_INPUT_ERROR_BORDER_CLASSES = 'border-[#E52E30] focus:border-[#E52E30]'
+const OTP_ERROR_TEXT_CLASSES = 'text-[12px] leading-[150%] text-[#E52E30]'
 const LOGIN_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const OTP_CODE_PATTERN = /^\d{6}$/
 const MAX_NAME_LENGTH = 10
-const formatCooldownMessage = (remainingSeconds: number) => {
+const formatCooldownTime = (remainingSeconds: number) => {
   const minutes = Math.floor(remainingSeconds / 60)
   const seconds = remainingSeconds % 60
 
-  if (minutes === 0) {
-    return `${remainingSeconds}초 후에 다시 시도해주세요.`
-  }
-
-  return `${minutes}분 ${String(seconds).padStart(2, '0')}초 후에 다시 시도해주세요.`
+  return `${minutes}분 ${String(seconds).padStart(2, '0')}초`
 }
 
 const EmailRequestShell = ({
+  cooldownRemainingSeconds,
   email,
   message,
   onEmailChange,
   onSubmit,
   submitting,
 }: {
+  cooldownRemainingSeconds: number | null
   email: string
   message: string | null
   onEmailChange: (value: string) => void
   onSubmit: (email: string) => void
   submitting: boolean
 }) => {
-  const hasInlineError = Boolean(message)
+  const cooldownActive = cooldownRemainingSeconds !== null
+  const hasInlineError = Boolean(message) && !cooldownActive
   const emailFormatValid = LOGIN_EMAIL_PATTERN.test(email.trim())
-  const buttonDisabled = submitting || !emailFormatValid
+  const buttonDisabled = submitting || cooldownActive || !emailFormatValid
 
   return (
     <AuthSurface>
       <div className="flex flex-col items-center gap-6">
         <AuthBrand />
-        <p className="text-center text-base font-medium leading-6 text-zinc-900">
-          누리미디어에서 사용 중인 이메일을 입력해주세요.
-        </p>
+        {cooldownActive ? (
+          <div className="flex max-w-[320px] flex-col items-center gap-2 text-center">
+            <p className="text-base font-semibold leading-7 text-zinc-900">
+              {formatCooldownTime(cooldownRemainingSeconds ?? 0)} 뒤에 다시 보낼 수 있어요.
+            </p>
+            <p className="text-[14px] font-normal leading-5 text-neutral-500">
+              너무 많은 요청이 와서 잠시 쉴 시간이 필요해요.
+            </p>
+          </div>
+        ) : (
+          <p className="text-center text-base font-medium leading-6 text-zinc-900">
+            누리미디어에서 사용 중인 이메일을 입력해주세요.
+          </p>
+        )}
       </div>
       <form
         className="mt-6 flex flex-col items-center gap-3"
@@ -242,9 +212,12 @@ const EmailRequestShell = ({
         <label className="flex w-full max-w-[320px] flex-col gap-2">
           <span className="sr-only">이메일</span>
           <input
-            className={`${AUTH_INPUT_CLASSES} ${hasInlineError ? 'border-[#e53935] focus:border-[#e53935]' : ''}`}
+            className={`${AUTH_INPUT_CLASSES} ${cooldownActive ? '!text-neutral-400 placeholder:!text-neutral-400' : ''} ${
+              hasInlineError ? 'border-[#e53935] focus:border-[#e53935]' : ''
+            }`}
             onChange={(event) => onEmailChange(event.target.value)}
             placeholder="example@nurimedia.co.kr"
+            readOnly={cooldownActive}
             type="email"
             value={email}
           />
@@ -279,7 +252,6 @@ const OtpShell = ({
   code,
   message,
   onCodeChange,
-  onResend,
   onReset,
   onSubmit,
   submitting,
@@ -288,7 +260,6 @@ const OtpShell = ({
   code: string
   message: string | null
   onCodeChange: (value: string) => void
-  onResend: () => void
   onReset: () => void
   onSubmit: () => void
   submitting: boolean
@@ -298,40 +269,38 @@ const OtpShell = ({
 
   return (
     <AuthSurface>
-      <div className="flex flex-col items-center gap-6">
+      <div className="flex flex-col items-center gap-8">
         <AuthBrand />
-        <div className="flex flex-col items-center gap-2 text-center">
-          <p className="text-base font-medium leading-6 text-zinc-900">아래 6자리 코드를 5분 안에 입력해 주세요.</p>
-          <div
-            className="flex h-10 w-full max-w-[320px] items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-base leading-6 text-zinc-900"
-            data-testid="auth-requested-email"
-          >
-            {email}
-          </div>
+        <div className="flex max-w-[320px] flex-col items-center gap-3 text-center">
+          <p className="w-full text-base font-medium leading-7 text-zinc-900">
+            <span className="block break-all" data-testid="auth-requested-email">
+              {email}로
+            </span>
+            <span className="block">로그인 코드를 보냈어요.</span>
+          </p>
+          <p className="text-base font-medium leading-6 text-zinc-900">5분 안에 입력해 주세요.</p>
         </div>
       </div>
-      <div className="mt-6 flex flex-col items-center gap-3">
+      <div className="mt-8 flex flex-col items-center gap-3">
         <label className="flex w-full max-w-[320px] flex-col gap-2">
           <span className="sr-only">인증 코드</span>
           <input
             aria-label="인증 코드"
-            className={`${AUTH_INPUT_CLASSES} text-center tracking-[0.3em] ${message ? 'border-[#e53935] focus:border-[#e53935]' : ''}`}
+            className={`${AUTH_INPUT_CLASSES} text-center tracking-[0.3em] ${hasErrorMessage ? OTP_INPUT_ERROR_BORDER_CLASSES : ''}`}
             inputMode="numeric"
             maxLength={6}
             onChange={(event) => onCodeChange(event.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder="000000"
+            placeholder="0 0 0 0 0 0"
             value={code}
           />
         </label>
 
-        {message ? (
-          <p className={`w-full max-w-[320px] text-center text-sm whitespace-pre-line ${hasErrorMessage ? AUTH_ERROR_TEXT_CLASSES : 'text-zinc-500'}`}>{message}</p>
-        ) : (
-          <p className="w-full max-w-[320px] text-center text-sm text-zinc-500">코드를 길게 눌러 복사하거나 직접 입력해 주세요.</p>
-        )}
+        {hasErrorMessage ? (
+          <p className={`w-full max-w-[320px] text-center ${OTP_ERROR_TEXT_CLASSES}`}>{message}</p>
+        ) : null}
 
         <button
-          aria-label="인증하기"
+          aria-label="인증"
           className={`${AUTH_PRIMARY_BUTTON_CLASSES} max-w-[320px] ${
             buttonDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
           }`}
@@ -340,15 +309,7 @@ const OtpShell = ({
           onClick={onSubmit}
           type="button"
         >
-          {submitting ? <span aria-hidden="true" className="ui-spinner ui-spinner-sm" data-testid="auth-verify-spinner" /> : '인증하기'}
-        </button>
-
-        <button
-          className="cursor-pointer text-center text-[14px] font-normal leading-5 text-neutral-500"
-          onClick={onResend}
-          type="button"
-        >
-          인증 코드 다시 전송
+          {submitting ? <span aria-hidden="true" className="ui-spinner ui-spinner-sm" data-testid="auth-verify-spinner" /> : '인증'}
         </button>
         <button
           className="cursor-pointer text-center text-[14px] font-normal leading-5 text-neutral-500"
@@ -493,8 +454,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const localAutoLoginEmail = useMemo(() => getLocalAutoLoginEmail(), [])
   const isTestMode = import.meta.env.MODE === 'test' || devOverrideState !== null
   const normalizedEmail = email.trim().toLowerCase()
-  const resolvedCooldownMessage = !isTestMode && cooldownState && cooldownState.email === normalizedEmail
-    ? formatCooldownMessage(cooldownState.remainingSeconds)
+  const resolvedCooldownRemainingSeconds = cooldownState && cooldownState.email === normalizedEmail
+    ? cooldownState.remainingSeconds
     : null
 
   useEffect(() => {
@@ -618,13 +579,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const bootstrap = async () => {
-      const legacyEntry = getLegacyAuthEntryFromLocation()
-      const legacyEmail = legacyEntry?.email ?? null
-
-      if (legacyEntry) {
-        clearAuthEntryUrl()
-      }
-
       try {
         if (getStoredSessionAgeExceeded()) {
           await supabaseBrowser.auth.signOut()
@@ -640,31 +594,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return
         }
 
-        if (legacyEntry) {
-          if (isMounted) {
-            setEmail(legacyEmail ?? '')
-            setRequestedEmail(null)
-            setOtpCode('')
-            setHasResentOtp(false)
-            setMessage(null)
-            setFailureReason(OLD_LINK_FALLBACK_MESSAGE)
-            setPhase('auth_failure')
-          }
-          return
-        }
-
         if (isMounted) {
           setPhase('auth_required')
         }
       } catch {
         if (!isMounted) {
-          return
-        }
-
-        if (legacyEntry) {
-          setEmail(legacyEmail ?? '')
-          setFailureReason(OLD_LINK_FALLBACK_MESSAGE)
-          setPhase('auth_failure')
           return
         }
 
@@ -747,6 +681,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const result = await requestTestOtp(trimmedEmail)
       setSubmitting(false)
       if (result.status === 'error') {
+        if (result.code === 'cooldown' && 'retryAfterSeconds' in result) {
+          setCooldownState({
+            email: trimmedEmail,
+            remainingSeconds: result.retryAfterSeconds,
+          })
+          setRequestedEmail(null)
+          setOtpCode('')
+          setHasResentOtp(false)
+          setMessage(null)
+          setPhase('auth_required')
+          return
+        }
+
         setRequestedEmail(isResend ? trimmedEmail : null)
         setMessage(result.code === 'invalid_domain' ? '누리미디어 구성원만 사용할 수 있어요.' : null)
         setPhase(isResend ? 'otp_required' : 'auth_required')
@@ -788,9 +735,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setMessage(null)
         } else {
           setMessage(payload.message)
+          setRequestedEmail(isResend ? trimmedEmail : null)
+          setPhase(isResend ? 'otp_required' : 'auth_required')
+          return
         }
-        setRequestedEmail(isResend ? trimmedEmail : null)
-        setPhase(isResend ? 'otp_required' : 'auth_required')
+
+        setRequestedEmail(null)
+        setOtpCode('')
+        setHasResentOtp(false)
+        setPhase('auth_required')
         return
       }
 
@@ -961,10 +914,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const effectiveTestState = testState
   const resolvedPhase = isTestMode ? effectiveTestState.phase : phase
-  const rawMessage = resolvedCooldownMessage ?? message ?? (isTestMode ? effectiveTestState.message : null)
+  const rawMessage = message ?? (isTestMode ? effectiveTestState.message : null)
   const rawFailureReason = failureReason ?? (isTestMode ? effectiveTestState.failureReason : null)
   const resolvedFailureReason = resolveFailureReasonMessage(rawFailureReason)
-  const resolvedEmail = requestedEmail ?? email ?? (isTestMode ? effectiveTestState.user?.email ?? '' : '')
+  const resolvedEmail = requestedEmail ?? (email || (isTestMode ? effectiveTestState.user?.email ?? '' : ''))
   const resolvedAccessToken = isTestMode && effectiveTestState.phase === 'authenticated' ? 'test-access-token' : accessToken
 
   const value: AuthContextValue = {
@@ -986,6 +939,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return (
       <AuthContext.Provider value={value}>
         <EmailRequestShell
+          cooldownRemainingSeconds={resolvedCooldownRemainingSeconds}
           email={resolvedEmail}
           message={rawMessage}
           onEmailChange={(nextEmail) => {
@@ -1011,9 +965,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email={requestedEmail ?? resolvedEmail}
           message={rawMessage}
           onCodeChange={setOtpCode}
-          onResend={() => {
-            void requestOtp(requestedEmail ?? resolvedEmail)
-          }}
           onReset={() => {
             setRequestedEmail(null)
             setOtpCode('')

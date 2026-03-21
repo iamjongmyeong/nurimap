@@ -24,7 +24,7 @@ vi.mock('./supabaseAdmin.js', () => ({
   }),
 }))
 
-import { consumeLoginLink, requestLoginLink, requestLoginOtp, verifyLoginLink } from './authService'
+import { requestLoginOtp } from './authService'
 
 const originalEnv = { ...process.env }
 
@@ -302,7 +302,7 @@ describe('Sprint 18 otp auth request flow', () => {
       error: null,
     })
 
-    const result = await requestLoginLink('tester@nurimedia.co.kr')
+    const result = await requestLoginOtp('tester@nurimedia.co.kr')
 
     expect(result).toEqual({
       status: 'success',
@@ -323,7 +323,7 @@ describe('Sprint 18 otp auth request flow', () => {
             app_metadata: {
               nurimap_auth: {
                 day_key: '2026-03-08',
-                day_count: 5,
+                day_count: 3,
                 last_requested_at: new Date(Date.now() - 233 * 1000).toISOString(),
                 last_verified_at: null,
               },
@@ -346,7 +346,7 @@ describe('Sprint 18 otp auth request flow', () => {
     expect(signInWithOtpMock).not.toHaveBeenCalled()
   })
 
-  it('formats cooldown messages as SS초 when less than a minute remains', async () => {
+  it('formats cooldown messages as 0분 SS초 when less than a minute remains', async () => {
     process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
 
     listUsersMock.mockResolvedValue({
@@ -358,7 +358,7 @@ describe('Sprint 18 otp auth request flow', () => {
             app_metadata: {
               nurimap_auth: {
                 day_key: '2026-03-08',
-                day_count: 5,
+                day_count: 3,
                 last_requested_at: new Date(Date.now() - 258 * 1000).toISOString(),
                 last_verified_at: null,
               },
@@ -375,46 +375,10 @@ describe('Sprint 18 otp auth request flow', () => {
     expect(result).toEqual({
       status: 'error',
       code: 'cooldown',
-      message: '42초 후에 다시 시도해주세요.',
+      message: '0분 42초 후에 다시 시도해주세요.',
       retryAfterSeconds: 42,
     })
     expect(signInWithOtpMock).not.toHaveBeenCalled()
   })
 
-  it('returns an explicit legacy fallback for verify-link', async () => {
-    const result = await verifyLoginLink({
-      email: 'tester@nurimedia.co.kr',
-      nonce: 'legacy-nonce',
-    })
-
-    expect(result).toEqual({
-      status: 'error',
-      reason: 'invalidated',
-      message: '이 경로는 더 이상 로그인 확인에 사용되지 않아요. 새 인증 코드를 요청해 주세요.',
-    })
-    expect(updateUserByIdMock).not.toHaveBeenCalled()
-  })
-
-  it('returns an explicit legacy fallback for consume-link', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-    const result = await consumeLoginLink({
-      email: 'tester@nurimedia.co.kr',
-      nonce: 'legacy-nonce',
-    })
-
-    expect(result).toEqual({
-      status: 'error',
-      reason: 'invalidated',
-      message: '이 경로는 더 이상 로그인 확인에 사용되지 않아요. 새 인증 코드를 요청해 주세요.',
-    })
-    expect(updateUserByIdMock).not.toHaveBeenCalled()
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[ops] auth.consume_link.failed',
-      expect.objectContaining({
-        email: expect.stringContaining('@nurimedia.co.kr'),
-        reason: 'invalidated',
-      }),
-    )
-  })
 })

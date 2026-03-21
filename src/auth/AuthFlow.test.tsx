@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { AuthProvider } from './AuthProvider'
-import { AUTH_BOOTSTRAP_TIMEOUT_MS } from './authVerification'
+import { AUTH_BOOTSTRAP_TIMEOUT_MS, OTP_ENTRY_FAILURE_MESSAGE } from './authVerification'
 import { resetTestAuthState, setTestAuthState } from './testAuthState'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -149,7 +149,7 @@ describe('Sprint 18 OTP auth flow', () => {
     expect(input).toHaveValue('user@example.com')
   })
 
-  it('shows the cooldown inline error and keeps the email input', async () => {
+  it('shows the cooldown request-screen variant and keeps the email input', async () => {
     vi.stubEnv('MODE', 'development')
     vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
     const user = userEvent.setup()
@@ -179,8 +179,10 @@ describe('Sprint 18 OTP auth flow', () => {
     await user.type(input, 'cooldown@nurimedia.co.kr')
     await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
 
-    expect(await screen.findByText('1분 07초 후에 다시 시도해주세요.')).toBeInTheDocument()
+    expect(await screen.findByText('1분 07초 뒤에 다시 보낼 수 있어요.')).toBeInTheDocument()
+    expect(screen.getByText('너무 많은 요청이 와서 잠시 쉴 시간이 필요해요.')).toBeInTheDocument()
     expect(input).toHaveValue('cooldown@nurimedia.co.kr')
+    expect(screen.getByRole('button', { name: '인증 코드 전송' })).toBeDisabled()
   })
 
   it('shows the otp-required state in the same auth shell with the requested email', async () => {
@@ -191,11 +193,27 @@ describe('Sprint 18 OTP auth flow', () => {
     await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
     await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
 
-    expect(await screen.findByText('인증 코드를 보냈어요.')).toBeInTheDocument()
-    expect(screen.getByTestId('auth-requested-email')).toHaveTextContent('tester@nurimedia.co.kr')
+    expect(await screen.findByText('로그인 코드를 보냈어요.')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-requested-email')).toHaveTextContent('tester@nurimedia.co.kr로')
+    expect(screen.getByText('5분 안에 입력해 주세요.')).toBeInTheDocument()
     expect(screen.getByLabelText('인증 코드')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '인증하기' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '인증 코드 다시 전송' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '인증' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '다시 전송하기' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '이메일 다시 입력' })).toBeInTheDocument()
+  })
+
+  it('shows the email copy when directly entering the otp-required state', () => {
+    setTestAuthState({
+      phase: 'otp_required',
+      user: { email: 'tester@nurimedia.co.kr', name: null },
+      message: '인증 코드를 보냈어요.',
+      failureReason: null,
+    })
+    render(<App />)
+
+    expect(screen.getByTestId('auth-requested-email')).toHaveTextContent('tester@nurimedia.co.kr로')
+    expect(screen.getByText('로그인 코드를 보냈어요.')).toBeInTheDocument()
+    expect(screen.getByText('5분 안에 입력해 주세요.')).toBeInTheDocument()
   })
 
   it('immediately enters the onboarding flow for a bypass test account', async () => {
@@ -218,12 +236,12 @@ describe('Sprint 18 OTP auth flow', () => {
     await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
     await screen.findByLabelText('인증 코드')
     await user.type(screen.getByLabelText('인증 코드'), '111111')
-    await user.click(screen.getByRole('button', { name: '인증하기' }))
+    await user.click(screen.getByRole('button', { name: '인증' }))
 
     expect(await screen.findByText('누리맵에서 사용할 이름을 입력해주세요.')).toBeInTheDocument()
   })
 
-  it('shows wrong-code copy inside the otp input state', async () => {
+  it('shows unified failure copy and error styling inside the otp input state', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
     render(<App />)
@@ -232,13 +250,14 @@ describe('Sprint 18 OTP auth flow', () => {
     await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
     await screen.findByLabelText('인증 코드')
     await user.type(screen.getByLabelText('인증 코드'), '999999')
-    await user.click(screen.getByRole('button', { name: '인증하기' }))
+    await user.click(screen.getByRole('button', { name: '인증' }))
 
-    expect(await screen.findByText('인증 코드가 올바르지 않아요. 다시 확인해 주세요.')).toBeInTheDocument()
-    expect(screen.getByLabelText('인증 코드')).toBeInTheDocument()
+    const errorText = await screen.findByText(OTP_ENTRY_FAILURE_MESSAGE)
+    expect(errorText).toHaveClass('text-[12px]', 'leading-[150%]', 'text-[#E52E30]')
+    expect(screen.getByLabelText('인증 코드')).toHaveClass('border-[#E52E30]', 'focus:border-[#E52E30]')
   })
 
-  it('shows expired-code copy inside the otp input state', async () => {
+  it('shows the same unified failure copy for expired code', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
     render(<App />)
@@ -247,9 +266,9 @@ describe('Sprint 18 OTP auth flow', () => {
     await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
     await screen.findByLabelText('인증 코드')
     await user.type(screen.getByLabelText('인증 코드'), '222222')
-    await user.click(screen.getByRole('button', { name: '인증하기' }))
+    await user.click(screen.getByRole('button', { name: '인증' }))
 
-    expect(await screen.findByText(/인증 코드가 만료됐어요/)).toBeInTheDocument()
+    expect(await screen.findByText(OTP_ENTRY_FAILURE_MESSAGE)).toBeInTheDocument()
   })
 
   it('uses the request-otp endpoint for local auto-login bypass in development', async () => {
@@ -308,22 +327,7 @@ describe('Sprint 18 OTP auth flow', () => {
     })
   })
 
-  it('shows old-link fallback instead of re-verifying /auth/verify entries', async () => {
-    vi.stubEnv('MODE', 'development')
-    window.history.replaceState({}, '', '/auth/verify?email=tester%40nurimedia.co.kr&nonce=nonce-1')
-
-    render(
-      <AuthProvider>
-        <div data-testid="protected-child" />
-      </AuthProvider>,
-    )
-
-    expect(await screen.findByTestId('auth-failure-body')).toHaveTextContent(/이 로그인 링크는 더 이상 사용할 수 없어요\.\s*이메일로 인증 코드를 다시 받아주세요\./)
-    expect(window.location.pathname).toBe('/')
-    expect(window.location.search).toBe('')
-  })
-
-  it('restores an existing session on refresh without using a legacy verify flow', async () => {
+  it('restores an existing session on refresh', async () => {
     vi.stubEnv('MODE', 'development')
     getSessionMock.mockResolvedValue({
       data: {

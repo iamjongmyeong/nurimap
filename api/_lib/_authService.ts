@@ -5,11 +5,10 @@ import {
   type LoginOtpState,
 } from './_authPolicy.js'
 import { AuthClient, type User } from '@supabase/supabase-js'
-import { logAuthBypassLogin, logAuthConsumeFailure, logAuthRequestAccepted, logAuthRequestFailure } from './_opsLogger.js'
+import { logAuthBypassLogin, logAuthRequestAccepted, logAuthRequestFailure } from './_opsLogger.js'
 import { createSupabaseAdminClient, createSupabaseBrowserlessClient } from './_supabaseAdmin.js'
 
 type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'delivery_failed' | 'bypass_required'
-type AuthVerifyErrorReason = 'invalidated'
 type AuthVerifyType = 'magiclink' | 'signup' | 'invite'
 type RequestLoginOtpOptions = {
   requireBypass?: boolean
@@ -103,16 +102,14 @@ const getPublicAppUrl = () => {
   }
 }
 
-const formatCooldownMessage = (remainingSeconds: number) => {
+const formatCooldownTime = (remainingSeconds: number) => {
   const minutes = Math.floor(remainingSeconds / 60)
   const seconds = remainingSeconds % 60
 
-  if (minutes === 0) {
-    return `${remainingSeconds}초 후에 다시 시도해주세요.`
-  }
-
-  return `${minutes}분 ${String(seconds).padStart(2, '0')}초 후에 다시 시도해주세요.`
+  return `${minutes}분 ${String(seconds).padStart(2, '0')}초`
 }
+
+const formatCooldownMessage = (remainingSeconds: number) => `${formatCooldownTime(remainingSeconds)} 후에 다시 시도해주세요.`
 
 const getDurationMs = (startedAt: number) => Date.now() - startedAt
 
@@ -377,24 +374,6 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
     mode: 'otp' as const,
     message: '인증 코드를 보냈어요.',
   }
-}
-
-export const requestLoginLink = requestLoginOtp
-
-const legacyAuthFallbackResult = () => ({
-  status: 'error' as const,
-  reason: 'invalidated' as AuthVerifyErrorReason,
-  message: '이 경로는 더 이상 로그인 확인에 사용되지 않아요. 새 인증 코드를 요청해 주세요.',
-})
-
-export const verifyLoginLink = async (params: { email: string; nonce: string }) => {
-  void params
-  return legacyAuthFallbackResult()
-}
-
-export const consumeLoginLink = async ({ email }: { email: string; nonce: string }) => {
-  logAuthConsumeFailure({ email, reason: 'invalidated' })
-  return legacyAuthFallbackResult()
 }
 
 export const verifyAccessToken = async (accessToken: string) => {
