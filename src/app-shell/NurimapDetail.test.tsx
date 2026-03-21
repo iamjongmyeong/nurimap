@@ -149,8 +149,8 @@ describe('Sprint 16 place detail refresh', () => {
     await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
     await user.click(screen.getByRole('button', { name: '평가 남기기' }))
 
-    expect(screen.getByTestId('mobile-review-add-page')).toBeInTheDocument()
-    expect(screen.getByTestId('review-add-surface')).toHaveTextContent('양화로 카페')
+    expect(await screen.findByTestId('mobile-review-add-page')).toBeInTheDocument()
+    expect(await screen.findByTestId('review-add-surface')).toHaveTextContent('양화로 카페')
     expect(window.location.pathname).toBe('/places/place-cafe-1')
 
     await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
@@ -173,7 +173,7 @@ describe('Sprint 16 place detail refresh', () => {
     await user.click(screen.getByTestId('review-add-submit-button'))
 
     expect(await screen.findByTestId('mobile-detail-page')).toBeInTheDocument()
-    expect(screen.getByTestId('detail-review-list')).toHaveTextContent('새 리뷰 작성 테스트')
+    expect(await screen.findByTestId('detail-review-list')).toHaveTextContent('새 리뷰 작성 테스트')
     expect(screen.getByTestId('detail-review-list')).toHaveTextContent('테스트 사용자')
     expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.4 (9)')
     expect(screen.queryByTestId('detail-review-cta')).not.toBeInTheDocument()
@@ -186,7 +186,7 @@ describe('Sprint 16 place detail refresh', () => {
 
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
     await user.click(screen.getByTestId('place-list-item-place-review-fail'))
-    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+    await user.click(await screen.findByRole('button', { name: '평가 남기기' }))
     await user.click(screen.getByTestId('review-add-rating-star-4'))
     await user.type(screen.getByTestId('review-add-content-input'), '저장 실패 시도')
     await user.click(screen.getByTestId('review-add-submit-button'))

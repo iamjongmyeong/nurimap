@@ -37,9 +37,9 @@ const GENERIC_SUBMIT_ERROR_MESSAGE = '등록하지 못했어요. 잠시 후 다�
 const GEOCODE_ERROR_MESSAGE = '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.'
 const DIRTY_EXIT_CONFIRM_MESSAGE = '작성 중인 내용이 사라져요. 나갈까요?'
 const REVIEW_LIMIT = 500
-const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-base-100 px-3 text-base text-base-content placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
-const INPUT_CLASSES = `input h-10 ${BASE_TEXT_FIELD_CLASSES}`
-const TEXTAREA_CLASSES = `textarea min-h-[88px] resize-none overflow-hidden ${BASE_TEXT_FIELD_CLASSES}`
+const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-white px-3 text-base text-[#1f1f1f] placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
+const INPUT_CLASSES = `h-10 ${BASE_TEXT_FIELD_CLASSES}`
+const TEXTAREA_CLASSES = `min-h-[88px] resize-none overflow-hidden ${BASE_TEXT_FIELD_CLASSES}`
 const REVIEW_TEXTAREA_MIN_HEIGHT = 88
 const PLACE_ADD_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 
@@ -72,7 +72,7 @@ const SegmentedField = <T extends string>({
   value: T
 }) => (
   <div className="space-y-2" data-testid={testId}>
-    <p className="text-xs font-medium text-base-content">{label}</p>
+    <p className="text-xs font-medium text-[#1f1f1f]">{label}</p>
     <div className="flex flex-wrap gap-3">
       {options.map((option) => {
         const isSelected = option.value === value
@@ -81,7 +81,7 @@ const SegmentedField = <T extends string>({
             className={`h-10 min-w-[101px] cursor-pointer rounded-xl border px-4 text-base transition-colors ${
               isSelected
                 ? 'border-[#5862FB] bg-[#EEF] font-medium text-[#5862FB]'
-                : 'border-[#EBEBEB] bg-base-100 text-[#C9C9C9]'
+                : 'border-[#EBEBEB] bg-white text-[#C9C9C9]'
             }`}
             data-testid={option.testId}
             key={option.value}
@@ -106,7 +106,7 @@ const StarRatingField = ({
   onChange: (value: number) => void
 }) => (
   <div className="space-y-3" data-testid="rating-field">
-    <p className="text-xs font-medium text-base-content">평가</p>
+    <p className="text-xs font-medium text-[#1f1f1f]">평가</p>
     <div className="flex gap-2">
       {[1, 2, 3, 4, 5].map((value) => {
         const active = value <= rating
@@ -349,7 +349,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
           <div className="space-y-6" data-testid="place-add-form-fields">
             <div className="w-full" data-testid="place-name-field">
               <label className="block" htmlFor="place-name-input">
-                <span className="block text-xs font-medium leading-none text-base-content">이름</span>
+                <span className="block text-xs font-medium leading-none text-[#1f1f1f]">이름</span>
               </label>
               <input
                 aria-label="이름"
@@ -360,12 +360,12 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
                 type="text"
                 value={draft.name}
               />
-              {fieldErrors.name ? <span className="mt-2 block text-xs text-error">{fieldErrors.name}</span> : null}
+              {fieldErrors.name ? <span className="mt-2 block text-xs text-[#e53935]">{fieldErrors.name}</span> : null}
             </div>
 
             <div className="w-full" data-testid="place-address-field">
               <label className="block" htmlFor="place-address-input">
-                <span className="block text-xs font-medium leading-none text-base-content">주소</span>
+                <span className="block text-xs font-medium leading-none text-[#1f1f1f]">주소</span>
               </label>
               <input
                 aria-label="주소"
@@ -376,7 +376,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
                 type="text"
                 value={draft.road_address}
               />
-              {fieldErrors.road_address ? <span className="mt-2 block text-xs text-error">{fieldErrors.road_address}</span> : null}
+              {fieldErrors.road_address ? <span className="mt-2 block text-xs text-[#e53935]">{fieldErrors.road_address}</span> : null}
             </div>
 
             <SegmentedField label="장소 구분" onChange={(place_type) => updateDraft({ place_type })} options={PLACE_TYPE_OPTIONS} testId="place-type-field" value={draft.place_type} />
@@ -385,7 +385,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 
             <div className="w-full" data-testid="review-field">
               <label className="block" htmlFor="place-review-input">
-                <span className="block text-xs font-medium leading-none text-base-content">후기(선택)</span>
+                <span className="block text-xs font-medium leading-none text-[#1f1f1f]">후기(선택)</span>
               </label>
               <textarea
                 className={`${TEXTAREA_CLASSES} mt-2`}
@@ -404,11 +404,11 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
             </div>
           </div>
 
-          {fieldErrors.form ? <p className="mt-4 text-sm text-error">{fieldErrors.form}</p> : null}
+          {fieldErrors.form ? <p className="mt-4 text-sm text-[#e53935]">{fieldErrors.form}</p> : null}
 
           <button
             aria-label={submitState === 'submitting' ? '등록 중' : '등록'}
-            className="btn btn-primary place-submit-button mt-6 h-10 w-full rounded-xl"
+            className="place-submit-button mt-6 inline-flex h-10 w-full items-center justify-center rounded-xl bg-[#5862fb] text-base font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50"
             data-required-fields={hasRequiredFields ? 'complete' : 'incomplete'}
             data-testid="place-submit-button"
             disabled={submitState === 'submitting'}
@@ -416,7 +416,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
             type="button"
           >
             {submitState === 'submitting' ? (
-              <span aria-hidden="true" className="loading loading-spinner loading-xs" data-testid="place-submit-spinner" />
+              <span aria-hidden="true" className="ui-spinner ui-spinner-xs" data-testid="place-submit-spinner" />
             ) : '등록'}
           </button>
         </div>
@@ -432,7 +432,7 @@ export const DesktopPlaceAddPanel = ({ onClose }: PlaceAddPanelProps) => (
 )
 
 export const MobilePlaceAddPage = ({ onClose }: PlaceAddPanelProps) => (
-  <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-base-100" data-testid="mobile-place-add-page">
+  <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-white" data-testid="mobile-place-add-page">
     <div className="flex-1 overflow-hidden">
       <PlaceAddForm onClose={onClose} />
     </div>

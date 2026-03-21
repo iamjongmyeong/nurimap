@@ -139,7 +139,7 @@
   - `pnpm lint`
   - `pnpm exec tsc --noEmit`
   - `pnpm build`
-  - `rg -n 'daisyui|@plugin "daisyui"|btn-(circle|ghost|outline|primary|secondary|warning|sm)|\bbtn\b|form-control|loading(-spinner|-xs|-sm|-md|-lg)|bg-base-[0-9]+|text-error|text-primary|textarea-bordered' src docs package.json`
+  - `rg -n 'daisyui|@plugin "daisyui"|btn-(circle|ghost|outline|primary|secondary|warning|sm)|\bbtn\b|form-control|loading(-spinner|-xs|-sm|-md|-lg)|bg-base-[0-9]+|text-error|text-primary|textarea-bordered' src package.json`
 
 ## AI Agent Interactive QA
 - 대상 시나리오:

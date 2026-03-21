@@ -11,7 +11,7 @@
   - `pnpm lint`
   - `pnpm exec tsc --noEmit`
   - `PUBLIC_SUPABASE_URL='https://example.supabase.co' PUBLIC_SUPABASE_ANON_KEY='test-anon-key' pnpm build`
-  - `rg -n 'daisyui|@plugin "daisyui"|btn-(circle|ghost|outline|primary|secondary|warning|sm)|\bbtn\b|form-control|loading(-spinner|-xs|-sm|-md|-lg)|bg-base-[0-9]+|text-error|text-primary|textarea-bordered' src docs package.json`
+  - `rg -n 'daisyui|@plugin "daisyui"|btn-(circle|ghost|outline|primary|secondary|warning|sm)|\bbtn\b|form-control|loading(-spinner|-xs|-sm|-md|-lg)|bg-base-[0-9]+|text-error|text-primary|textarea-bordered' src package.json`
   - `rg -n 'Tailwind CSS \+ daisyUI|daisyUI를 기준|floating detail panel|detail-review-compose|리뷰 작성 UI를 본다' docs/03-specs/01-app-shell-and-layout.md docs/03-specs/04-place-detail.md docs/03-specs/10-review.md docs/01-product/user-flows/browse-and-detail.md docs/01-product/user-flows/review.md docs/04-design/browse-and-detail.md docs/04-design/place-submission.md docs/00-governance/agent-workflow.md docs/05-sprints/sprint-19/planning.md`
 - 결과:
   - PASS — targeted vitest cluster → `Test Files 7 passed (7)`, `Tests 94 passed (94)`

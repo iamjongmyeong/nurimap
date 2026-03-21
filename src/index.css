@@ -164,3 +164,42 @@ button {
     "Segoe UI",
     sans-serif;
 }
+
+.ui-spinner {
+  display: inline-block;
+  border-style: solid;
+  border-color: currentColor;
+  border-right-color: transparent;
+  border-radius: 9999px;
+  animation: ui-spinner-rotate 0.8s linear infinite;
+}
+
+.ui-spinner-xs {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-width: 2px;
+}
+
+.ui-spinner-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 2px;
+}
+
+.ui-spinner-md {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-width: 2px;
+}
+
+.ui-spinner-lg {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-width: 3px;
+}
+
+@keyframes ui-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}

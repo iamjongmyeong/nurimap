@@ -199,7 +199,7 @@ const MapZoomControls = ({
   >
     <button
       aria-label="지도 확대"
-      className="btn btn-circle btn-sm border-0 bg-base-100/95 text-base-content shadow-sm"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[#1f1f1f] shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
       disabled={mapLevel <= MAP_MIN_LEVEL}
       onClick={onZoomIn}
       type="button"
@@ -208,7 +208,7 @@ const MapZoomControls = ({
     </button>
     <button
       aria-label="지도 축소"
-      className="btn btn-circle btn-sm border-0 bg-base-100/95 text-base-content shadow-sm"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[#1f1f1f] shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
       disabled={mapLevel >= MAP_MAX_LEVEL}
       onClick={onZoomOut}
       type="button"
@@ -281,7 +281,7 @@ const FallbackMapPane = ({
             </button>
             {mapLevel <= LEVEL_LABEL_THRESHOLD ? (
               <span
-                className="mt-2 inline-flex min-w-max rounded-full bg-base-100/95 px-3 py-1 text-xs font-semibold text-slate-800 shadow"
+                className="mt-2 inline-flex min-w-max rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-slate-800 shadow"
                 data-testid={`map-label-${place.id}`}
               >
                 {place.name}
@@ -302,7 +302,7 @@ const MapLoadingPane = () => (
   >
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(148,163,184,0.18),_transparent_28%),linear-gradient(180deg,_rgba(248,250,252,1)_0%,_rgba(237,242,247,1)_100%)]" />
     <div className="relative z-10 flex flex-col items-center gap-3 rounded-[28px] bg-white/85 px-6 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm" data-testid="map-loading-state">
-      <span className="loading loading-spinner loading-lg text-primary" />
+      <span className="ui-spinner ui-spinner-lg text-[#5862fb]" />
       <p className="text-sm font-semibold text-slate-700">{MAP_LOADING_COPY}</p>
     </div>
   </div>
@@ -318,7 +318,7 @@ const MapErrorPane = ({ onRetry }: { onRetry: () => void }) => (
     <div className="relative z-10 w-full max-w-sm rounded-[32px] bg-white px-6 py-7 text-center shadow-[0_24px_72px_rgba(15,23,42,0.12)]" data-testid="map-error-state">
       <p className="text-base font-semibold text-slate-800">{MAP_FAILURE_TITLE}</p>
       <p className="mt-3 text-sm leading-6 text-slate-600">{MAP_FAILURE_BODY}</p>
-      <button className="btn btn-primary mt-6 rounded-full px-6" onClick={onRetry} type="button">
+      <button className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#5862fb] px-6 text-sm font-semibold text-white transition hover:bg-[#4953f1]" onClick={onRetry} type="button">
         {MAP_RETRY_LABEL}
       </button>
     </div>
