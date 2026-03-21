@@ -68,13 +68,16 @@ const LOGOUT_CONFIRM_MESSAGE = '로그아웃하시겠어요?'
 const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const DETAIL_ROUTE_PREFIX = '/places/'
 const REVIEW_LIMIT = 500
+const ADD_RATING_TEXTAREA_MIN_HEIGHT = 88
 const STAR_PATH =
   'M11.9995 19.3643L6.46613 22.6977C6.22168 22.8532 5.96613 22.9199 5.69946 22.8977C5.4328 22.8754 5.19946 22.7865 4.99946 22.631C4.79946 22.4754 4.64391 22.2812 4.5328 22.0483C4.42168 21.8154 4.39946 21.5541 4.46613 21.2643L5.9328 14.9643L1.0328 10.731C0.810573 10.531 0.671906 10.303 0.616795 10.047C0.561684 9.79099 0.578129 9.54121 0.666129 9.29766C0.754129 9.0541 0.887462 8.8541 1.06613 8.69766C1.2448 8.54121 1.48924 8.44121 1.79946 8.39766L8.26613 7.83099L10.7661 1.89766C10.8772 1.63099 11.0497 1.43099 11.2835 1.29766C11.5172 1.16432 11.7559 1.09766 11.9995 1.09766C12.243 1.09766 12.4817 1.16432 12.7155 1.29766C12.9492 1.43099 13.1217 1.63099 13.2328 1.89766L15.7328 7.83099L22.1995 8.39766C22.5106 8.4421 22.755 8.5421 22.9328 8.69766C23.1106 8.85321 23.2439 9.05321 23.3328 9.29766C23.4217 9.5421 23.4386 9.79232 23.3835 10.0483C23.3284 10.3043 23.1892 10.5319 22.9661 10.731L18.0661 14.9643L19.5328 21.2643C19.5995 21.5532 19.5772 21.8145 19.4661 22.0483C19.355 22.2821 19.1995 22.4763 18.9995 22.631C18.7995 22.7857 18.5661 22.8745 18.2995 22.8977C18.0328 22.9208 17.7772 22.8541 17.5328 22.6977L11.9995 19.3643Z'
-const PRIMARY_BUTTON_CLASSES = 'inline-flex items-center justify-center rounded-full bg-[#5862fb] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50'
 const SECONDARY_BUTTON_CLASSES = 'inline-flex items-center justify-center rounded-full border border-[#d9d8e6] bg-white px-4 py-3 text-sm font-semibold text-[#222127] transition hover:border-[#c8c7d7] hover:bg-[#fafaff] disabled:cursor-not-allowed disabled:opacity-50'
-const ADD_RATING_TEXTAREA_CLASSES = 'min-h-[176px] w-full resize-none rounded-[24px] border border-[#ebe9f4] bg-[#fbfaff] px-5 py-4 text-base leading-7 text-[#1f1f1f] placeholder:text-[#b3afbf] focus:border-[#5862fb] focus:outline-none focus:ring-0 focus:shadow-none'
-
 const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
+
+const resizeAddRatingTextarea = (textarea: HTMLTextAreaElement) => {
+  textarea.style.height = `${ADD_RATING_TEXTAREA_MIN_HEIGHT}px`
+  textarea.style.height = `${Math.max(textarea.scrollHeight, ADD_RATING_TEXTAREA_MIN_HEIGHT)}px`
+}
 
 
 const EmptyState = () => (
@@ -592,16 +595,14 @@ const AddRatingStars = ({
   rating: number
   onChange: (value: number) => void
 }) => (
-  <div className="flex gap-2" data-testid="detail-add-rating-rating-field">
+  <div className="flex items-center gap-[6px]" data-testid="detail-add-rating-rating-field">
     {[1, 2, 3, 4, 5].map((value) => {
       const active = value <= rating
       return (
         <button
           aria-label={`${value}점`}
-          className={`inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border transition ${
-            active
-              ? 'border-[#ffd6d4] bg-[#fff1f0] text-[#e53935]'
-              : 'border-[#eceaf4] bg-white text-[#c7c5d3] hover:border-[#d8d5e7] hover:text-[#9d99ab]'
+          className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center transition ${
+            active ? 'text-[#e53935]' : 'text-[#c7c5d3] hover:text-[#9d99ab]'
           }`}
           data-testid={`review-add-rating-star-${value}`}
           key={value}
@@ -629,7 +630,12 @@ const AddRatingScreen = ({
   const [draft, setDraft] = useState(createInitialReviewDraft)
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const hasReviewContent = draft.review_content.trim() !== ''
+  const reviewTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    if (!reviewTextareaRef.current) return
+    resizeAddRatingTextarea(reviewTextareaRef.current)
+  }, [draft.review_content])
 
   const handleSubmit = async () => {
     if (!place || submitState === 'submitting') {
@@ -658,100 +664,69 @@ const AddRatingScreen = ({
   }
 
   return (
-    <div className="flex h-full flex-col bg-[#fcfbff]" data-testid="mobile-review-add-page">
+    <div className="flex h-full flex-col bg-white" data-testid="mobile-review-add-page">
       <DetailHeader ariaLabel="뒤로 가기" onBack={onBack} title="평가 남기기" />
-      <div className="flex-1 overflow-auto px-4 pb-6 pt-5">
-        <div className="mx-auto flex w-full max-w-[420px] flex-col gap-5" data-testid="review-add-surface">
+      <div className="flex-1 overflow-auto px-6 pb-6 pt-6">
+        <div className="mx-auto flex w-full flex-col" data-testid="review-add-surface">
           {place ? (
             <>
-              <section className="rounded-[32px] bg-white p-5 shadow-[0_24px_64px_rgba(40,47,88,0.08)]" data-testid="detail-add-rating-place-card">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8e89a1]">Add rating</p>
-                <h2 className="mt-3 text-[28px] font-semibold tracking-[-0.03em] text-[#222127]">{place.name}</h2>
-                <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-[#7a7687]">
-                  <span className="inline-flex items-center gap-1">
-                    <PlaceTypeIcon className="h-4 w-4" emphasized placeType={place.place_type} />
-                    {PLACE_TYPE_LABEL[place.place_type]}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <MetaReviewStarIcon className="h-4 w-4 text-[#ff6b6b]" />
-                    현재 {place.average_rating.toFixed(1)} · {place.review_count}개 평가
-                  </span>
+              <section className="flex w-full flex-col items-start gap-6" data-testid="review-add-form">
+                <div>
+                  <p className="font-['Pretendard'] text-[12px] font-medium leading-[18px] tracking-[-0.3px] text-[#1c1c1c]">평가</p>
+                  <div className="mt-2">
+                    <AddRatingStars rating={draft.rating_score} onChange={(rating_score) => setDraft((current) => ({ ...current, rating_score }))} />
+                  </div>
                 </div>
-                <p className="mt-4 text-sm leading-6 text-[#6f6b7b]">별점과 후기를 남기면 상세 화면에서 바로 확인할 수 있어요.</p>
-              </section>
 
-              <section className="rounded-[32px] bg-white p-5 shadow-[0_24px_64px_rgba(40,47,88,0.08)]" data-testid="review-add-form">
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-sm font-semibold text-[#1f1f1f]">이번 장소는 어떠셨나요?</p>
-                    <p className="mt-2 text-sm leading-6 text-[#7a7687]">별점 1점부터 5점까지 선택할 수 있어요.</p>
-                    <div className="mt-4">
-                      <AddRatingStars rating={draft.rating_score} onChange={(rating_score) => setDraft((current) => ({ ...current, rating_score }))} />
-                    </div>
-                  </div>
+                <div className="flex min-h-[114px] w-full flex-col gap-2" data-testid="detail-add-rating-review-field">
+                  <label className="block font-['Pretendard'] text-[12px] font-medium leading-[18px] tracking-[-0.3px] text-[#1c1c1c]" htmlFor="detail-add-rating-review-input">
+                    후기(선택)
+                  </label>
+                  <textarea
+                    className="h-[88px] min-h-[88px] w-full resize-none overflow-hidden rounded-xl border border-[#ebe7f1] bg-white px-3 py-2 text-sm leading-6 text-[#1f1f1f] placeholder:text-[#b3afbf] focus:border-[#5862fb] focus:outline-none focus:ring-0 focus:shadow-none"
+                    data-testid="review-add-content-input"
+                    id="review-add-content-input"
+                    maxLength={REVIEW_LIMIT}
+                    onChange={(event) => {
+                      const nextReviewContent = clampReviewContent(event.target.value)
+                      event.currentTarget.value = nextReviewContent
+                      setDraft((current) => ({ ...current, review_content: nextReviewContent }))
+                      resizeAddRatingTextarea(event.currentTarget)
+                    }}
+                    placeholder=""
+                    ref={reviewTextareaRef}
+                    value={draft.review_content}
+                  />
+                </div>
 
-                  <div
-                    className={`rounded-[28px] border p-4 transition ${
-                      hasReviewContent
-                        ? 'border-[#d9d6ff] bg-[#f7f6ff]'
-                        : 'border-[#e8e7f1] bg-[#fcfcfe]'
-                    }`}
-                    data-review-state={hasReviewContent ? 'filled' : 'empty'}
-                    data-testid="detail-add-rating-review-field"
-                  >
-                    <label className="block text-sm font-semibold text-[#1f1f1f]" htmlFor="detail-add-rating-review-input">
-                      후기(선택)
-                    </label>
-                    <textarea
-                      className={`${ADD_RATING_TEXTAREA_CLASSES} mt-3 min-h-[184px] border-0 bg-transparent px-0 py-0`}
-                      data-testid="review-add-content-input"
-                      id="review-add-content-input"
-                      maxLength={REVIEW_LIMIT}
-                      onChange={(event) => setDraft((current) => ({ ...current, review_content: clampReviewContent(event.target.value) }))}
-                      placeholder="메뉴, 분위기, 다시 가고 싶은 이유를 자유롭게 남겨주세요."
-                      value={draft.review_content}
-                    />
-                    <div className="mt-4 flex items-center justify-between gap-3 text-xs font-medium text-[#7a7687]">
-                      <span>{hasReviewContent ? '입력한 후기는 저장 후 바로 상세에 보여요.' : '후기는 비워 둬도 괜찮아요.'}</span>
-                      <span data-testid="detail-add-rating-review-count">{draft.review_content.length} / 500</span>
-                    </div>
-                  </div>
+                {errorMessage ? (
+                  <p className="text-sm text-[#d92d20]" data-testid="detail-add-rating-error">{errorMessage}</p>
+                ) : null}
 
-                  {errorMessage ? (
-                    <p className="text-sm text-[#d92d20]" data-testid="detail-add-rating-error">{errorMessage}</p>
+                <button
+                  className="inline-flex h-10 w-full items-center justify-center rounded-[12px] bg-[#5862fb] px-0 py-2 text-sm font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50"
+                  data-testid="review-add-submit-button"
+                  disabled={submitState === 'submitting'}
+                  onClick={() => {
+                    void handleSubmit()
+                  }}
+                  type="button"
+                >
+                  {submitState === 'submitting' ? (
+                    <span aria-hidden="true" className="ui-spinner ui-spinner-sm" data-testid="review-add-submit-spinner" />
                   ) : null}
-                </div>
+                  <span>{submitState === 'submitting' ? '등록 중' : '등록'}</span>
+                </button>
               </section>
             </>
           ) : (
-            <div className="rounded-[28px] border border-dashed border-[#dbdbe6] bg-white p-5 shadow-[0_18px_48px_rgba(40,47,88,0.06)]">
+            <div className="rounded-[28px] border border-dashed border-[#dbdbe6] bg-white p-5">
               <p className="text-sm font-medium text-[#222127]">평가할 장소를 찾지 못했어요</p>
               <p className="mt-2 text-sm leading-6 text-[#7e7b8b]">상세 화면으로 돌아가 다시 시도해 주세요.</p>
             </div>
           )}
         </div>
       </div>
-
-      {place ? (
-        <div className="border-t border-[#f0eff6] bg-white/95 px-4 pb-5 pt-4 backdrop-blur">
-          <div className="mx-auto w-full max-w-[420px]">
-            <button
-              className={`${PRIMARY_BUTTON_CLASSES} h-12 w-full gap-2 text-base`}
-              data-testid="review-add-submit-button"
-              disabled={submitState === 'submitting'}
-              onClick={() => {
-                void handleSubmit()
-              }}
-              type="button"
-            >
-              {submitState === 'submitting' ? (
-                <span aria-hidden="true" className="ui-spinner ui-spinner-sm" data-testid="review-add-submit-spinner" />
-              ) : null}
-              <span>{submitState === 'submitting' ? '저장 중' : '평가 남기기'}</span>
-            </button>
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }

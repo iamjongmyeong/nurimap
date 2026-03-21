@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
@@ -153,7 +153,11 @@ describe('Sprint 16 place detail refresh', () => {
     await user.click(screen.getByRole('button', { name: '평가 남기기' }))
 
     expect(await screen.findByTestId('mobile-review-add-page')).toBeInTheDocument()
-    expect(await screen.findByTestId('review-add-surface')).toHaveTextContent('양화로 카페')
+    expect(await screen.findByTestId('review-add-surface')).toHaveTextContent('평가')
+    expect(screen.getByTestId('review-add-surface')).toHaveTextContent('후기(선택)')
+    expect(screen.getByText('평가')).toHaveClass("font-['Pretendard']", 'text-[12px]', 'font-medium', 'leading-[18px]', 'tracking-[-0.3px]', 'text-[#1c1c1c]')
+    expect(screen.getByText('후기(선택)')).toHaveClass("font-['Pretendard']", 'text-[12px]', 'font-medium', 'leading-[18px]', 'tracking-[-0.3px]', 'text-[#1c1c1c]')
+    expect(screen.getByTestId('review-add-submit-button')).toHaveTextContent('등록')
     expect(window.location.pathname).toBe('/places/place-cafe-1')
 
     await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
@@ -197,6 +201,42 @@ describe('Sprint 16 place detail refresh', () => {
     expect(await screen.findByText('리뷰를 저장하지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
     expect(screen.getByTestId('mobile-review-add-page')).toBeInTheDocument()
     expect(screen.getByTestId('review-add-content-input')).toHaveValue('저장 실패 시도')
+  })
+
+  it('grows the add-rating review textarea height when the entered content exceeds the minimum height', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+
+    const reviewInput = screen.getByTestId('review-add-content-input') as HTMLTextAreaElement
+
+    Object.defineProperty(reviewInput, 'scrollHeight', {
+      configurable: true,
+      value: 164,
+    })
+
+    await user.type(reviewInput, '첫 줄\\n둘째 줄\\n셋째 줄\\n넷째 줄\\n다섯째 줄\\n여섯째 줄')
+
+    expect(reviewInput.style.height).toBe('164px')
+  })
+
+  it('clamps pasted add-rating review content to 500 characters and discards the overflow', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+
+    const pastedReview = 'a'.repeat(501)
+    fireEvent.change(screen.getByTestId('review-add-content-input'), { target: { value: pastedReview } })
+
+    expect(screen.getByTestId('review-add-content-input')).toHaveValue('a'.repeat(500))
   })
 
   it('returns to the map screen on mobile back and keeps the selected place', async () => {
