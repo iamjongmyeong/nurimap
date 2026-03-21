@@ -61,7 +61,7 @@
 
 ### Design / Development
 - SDK, framework, API를 사용할 때는 먼저 공식 문서를 확인한다.
-- 프론트엔드 구현은 spec에 다른 지시가 없으면 Vite + React + Tailwind CSS + daisyUI를 따른다.
+- 프론트엔드 구현은 spec에 다른 지시가 없으면 Vite + React + Tailwind CSS를 따른다. 별도 UI 라이브러리 baseline은 source of truth가 명시할 때만 추가한다.
 - frontend state가 필요하면 React-oriented library로 Zustand를 사용할 수 있다.
 - UI 작업에서 사용자 제공 screenshot / Figma / annotated capture가 있으면 그것을 visual source of truth로 사용하고, 자율적 디자인 해석은 하지 않는다.
 - UI fidelity가 중요한데 screenshot reference가 없으면, 비자명한 시각 변경 전에 사용자에게 desktop/mobile screenshot 제공을 먼저 요청한다.

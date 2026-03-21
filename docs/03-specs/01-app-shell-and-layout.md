@@ -1,83 +1,82 @@
 # Spec: App Shell And Layout
 
 ## Summary
-Nurimap의 기본 앱 셸, 데스크톱/모바일 레이아웃, 탐색용 화면 골격을 정의한다.
+Nurimap의 기본 앱 셸, 데스크톱/모바일 browse 레이아웃, map/list/detail/add/add-rating surface 배치를 정의한다.
 
 ## Scope
 - 앱 기본 레이아웃
-- 데스크톱 사이드바
-- 데스크톱 floating detail panel
-- 모바일 floating button UI
+- 데스크톱 sidebar browse container
+- 모바일 map/list/detail/add/add-rating surface split
+- 모바일 floating action UI
 - 목록 영역 전환
 - 기본 빈 상태/로딩 상태
-- 선택 상태 공유 골격
+- 선택 상태와 browse context 공유 골격
 
 ## Out Of Scope
 - 로그인 구현
 - place 저장
 - 실제 외부 API 연동
+- review domain rule과 집계 정책 세부
 
 ## AI Agent Instructions
 - 초기 단계에서는 목업 데이터 사용을 허용한다.
 - 프론트엔드 구현 스택은 Vite + React를 기준으로 한다.
-- 스타일링은 Tailwind CSS + daisyUI를 기준으로 한다.
+- 스타일링은 Tailwind CSS를 기준으로 하고, 시각 디테일은 현재 Sprint의 external handoff를 따른다.
 - 상태 관리가 필요하면 Zustand 같은 React 라이브러리를 사용할 수 있다.
-- 레이아웃 구조를 먼저 고정하고 세부 데이터 연동은 이후 spec에서 붙인다.
+- 레이아웃 구조와 surface/state ownership을 먼저 고정하고 세부 데이터 연동은 이후 spec에서 붙인다.
 - 데스크톱과 모바일을 별도 상태로 테스트한다.
 
 ## Functional Requirements
-- 데스크톱에서는 지도 전체 화면 + 왼쪽 사이드바 구조를 사용한다.
-- 데스크톱 상세는 지도 위에 떠 있는 floating panel 구조를 사용한다.
-- 데스크톱 상세 패널은 사이드바 오른쪽에 배치하고 너비 `390px`, 상단 inset `24px`, 하단 inset `24px`, 사이드바와 간격 `24px`를 사용한다.
-- 데스크톱 상세 패널의 높이 `calc(100vh - 48px)`는 상단 bar가 아니라 상단/하단 inset 합을 의미한다.
-- 데스크톱 상세 패널은 둥근 모서리와 그림자를 가진 카드처럼 보이고, 지도는 패널 뒤에서 계속 보여야 한다.
-- 모바일에서는 지도 전체 화면 + 하단 floating button UI 구조를 사용한다.
-- 모바일 floating button UI는 `목록 보기`, `장소 추가` 두 버튼으로 구성한다.
-- `목록 보기` 버튼은 모바일 장소 목록 페이지로 이동한다.
-- place 추가 버튼은 데스크톱 사이드바 상단에 `342px x 48px` 버튼으로 배치한다.
-- 데스크톱에서는 floating button을 사용하지 않는다.
-- 데스크톱 사이드바와 모바일 목록 페이지는 공통적으로 목록 영역 역할을 한다.
-- `장소 추가`를 누르면 별도 전용 화면을 추가하지 않고, 같은 목록 영역 내용이 등록 화면으로 전환된다.
-- 목록, 상세, 등록 상태를 수용할 수 있는 레이아웃 골격을 제공한다.
+- 데스크톱에서는 지도 전체 화면 + 왼쪽 sidebar browse container 구조를 사용한다.
+- 데스크톱의 목록, 상세, 장소 추가는 별도 floating panel이 아니라 같은 sidebar browse container 안에서 전환된다.
+- 모바일에서는 지도 전체 화면 + 하단 floating action UI 구조를 사용한다.
+- 모바일 floating action UI는 `목록 보기`, `장소 추가` 두 버튼으로 구성한다.
+- 모바일 `목록 보기`는 list-family full-screen surface로 이동한다.
+- 모바일 `장소 추가`는 별도 durable route를 만들지 않고 같은 list-family surface 계열을 재사용한다.
+- 모바일 detail은 canonical detail route와 연결된 full-screen page로 표시한다.
+- 모바일 add-rating은 detail-owned transient child surface이며, durable/shareable route는 계속 `/places/:placeId`를 유지한다.
+- list/detail/add/add-rating 전환은 selected spec이 바꾸라고 명시하지 않는 한 selected place와 browse context를 보존한다.
+- 데스크톱에서는 하단 floating action 대신 sidebar 상단의 place add CTA를 사용한다.
+- 레이아웃 골격은 empty/loading/error 상태에서도 현재 map/list/detail 맥락을 잃지 않아야 한다.
 
 ## Acceptance Criteria
 - 데스크톱과 모바일 기본 구조가 문서 정의와 일치한다.
 - place 데이터가 없어도 레이아웃이 깨지지 않는다.
-- place 추가 버튼이 데스크톱 사이드바 상단에 보인다.
-- 데스크톱 상세 패널이 지도 위에 floating panel로 보인다.
-- 데스크톱 상세 패널 뒤에 지도가 계속 보인다.
-- 모바일에서 `목록 보기`, `장소 추가` floating button이 보인다.
-- 장소 추가 진입 시 목록 영역이 등록 화면으로 전환된다.
+- 데스크톱의 detail/add가 지도 위 overlay가 아니라 sidebar browse container 안에서 전환된다.
+- 모바일에서 `목록 보기`, `장소 추가` floating action이 보인다.
+- 모바일 목록/등록 전환이 같은 list-family surface 계열 안에서 이뤄진다.
+- 모바일 detail은 전체 화면으로 열리고, add-rating은 standalone route 없이 detail context 안에서 열린다.
+- loading/error 상태에서도 사용자는 현재 browse context를 이해할 수 있다.
 
 ## TDD Implementation Order
-1. 데스크톱 레이아웃 테스트를 작성한다.
-2. 데스크톱 floating detail panel 레이아웃 테스트를 작성한다.
-3. 모바일 floating button 레이아웃 테스트를 작성한다.
+1. 데스크톱 sidebar browse container 레이아웃 테스트를 작성한다.
+2. 데스크톱 list/detail/add 전환 테스트를 작성한다.
+3. 모바일 floating action 레이아웃 테스트를 작성한다.
 4. 모바일 `목록 보기` 버튼 이동 테스트를 작성한다.
-5. place 추가 버튼 위치와 크기 테스트를 작성한다.
-6. 목록 영역 전환 테스트를 작성한다.
-7. 빈 상태 렌더링 테스트를 작성한다.
+5. 모바일 detail full-screen 레이아웃 테스트를 작성한다.
+6. 모바일 add-rating child surface 상태 전환 테스트를 작성한다.
+7. 빈 상태/로딩 상태 테스트를 작성한다.
 8. 구현한다.
 9. 전체 테스트를 통과시킨다.
 
 ## Required Test Cases
-- 데스크톱 사이드바 렌더링
-- 데스크톱 floating detail panel 렌더링
-- 데스크톱 상세 패널 뒤 지도 노출
-- 모바일 floating button 렌더링
+- 데스크톱 sidebar browse container 렌더링
+- 데스크톱 list/detail/add 전환 렌더링
+- 모바일 floating action 렌더링
 - 모바일 `목록 보기` 버튼 이동
-- place 추가 버튼 위치/크기
-- 목록 영역 전환
-- 빈 상태 화면 표시
+- 모바일 detail full-screen 렌더링
+- 모바일 add-rating child surface 진입/복귀
+- 선택 상태와 browse context 유지
+- 빈 상태/로딩 상태 화면 표시
 
 ## Manual QA Checklist
-- 데스크톱에서 사이드바가 정상 배치된다.
-- 데스크톱에서 상세가 지도 위에 떠 있는 카드처럼 보인다.
-- 데스크톱에서 상세 패널 뒤에 지도가 계속 보인다.
-- 모바일에서 floating button UI가 정상 표시된다.
-- 모바일에서 `목록 보기` 버튼이 목록 페이지로 이동한다.
-- place 추가 버튼이 floating이 아닌 상단 버튼으로 보인다.
-- place 추가 진입 시 별도 전용 화면 대신 같은 목록 영역이 등록 화면으로 바뀐다.
+- 데스크톱에서 지도 + sidebar browse container가 정상 배치된다.
+- 데스크톱에서 상세와 장소 추가가 같은 browse container 안에서 전환된다.
+- 모바일에서 floating action UI가 정상 표시된다.
+- 모바일에서 `목록 보기` 버튼이 목록 surface로 이동한다.
+- 모바일 상세가 전체 화면으로 열린다.
+- 모바일 add-rating이 detail 안의 child surface로 동작한다.
+- loading/error 상태가 현재 browse context를 잃지 않는다.
 
 ## QA Evidence
 - 테스트 실행 결과

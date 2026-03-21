@@ -1,11 +1,13 @@
 # Spec: Review
 
 ## Summary
-리뷰 작성과 별점 평가 규칙, 상세 화면 표시 규칙을 정의한다.
+리뷰 작성과 별점 평가 규칙, detail 하단 CTA/add-rating 진입 규칙, 작성 후 상세 복귀 동작을 정의한다.
 
 ## Scope
 - 리뷰 작성
 - 리뷰 작성 단계의 별점 평가
+- detail 하단 `평가 남기기` CTA 가시성 규칙
+- add-rating child surface 진입/복귀
 - 작성자/작성일 표시
 - 사용자당 place별 1건 규칙
 - place 등록 초기 review 연동
@@ -14,6 +16,11 @@
 ## Functional Requirements
 - 로그인 사용자만 리뷰를 작성할 수 있다.
 - 한 사용자는 같은 place에 review 하나만 작성할 수 있다.
+- 일반 리뷰 작성 경로는 detail 하단 `평가 남기기` CTA를 통해 진입한다.
+- 현재 사용자가 같은 place에 아직 review를 작성하지 않았을 때만 CTA를 노출한다.
+- 현재 사용자가 이미 같은 place에 review를 작성했다면 새 review 작성 CTA나 새 작성 entry를 노출하지 않는다.
+- add-rating은 detail-owned child surface로 열리고, durable/shareable route는 계속 `/places/:placeId`를 유지한다.
+- add-rating에서 back/cancel 시 사용자는 같은 place detail 맥락으로 복귀한다.
 - 리뷰 작성 단계에서 별점 평가를 함께 입력한다.
 - 별점 입력 UI는 5단계 평가 affordance를 사용한다.
 - review는 place에 대한 사용자의 단일 `rating_score`를 함께 가진다.
@@ -27,12 +34,16 @@
 - 리뷰 저장 상태는 `review_submit = idle | submitting | error`로 관리한다.
 - 리뷰 저장 중에는 저장 버튼을 다시 누를 수 없다.
 - 리뷰 저장 실패 시 입력한 리뷰와 별점 값을 유지한다.
+- add-rating 저장 성공 후 사용자는 같은 place detail로 복귀하고, 최신 리뷰 목록/평균 별점/별점 수/내 리뷰 상태가 즉시 갱신된 결과를 본다.
 - place 등록 경로에서 review overwrite 시 후기를 비워 두면 기존 후기 내용은 유지하고 별점만 갱신한다.
 
 ## Acceptance Criteria
-- review가 없는 로그인 사용자는 리뷰와 별점 평가를 함께 작성할 수 있다.
+- review가 없는 로그인 사용자는 detail CTA를 통해 리뷰와 별점 평가를 함께 작성할 수 있다.
+- `my_review === null`일 때만 `평가 남기기` CTA가 보인다.
 - 한 사용자는 같은 place에 review 1건만 가진다.
+- add-rating은 detail-owned child surface로 열리고 back/cancel 시 detail로 복귀한다.
 - 리뷰 작성 시 입력된 별점은 평균 별점과 별점 수에 반영된다.
+- 저장 성공 후 detail로 복귀하고 새 리뷰가 즉시 보인다.
 - place 등록 시 입력한 초기 리뷰와 별점이 같은 review 규칙으로 저장된다.
 - place 등록 경로에서 이미 review가 있는 사용자는 확인 단계를 통해 기존 review를 업데이트할 수 있다.
 - 이미 review를 작성한 사용자는 새 review를 추가할 수 없다.
@@ -41,26 +52,32 @@
 - 리뷰 저장 실패 시 입력한 리뷰와 별점이 유지된다.
 
 ## TDD Implementation Order
-1. review가 없는 로그인 사용자 리뷰 작성 테스트를 작성한다.
-2. 사용자당 place별 review 1건 규칙 테스트를 작성한다.
-3. 리뷰 작성 단계 별점 입력 테스트를 작성한다.
-4. 별점 범위 검증 테스트를 작성한다.
-5. 비로그인 차단 테스트를 작성한다.
-6. 평균 별점 반영 테스트를 작성한다.
-7. place 등록 초기 review 연동 테스트를 작성한다.
-8. 작성자/작성일 표시 테스트를 작성한다.
-9. 리뷰 저장 중 진행 상태 테스트를 작성한다.
-10. 리뷰 저장 중 버튼 비활성화 테스트를 작성한다.
-11. 리뷰 저장 실패 시 입력 유지 테스트를 작성한다.
-12. 구현한다.
-13. 전체 테스트를 통과시킨다.
+1. review가 없는 로그인 사용자 CTA visible 테스트를 작성한다.
+2. 이미 review가 있는 사용자 CTA hidden 테스트를 작성한다.
+3. add-rating child surface 진입/복귀 테스트를 작성한다.
+4. 사용자당 place별 review 1건 규칙 테스트를 작성한다.
+5. 리뷰 작성 단계 별점 입력 테스트를 작성한다.
+6. 별점 범위 검증 테스트를 작성한다.
+7. 비로그인 차단 테스트를 작성한다.
+8. 평균 별점 반영 테스트를 작성한다.
+9. 저장 성공 후 detail 즉시 반영 테스트를 작성한다.
+10. place 등록 초기 review 연동 테스트를 작성한다.
+11. 작성자/작성일 표시 테스트를 작성한다.
+12. 리뷰 저장 중 진행 상태 테스트를 작성한다.
+13. 리뷰 저장 중 버튼 비활성화 테스트를 작성한다.
+14. 리뷰 저장 실패 시 입력 유지 테스트를 작성한다.
+15. 구현한다.
+16. 전체 테스트를 통과시킨다.
 
 ## Required Test Cases
-- review가 없는 로그인 사용자 리뷰+별점 작성 성공
+- review가 없는 로그인 사용자 CTA visible + 리뷰/별점 작성 성공
+- 이미 review가 있는 사용자의 CTA hidden
+- add-rating child surface 진입/복귀
 - 사용자당 place별 review 1건 유지
 - 별점 1~5 외 값 실패
 - 비로그인 사용자 실패
 - 리뷰 저장 후 평균 별점/별점 수 갱신
+- 저장 성공 후 detail 즉시 반영
 - place 등록 초기 review 연동
 - place 등록 경로의 중복 리뷰 확인 단계
 - 이미 review가 있는 사용자의 추가 review 차단
@@ -70,9 +87,11 @@
 - 리뷰 저장 실패 시 입력 유지
 
 ## Manual QA Checklist
-- review가 없는 로그인 사용자는 리뷰 작성 시 별점 버튼을 함께 입력할 수 있다.
-- 같은 place에 이미 review가 있는 사용자는 새 리뷰 작성 UI를 보지 않는다.
-- 리뷰 작성 후 상세에 즉시 보인다.
+- review가 없는 로그인 사용자는 detail에서 `평가 남기기` CTA를 본다.
+- add-rating에서 별점 버튼과 선택 후기 입력을 함께 입력할 수 있다.
+- 같은 place에 이미 review가 있는 사용자는 새 리뷰 작성 CTA를 보지 않는다.
+- add-rating에서 back/cancel 시 같은 detail로 돌아간다.
+- 리뷰 작성 후 detail에 즉시 보인다.
 - 평균 별점과 별점 수가 갱신된다.
 - place 등록 후 초기 리뷰와 별점이 같은 review 규칙으로 반영된다.
 - place 등록 경로에서 이미 review가 있으면 업데이트 여부를 판단할 수 있는 확인 단계가 보인다.
