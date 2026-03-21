@@ -17,11 +17,13 @@ export type NavigationState =
   | 'place_add_open'
   | 'place_detail_open'
 
+export type DetailChildSurface = 'detail' | 'add_rating'
 export type PlaceListLoadState = 'idle' | 'loading' | 'empty' | 'ready' | 'error'
 export type PlaceDetailLoadState = 'idle' | 'loading' | 'ready' | 'error'
 
 type AppShellState = {
   navigationState: NavigationState
+  detailChildSurface: DetailChildSurface
   placeListLoad: PlaceListLoadState
   placeDetailLoad: PlaceDetailLoadState
   selectedPlaceId: string | null
@@ -32,6 +34,9 @@ type AppShellState = {
   closePlaceAdd: () => void
   openPlaceDetail: (placeId: string) => void
   closePlaceDetail: () => void
+  openDetailAddRating: () => void
+  closeDetailAddRating: () => void
+  syncDetailChildSurface: (surface: DetailChildSurface) => void
   returnToMapBrowse: () => void
   setSelectedPlaceId: (placeId: string | null) => void
   setPlaceListLoad: (status: PlaceListLoadState) => void
@@ -48,6 +53,7 @@ type AppShellState = {
 
 const buildInitialState = () => ({
   navigationState: 'map_browse' as NavigationState,
+  detailChildSurface: 'detail' as DetailChildSurface,
   placeListLoad: 'ready' as PlaceListLoadState,
   placeDetailLoad: 'ready' as PlaceDetailLoadState,
   selectedPlaceId: DEFAULT_SELECTED_PLACE_ID,
@@ -57,17 +63,21 @@ const buildInitialState = () => ({
 
 export const useAppShellStore = create<AppShellState>((set, get) => ({
   ...buildInitialState(),
-  openMobilePlaceList: () => set({ navigationState: 'mobile_place_list_open' }),
-  openPlaceAdd: () => set({ navigationState: 'place_add_open' }),
-  closePlaceAdd: () => set({ navigationState: 'map_browse' }),
+  openMobilePlaceList: () => set({ navigationState: 'mobile_place_list_open', detailChildSurface: 'detail' }),
+  openPlaceAdd: () => set({ navigationState: 'place_add_open', detailChildSurface: 'detail' }),
+  closePlaceAdd: () => set({ navigationState: 'map_browse', detailChildSurface: 'detail' }),
   openPlaceDetail: (placeId) =>
     set({
       navigationState: 'place_detail_open',
+      detailChildSurface: 'detail',
       placeDetailLoad: 'ready',
       selectedPlaceId: placeId,
     }),
-  closePlaceDetail: () => set({ navigationState: 'map_browse' }),
-  returnToMapBrowse: () => set({ navigationState: 'map_browse' }),
+  closePlaceDetail: () => set({ navigationState: 'map_browse', detailChildSurface: 'detail' }),
+  openDetailAddRating: () => set({ detailChildSurface: 'add_rating' }),
+  closeDetailAddRating: () => set({ detailChildSurface: 'detail' }),
+  syncDetailChildSurface: (detailChildSurface) => set({ detailChildSurface }),
+  returnToMapBrowse: () => set({ navigationState: 'map_browse', detailChildSurface: 'detail' }),
   setSelectedPlaceId: (selectedPlaceId) => set({ selectedPlaceId }),
   setPlaceListLoad: (placeListLoad) => set({ placeListLoad }),
   setPlaceDetailLoad: (placeDetailLoad) => set({ placeDetailLoad }),
@@ -78,6 +88,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       places: result.places,
       selectedPlaceId: result.place.id,
       navigationState: 'map_browse',
+      detailChildSurface: 'detail',
       placeDetailLoad: 'ready',
     }),
   submitPlaceReview: (placeId, draft) => {
@@ -92,6 +103,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
         places: result.places,
         selectedPlaceId: result.place.id,
         navigationState: 'place_detail_open',
+        detailChildSurface: 'detail',
         placeDetailLoad: 'ready',
       })
     }
@@ -109,6 +121,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
         places: result.places,
         selectedPlaceId: result.place.id,
         navigationState: 'place_detail_open',
+        detailChildSurface: 'detail',
         placeDetailLoad: 'ready',
       })
     }

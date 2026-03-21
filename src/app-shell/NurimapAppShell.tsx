@@ -57,6 +57,11 @@ const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const DETAIL_ROUTE_PREFIX = '/places/'
 const STAR_PATH =
   'M11.9995 19.3643L6.46613 22.6977C6.22168 22.8532 5.96613 22.9199 5.69946 22.8977C5.4328 22.8754 5.19946 22.7865 4.99946 22.631C4.79946 22.4754 4.64391 22.2812 4.5328 22.0483C4.42168 21.8154 4.39946 21.5541 4.46613 21.2643L5.9328 14.9643L1.0328 10.731C0.810573 10.531 0.671906 10.303 0.616795 10.047C0.561684 9.79099 0.578129 9.54121 0.666129 9.29766C0.754129 9.0541 0.887462 8.8541 1.06613 8.69766C1.2448 8.54121 1.48924 8.44121 1.79946 8.39766L8.26613 7.83099L10.7661 1.89766C10.8772 1.63099 11.0497 1.43099 11.2835 1.29766C11.5172 1.16432 11.7559 1.09766 11.9995 1.09766C12.243 1.09766 12.4817 1.16432 12.7155 1.29766C12.9492 1.43099 13.1217 1.63099 13.2328 1.89766L15.7328 7.83099L22.1995 8.39766C22.5106 8.4421 22.755 8.5421 22.9328 8.69766C23.1106 8.85321 23.2439 9.05321 23.3328 9.29766C23.4217 9.5421 23.4386 9.79232 23.3835 10.0483C23.3284 10.3043 23.1892 10.5319 22.9661 10.731L18.0661 14.9643L19.5328 21.2643C19.5995 21.5532 19.5772 21.8145 19.4661 22.0483C19.355 22.2821 19.1995 22.4763 18.9995 22.631C18.7995 22.7857 18.5661 22.8745 18.2995 22.8977C18.0328 22.9208 17.7772 22.8541 17.5328 22.6977L11.9995 19.3643Z'
+const PRIMARY_BUTTON_CLASSES = 'inline-flex items-center justify-center rounded-full bg-[#5862fb] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50'
+const SECONDARY_BUTTON_CLASSES = 'inline-flex items-center justify-center rounded-full border border-[#d9d8e6] bg-white px-4 py-3 text-sm font-semibold text-[#222127] transition hover:border-[#c8c7d7] hover:bg-[#fafaff] disabled:cursor-not-allowed disabled:opacity-50'
+const INPUT_SURFACE_CLASSES = 'w-full rounded-[24px] border border-[#e8e7f1] bg-white px-4 py-3 text-base leading-6 text-[#1f1f1f] outline-none transition placeholder:text-[#b7b5c5] focus:border-[#5862fb]'
+const INPUT_ERROR_CLASSES = 'border-[#d92d20] focus:border-[#d92d20]'
+const REVIEW_LIMIT = 500
 
 const EmptyState = () => (
   <div className="rounded-[28px] border border-dashed border-[#d9d9e7] bg-white px-5 py-8 text-left shadow-[0_20px_60px_rgba(40,47,88,0.08)]">
@@ -67,7 +72,7 @@ const EmptyState = () => (
 
 const LoadingState = () => (
   <div className="flex items-center gap-3 rounded-[28px] bg-white px-5 py-6 shadow-[0_20px_60px_rgba(40,47,88,0.08)]" data-testid="place-list-loading">
-    <span className="loading loading-spinner loading-md text-primary" />
+    <span aria-hidden="true" className="app-spinner app-spinner-md text-[#5862fb]" />
     <div>
       <p className="text-sm font-semibold text-[#222127]">장소 목록을 불러오는 중이에요</p>
       <p className="text-sm text-[#7e7b8b]">잠시만 기다려 주세요.</p>
@@ -77,9 +82,9 @@ const LoadingState = () => (
 
 const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
   <div className="rounded-[28px] bg-white px-5 py-6 shadow-[0_20px_60px_rgba(40,47,88,0.08)]" data-testid="place-list-error">
-    <p className="text-sm font-semibold text-error">장소 목록을 불러오지 못했어요</p>
+    <p className="text-sm font-semibold text-[#d92d20]">장소 목록을 불러오지 못했어요</p>
     <p className="mt-2 text-sm text-[#7e7b8b]">기본 에러 상태는 유지하고, 재시도만 제공해요.</p>
-    <button className="btn btn-outline btn-sm mt-4 rounded-full" onClick={onRetry} type="button">
+    <button className={`${SECONDARY_BUTTON_CLASSES} mt-4`} onClick={onRetry} type="button">
       다시 시도
     </button>
   </div>
@@ -187,7 +192,7 @@ const BrandBlock = ({ compact = false }: { compact?: boolean }) => (
     />
     <div>
       <p className="brand-display text-[26px] leading-none text-[#1f1f25]">NuriMap</p>
-      <p className="mt-1 text-xs font-medium tracking-[0.18em] text-[#7d7a88] uppercase">Local lunch radar</p>
+      <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-[#7d7a88]">Local lunch radar</p>
     </div>
   </div>
 )
@@ -354,8 +359,8 @@ const PlaceListPanel = ({
 }
 
 const DetailLoadingState = () => (
-  <div className="mt-6 flex items-center gap-3 rounded-[28px] bg-[#f6f6fb] p-5" data-testid="place-detail-loading">
-    <span className="loading loading-spinner loading-md text-primary" />
+  <div className="flex items-center gap-3 rounded-[28px] bg-white p-5 shadow-[0_18px_48px_rgba(40,47,88,0.08)]" data-testid="place-detail-loading">
+    <span aria-hidden="true" className="app-spinner app-spinner-md text-[#5862fb]" />
     <div>
       <p className="text-sm font-semibold text-[#222127]">상세 정보를 불러오는 중이에요</p>
       <p className="text-sm text-[#7e7b8b]">기본 로딩 상태를 그대로 유지합니다.</p>
@@ -364,169 +369,14 @@ const DetailLoadingState = () => (
 )
 
 const DetailErrorState = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="mt-6 rounded-[28px] bg-[#f6f6fb] p-5" data-testid="place-detail-error">
-    <p className="text-sm font-semibold text-error">상세 정보를 불러오지 못했어요</p>
+  <div className="rounded-[28px] bg-white p-5 shadow-[0_18px_48px_rgba(40,47,88,0.08)]" data-testid="place-detail-error">
+    <p className="text-sm font-semibold text-[#d92d20]">상세 정보를 불러오지 못했어요</p>
     <p className="mt-2 text-sm text-[#7e7b8b]">상세 화면에서 바로 재시도할 수 있어요.</p>
-    <button className="btn btn-outline btn-sm mt-4 rounded-full" onClick={onRetry} type="button">
+    <button className={`${SECONDARY_BUTTON_CLASSES} mt-4`} onClick={onRetry} type="button">
       다시 시도
     </button>
   </div>
 )
-
-export const DetailReviewComposer = ({
-  onSubmit,
-  placeId,
-}: {
-  onSubmit: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
-  placeId: string
-}) => {
-  const [draft, setDraft] = useState(createInitialReviewDraft)
-  const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'error'>('idle')
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
-  const handleSave = async () => {
-    const validationError = validateReviewDraft(draft)
-    if (validationError) {
-      setSubmitState('error')
-      setErrorMessage(validationError)
-      return
-    }
-
-    setSubmitState('submitting')
-    setErrorMessage(null)
-    await new Promise((resolve) => setTimeout(resolve, 50))
-
-    const result = onSubmit(placeId, draft)
-    if (result.status !== 'saved') {
-      setSubmitState('error')
-      setErrorMessage(result.message ?? '리뷰를 저장하지 못했어요. 다시 시도해 주세요.')
-      return
-    }
-
-    setSubmitState('idle')
-  }
-
-  return (
-    <div className="mt-6 rounded-2xl border border-dashed border-base-300 bg-base-100 p-4" data-testid="detail-review-compose">
-      <h4 className="text-sm font-semibold text-base-content">리뷰 작성</h4>
-      <p className="mt-2 text-sm text-base-content/70">별점과 리뷰를 함께 남길 수 있습니다.</p>
-
-      <div className="mt-4 space-y-2" data-testid="detail-review-rating-field">
-        <p className="text-sm font-semibold text-base-content">별점</p>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4, 5].map((value) => (
-            <button
-              aria-label={`상세 별점 ${value}점`}
-              className={`btn btn-circle btn-sm ${value <= draft.rating_score ? 'btn-warning' : 'btn-ghost'}`}
-              data-testid={`detail-review-rating-star-${value}`}
-              disabled={submitState === 'submitting'}
-              key={value}
-              onClick={() => setDraft((current) => ({ ...current, rating_score: value }))}
-              type="button"
-            >
-              ★
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <label className="form-control mt-4 w-full gap-2">
-        <span className="label-text font-semibold text-base-content">리뷰</span>
-        <textarea
-          className="textarea textarea-bordered min-h-28"
-          data-testid="detail-review-content-input"
-          disabled={submitState === 'submitting'}
-          onChange={(event) => setDraft((current) => ({ ...current, review_content: event.target.value }))}
-          value={draft.review_content}
-        />
-        <span className="label-text-alt text-base-content/60">{draft.review_content.length} / 500</span>
-      </label>
-
-      {errorMessage ? <p className="mt-3 text-sm text-error">{errorMessage}</p> : null}
-
-      <div className="mt-4 flex flex-wrap gap-3">
-        <button
-          className="btn btn-primary rounded-2xl"
-          data-testid="detail-review-submit-button"
-          disabled={submitState === 'submitting'}
-          onClick={() => {
-            void handleSave()
-          }}
-          type="button"
-        >
-          {submitState === 'submitting' ? '저장 중...' : '리뷰 저장'}
-        </button>
-      </div>
-
-      {submitState === 'submitting' ? (
-        <div className="mt-4 rounded-2xl bg-base-200 p-4 text-sm text-base-content/80" data-testid="detail-review-submit-loading">
-          리뷰를 저장하는 중입니다.
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-export const DetailRecommendationControl = ({
-  active,
-  canRecommend,
-  onToggle,
-}: {
-  active: boolean
-  canRecommend: boolean
-  onToggle: () => { status: 'toggled' | 'error'; message?: string }
-}) => {
-  const [toggleState, setToggleState] = useState<'idle' | 'submitting' | 'error'>('idle')
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
-  const handleToggle = async () => {
-    if (!canRecommend) {
-      setToggleState('error')
-      setErrorMessage('로그인 후에 추천할 수 있어요.')
-      return
-    }
-
-    setToggleState('submitting')
-    setErrorMessage(null)
-    await new Promise((resolve) => setTimeout(resolve, 50))
-
-    const result = onToggle()
-    if (result.status === 'error') {
-      setToggleState('error')
-      setErrorMessage(result.message ?? '추천 상태를 변경하지 못했어요. 다시 시도해 주세요.')
-      return
-    }
-
-    setToggleState('idle')
-  }
-
-  return (
-    <div className="mt-6 rounded-2xl border border-base-300 bg-base-100 p-4" data-testid="detail-recommendation-control">
-      <div className="flex items-center justify-between gap-3">
-        <h4 className="text-sm font-semibold text-base-content">추천</h4>
-        <button
-          className={`btn rounded-2xl ${active ? 'btn-secondary' : 'btn-primary'}`}
-          data-testid="detail-recommendation-button"
-          disabled={toggleState === 'submitting'}
-          onClick={() => {
-            void handleToggle()
-          }}
-          type="button"
-        >
-          {toggleState === 'submitting' ? '처리 중...' : active ? '추천 취소' : '추천'}
-        </button>
-      </div>
-
-      {toggleState === 'submitting' ? (
-        <div className="mt-4 rounded-2xl bg-base-200 p-4 text-sm text-base-content/80" data-testid="detail-recommendation-loading">
-          추천 상태를 변경하는 중입니다.
-        </div>
-      ) : null}
-
-      {errorMessage ? <p className="mt-3 text-sm text-error">{errorMessage}</p> : null}
-    </div>
-  )
-}
 
 const DetailMetaRow = ({
   children,
@@ -576,10 +426,13 @@ const DetailCard = ({ place }: { place: PlaceSummary }) => {
   )
 
   return (
-    <div data-testid="place-detail-ready">
-      <section className="px-6 pb-6 pt-4" data-testid="detail-info-section">
+    <div className="overflow-hidden rounded-[32px] bg-white shadow-[0_24px_64px_rgba(40,47,88,0.08)]" data-testid="place-detail-ready">
+      <section className="px-6 pb-6 pt-6" data-testid="detail-info-section">
         <div className="flex flex-col gap-6">
-          <h2 className="text-lg font-medium leading-7 text-[#1f1f1f]">{place.name}</h2>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8e89a1]">Place detail</p>
+            <h2 className="text-[28px] font-semibold tracking-[-0.03em] text-[#1f1f1f]">{place.name}</h2>
+          </div>
 
           <div className="flex flex-col gap-4">
             <DetailMetaRow icon={<LocationIcon />} testId="detail-address-row">
@@ -605,12 +458,17 @@ const DetailCard = ({ place }: { place: PlaceSummary }) => {
         </div>
       </section>
 
-      <div className="h-1 bg-[#F0F0F0]" />
+      <div className="h-px bg-[#f0eff6]" />
 
       <section className="px-6 py-6" data-testid="detail-review-section">
-        <div className="mb-6">
-          <p className="text-sm font-medium leading-5 text-[#8b8894]">평가 및 리뷰</p>
-          <span className="sr-only">리뷰 {place.review_count}</span>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium leading-5 text-[#8b8894]">평가 및 리뷰</p>
+            <span className="sr-only">리뷰 {place.review_count}</span>
+          </div>
+          {place.my_review ? (
+            <span className="rounded-full bg-[#f2f1fb] px-3 py-1 text-xs font-semibold text-[#5f5b6a]">내 평가 완료</span>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-6" data-testid="detail-review-list">
@@ -642,7 +500,7 @@ const DetailBody = ({
 
   if (!place) {
     return (
-      <div className="mt-6 rounded-[28px] border border-dashed border-[#dbdbe6] bg-white p-5">
+      <div className="rounded-[28px] border border-dashed border-[#dbdbe6] bg-white p-5 shadow-[0_18px_48px_rgba(40,47,88,0.06)]">
         <p className="text-sm font-medium text-[#222127]">선택된 장소가 아직 없어요</p>
         <p className="mt-2 text-sm leading-6 text-[#7e7b8b]">목록이나 지도 마커를 선택하면 상세가 열립니다.</p>
       </div>
@@ -656,30 +514,275 @@ const DetailHeader = ({
   ariaLabel,
   onBack,
   title,
-  useNegativeInset = false,
 }: {
   ariaLabel: string
   onBack: () => void
   title: string
-  useNegativeInset?: boolean
 }) => (
-  <div
-    className={`${useNegativeInset ? '-mx-6 -mt-6' : ''} sticky top-0 z-10 h-14 bg-white`}
-    data-testid="detail-header"
-  >
-    <div className="relative h-full">
+  <div className="sticky top-0 z-20 border-b border-[#f0eff6] bg-white/95 backdrop-blur" data-testid="detail-header">
+    <div className="relative flex h-14 items-center justify-center px-4">
       <button
         aria-label={ariaLabel}
-        className="absolute left-6 top-6 inline-flex h-6 w-6 cursor-pointer items-center justify-center text-[#1f1f1f]"
+        className="absolute left-4 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[#e8e7f1] bg-white text-[#1f1f1f] transition hover:bg-[#f7f6ff]"
         onClick={onBack}
         type="button"
       >
         <BackIcon />
       </button>
-      <h2 className="sr-only">{title}</h2>
+      <h2 className="text-sm font-semibold text-[#1f1f1f]">{title}</h2>
     </div>
   </div>
 )
+
+const DetailFooterCta = ({ onClick }: { onClick: () => void }) => (
+  <div className="border-t border-[#f0eff6] bg-white/95 px-4 pb-5 pt-4 backdrop-blur">
+    <button
+      className={`${PRIMARY_BUTTON_CLASSES} h-12 w-full text-base`}
+      data-testid="detail-add-rating-button"
+      onClick={onClick}
+      type="button"
+    >
+      평가 남기기
+    </button>
+  </div>
+)
+
+const DetailOverviewScreen = ({
+  onBack,
+  onOpenAddRating,
+  onRetry,
+  place,
+  status,
+}: {
+  onBack: () => void
+  onOpenAddRating: () => void
+  onRetry: () => void
+  place: PlaceSummary | undefined
+  status: PlaceDetailLoadState
+}) => (
+  <div className="flex h-full flex-col bg-[#fcfbff]">
+    <DetailHeader ariaLabel="뒤로 가기" onBack={onBack} title="장소 상세" />
+    <div className="flex-1 overflow-auto px-4 pb-6 pt-5">
+      <div className="mx-auto w-full max-w-[420px]">
+        <DetailBody onRetry={onRetry} place={place} status={status} />
+      </div>
+    </div>
+    {status === 'ready' && place && !place.my_review ? <DetailFooterCta onClick={onOpenAddRating} /> : null}
+  </div>
+)
+
+const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
+
+const AddRatingStars = ({
+  rating,
+  onChange,
+}: {
+  rating: number
+  onChange: (value: number) => void
+}) => (
+  <div className="flex gap-2" data-testid="detail-add-rating-rating-field">
+    {[1, 2, 3, 4, 5].map((value) => {
+      const active = value <= rating
+      return (
+        <button
+          aria-label={`${value}점`}
+          className={`inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border transition ${
+            active
+              ? 'border-[#ffd6d4] bg-[#fff1f0] text-[#e53935]'
+              : 'border-[#eceaf4] bg-white text-[#c7c5d3] hover:border-[#d8d5e7] hover:text-[#9d99ab]'
+          }`}
+          data-testid={`detail-add-rating-star-${value}`}
+          key={value}
+          onClick={() => onChange(value)}
+          type="button"
+        >
+          <svg aria-hidden="true" className="h-6 w-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d={STAR_PATH} fill="currentColor" />
+          </svg>
+        </button>
+      )
+    })}
+  </div>
+)
+
+const AddRatingScreen = ({
+  onBack,
+  onSubmit,
+  place,
+}: {
+  onBack: () => void
+  onSubmit: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
+  place: PlaceSummary | undefined
+}) => {
+  const [draft, setDraft] = useState(createInitialReviewDraft)
+  const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const hasReviewContent = draft.review_content.trim() !== ''
+
+  useEffect(() => {
+    setDraft(createInitialReviewDraft())
+    setSubmitState('idle')
+    setErrorMessage(null)
+  }, [place?.id])
+
+  const handleSubmit = async () => {
+    if (!place || submitState === 'submitting') {
+      return
+    }
+
+    const validationError = validateReviewDraft(draft)
+    if (validationError) {
+      setSubmitState('error')
+      setErrorMessage(validationError)
+      return
+    }
+
+    setSubmitState('submitting')
+    setErrorMessage(null)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    const result = onSubmit(place.id, draft)
+    if (result.status !== 'saved') {
+      setSubmitState('error')
+      setErrorMessage(result.message ?? '평가를 저장하지 못했어요. 다시 시도해 주세요.')
+      return
+    }
+
+    setSubmitState('idle')
+  }
+
+  return (
+    <div className="flex h-full flex-col bg-[#fcfbff]" data-testid="detail-add-rating-page">
+      <DetailHeader ariaLabel="상세로 돌아가기" onBack={onBack} title="평가 남기기" />
+      <div className="flex-1 overflow-auto px-4 pb-6 pt-5">
+        <div className="mx-auto flex w-full max-w-[420px] flex-col gap-5">
+          {place ? (
+            <>
+              <section className="rounded-[32px] bg-white p-5 shadow-[0_24px_64px_rgba(40,47,88,0.08)]" data-testid="detail-add-rating-place-card">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8e89a1]">Add rating</p>
+                <h2 className="mt-3 text-[28px] font-semibold tracking-[-0.03em] text-[#222127]">{place.name}</h2>
+                <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-[#7a7687]">
+                  <span className="inline-flex items-center gap-1">
+                    <PlaceTypeIcon className="h-4 w-4" emphasized placeType={place.place_type} />
+                    {PLACE_TYPE_LABEL[place.place_type]}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <MetaReviewStarIcon className="h-4 w-4 text-[#ff6b6b]" />
+                    현재 {place.average_rating.toFixed(1)} · {place.review_count}개 평가
+                  </span>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-[#6f6b7b]">별점과 후기를 남기면 상세 화면에서 바로 확인할 수 있어요.</p>
+              </section>
+
+              <section className="rounded-[32px] bg-white p-5 shadow-[0_24px_64px_rgba(40,47,88,0.08)]" data-testid="detail-add-rating-form">
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-sm font-semibold text-[#1f1f1f]">이번 장소는 어떠셨나요?</p>
+                    <p className="mt-2 text-sm leading-6 text-[#7a7687]">별점 1점부터 5점까지 선택할 수 있어요.</p>
+                    <div className="mt-4">
+                      <AddRatingStars rating={draft.rating_score} onChange={(rating_score) => setDraft((current) => ({ ...current, rating_score }))} />
+                    </div>
+                  </div>
+
+                  <div
+                    className={`rounded-[28px] border p-4 transition ${
+                      hasReviewContent
+                        ? 'border-[#d9d6ff] bg-[#f7f6ff]'
+                        : 'border-[#e8e7f1] bg-[#fcfcfe]'
+                    }`}
+                    data-review-state={hasReviewContent ? 'filled' : 'empty'}
+                    data-testid="detail-add-rating-review-field"
+                  >
+                    <label className="block text-sm font-semibold text-[#1f1f1f]" htmlFor="detail-add-rating-review-input">
+                      후기(선택)
+                    </label>
+                    <textarea
+                      className="mt-3 min-h-[184px] w-full resize-none border-0 bg-transparent text-base leading-7 text-[#1f1f1f] outline-none placeholder:text-[#b7b5c5]"
+                      data-testid="detail-add-rating-review-input"
+                      id="detail-add-rating-review-input"
+                      maxLength={REVIEW_LIMIT}
+                      onChange={(event) => setDraft((current) => ({ ...current, review_content: clampReviewContent(event.target.value) }))}
+                      placeholder="메뉴, 분위기, 다시 가고 싶은 이유를 자유롭게 남겨주세요."
+                      value={draft.review_content}
+                    />
+                    <div className="mt-4 flex items-center justify-between gap-3 text-xs font-medium text-[#7a7687]">
+                      <span>{hasReviewContent ? '입력한 후기는 저장 후 바로 상세에 보여요.' : '후기는 비워 둬도 괜찮아요.'}</span>
+                      <span data-testid="detail-add-rating-review-count">{draft.review_content.length} / 500</span>
+                    </div>
+                  </div>
+
+                  {errorMessage ? (
+                    <p className="text-sm text-[#d92d20]" data-testid="detail-add-rating-error">{errorMessage}</p>
+                  ) : null}
+                </div>
+              </section>
+            </>
+          ) : (
+            <div className="rounded-[28px] border border-dashed border-[#dbdbe6] bg-white p-5 shadow-[0_18px_48px_rgba(40,47,88,0.06)]">
+              <p className="text-sm font-medium text-[#222127]">평가할 장소를 찾지 못했어요</p>
+              <p className="mt-2 text-sm leading-6 text-[#7e7b8b]">상세 화면으로 돌아가 다시 시도해 주세요.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {place ? (
+        <div className="border-t border-[#f0eff6] bg-white/95 px-4 pb-5 pt-4 backdrop-blur">
+          <div className="mx-auto w-full max-w-[420px]">
+            <button
+              className={`${PRIMARY_BUTTON_CLASSES} h-12 w-full gap-2 text-base`}
+              data-testid="detail-add-rating-submit-button"
+              disabled={submitState === 'submitting'}
+              onClick={() => {
+                void handleSubmit()
+              }}
+              type="button"
+            >
+              {submitState === 'submitting' ? (
+                <span aria-hidden="true" className="app-spinner app-spinner-sm" data-testid="detail-add-rating-submit-spinner" />
+              ) : null}
+              <span>{submitState === 'submitting' ? '저장 중' : '평가 남기기'}</span>
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+const DetailScene = ({
+  detailChildSurface,
+  onAddRatingBack,
+  onBrowseBack,
+  onOpenAddRating,
+  onRetry,
+  onSubmitReview,
+  place,
+  status,
+}: {
+  detailChildSurface: 'detail' | 'add_rating'
+  onAddRatingBack: () => void
+  onBrowseBack: () => void
+  onOpenAddRating: () => void
+  onRetry: () => void
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
+  place: PlaceSummary | undefined
+  status: PlaceDetailLoadState
+}) => {
+  if (detailChildSurface === 'add_rating') {
+    return <AddRatingScreen onBack={onAddRatingBack} onSubmit={onSubmitReview} place={place} />
+  }
+
+  return (
+    <DetailOverviewScreen
+      onBack={onBrowseBack}
+      onOpenAddRating={onOpenAddRating}
+      onRetry={onRetry}
+      place={place}
+      status={status}
+    />
+  )
+}
 
 const DesktopBrowseTopBar = ({ onOpenPlaceAdd }: { onOpenPlaceAdd: () => void }) => (
   <div className="relative -mx-6 -mt-6 z-10 h-[76px] shrink-0 overflow-hidden bg-white" data-testid="desktop-browse-topbar">
@@ -747,33 +850,55 @@ const DesktopBrowseSidebar = ({
 }
 
 const DesktopDetailSidebar = ({
-  onBack,
+  detailChildSurface,
+  onAddRatingBack,
+  onBrowseBack,
+  onOpenAddRating,
+  onSubmitReview,
   place,
   status,
 }: {
-  onBack: () => void
+  detailChildSurface: 'detail' | 'add_rating'
+  onAddRatingBack: () => void
+  onBrowseBack: () => void
+  onOpenAddRating: () => void
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
   place: PlaceSummary | undefined
   status: PlaceDetailLoadState
 }) => (
   <section className="flex h-full flex-col" data-testid="desktop-detail-panel">
-    <DetailHeader ariaLabel="목록으로 돌아가기" onBack={onBack} title="장소 상세" />
-    <div className="flex-1 overflow-auto">
-      <DetailBody onRetry={useAppShellStore.getState().retryPlaceDetail} place={place} status={status} />
-    </div>
+    <DetailScene
+      detailChildSurface={detailChildSurface}
+      onAddRatingBack={onAddRatingBack}
+      onBrowseBack={onBrowseBack}
+      onOpenAddRating={onOpenAddRating}
+      onRetry={useAppShellStore.getState().retryPlaceDetail}
+      onSubmitReview={onSubmitReview}
+      place={place}
+      status={status}
+    />
   </section>
 )
 
 const DesktopSidebar = ({
+  detailChildSurface,
   navigationState,
+  onAddRatingBack,
+  onOpenAddRating,
   onOpenPlaceDetail,
   onReturnToMapBrowse,
+  onSubmitReview,
   places,
   selectedPlace,
   selectedPlaceId,
 }: {
+  detailChildSurface: 'detail' | 'add_rating'
   navigationState: NavigationState
+  onAddRatingBack: () => void
+  onOpenAddRating: () => void
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
   places: PlaceSummary[]
   selectedPlace: PlaceSummary | undefined
   selectedPlaceId: string | null
@@ -789,7 +914,15 @@ const DesktopSidebar = ({
       {navigationState === 'place_add_open' ? (
         <DesktopPlaceAddPanel onClose={closePlaceAdd} />
       ) : navigationState === 'place_detail_open' ? (
-        <DesktopDetailSidebar onBack={onReturnToMapBrowse} place={selectedPlace} status={placeDetailLoad} />
+        <DesktopDetailSidebar
+          detailChildSurface={detailChildSurface}
+          onAddRatingBack={onAddRatingBack}
+          onBrowseBack={onReturnToMapBrowse}
+          onOpenAddRating={onOpenAddRating}
+          onSubmitReview={onSubmitReview}
+          place={selectedPlace}
+          status={placeDetailLoad}
+        />
       ) : (
         <DesktopBrowseSidebar onOpenPlaceDetail={onOpenPlaceDetail} places={places} selectedPlaceId={selectedPlaceId} />
       )}
@@ -802,14 +935,16 @@ const MobileFloatingActions = () => {
   const openPlaceAdd = useAppShellStore((state) => state.openPlaceAdd)
 
   return (
-    <div className="absolute inset-x-4 bottom-6 z-10 flex gap-3" data-testid="mobile-floating-actions">
-      <button className="btn flex-1 rounded-full border-none bg-white text-[#222127] shadow-[0_18px_40px_rgba(39,45,89,0.18)]" onClick={openMobilePlaceList} type="button">
-        목록 보기
-      </button>
-      <button className="btn flex-1 rounded-full border-none bg-[#5862fb] text-white shadow-[0_18px_40px_rgba(88,98,251,0.32)]" onClick={openPlaceAdd} type="button">
-        <PlusIcon className="mr-1 h-4 w-4" />
-        장소 추가
-      </button>
+    <div className="absolute inset-x-4 bottom-6 z-10" data-testid="mobile-floating-actions">
+      <div className="grid grid-cols-2 gap-3 rounded-[28px] bg-white/92 p-3 shadow-[0_24px_60px_rgba(39,45,89,0.18)] backdrop-blur">
+        <button className={`${SECONDARY_BUTTON_CLASSES} h-12`} onClick={openMobilePlaceList} type="button">
+          목록 보기
+        </button>
+        <button className={`${PRIMARY_BUTTON_CLASSES} h-12 gap-2`} onClick={openPlaceAdd} type="button">
+          <PlusIcon className="h-4 w-4" />
+          장소 추가
+        </button>
+      </div>
     </div>
   )
 }
@@ -825,23 +960,24 @@ const MobileListPage = ({
   places: PlaceSummary[]
   selectedPlaceId: string | null
 }) => {
+  const openPlaceAdd = useAppShellStore((state) => state.openPlaceAdd)
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
   const retryPlaceList = useAppShellStore((state) => state.retryPlaceList)
 
   return (
     <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-[#fcfbff]" data-testid="mobile-list-page">
       <div className="border-b border-[#efedf6] px-4 pb-5 pt-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-4">
-            <BrandBlock compact />
+        <div className="space-y-4">
+          <BrandBlock compact />
+          <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8e89a1]">Browse</p>
               <h2 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-[#222127]">오늘 둘러볼 장소</h2>
             </div>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#5f5b6a] shadow-[0_12px_30px_rgba(40,47,88,0.08)]">
+              {places.length}곳
+            </span>
           </div>
-          <button className="btn btn-ghost btn-sm rounded-full text-[#5f5b6a]" onClick={onReturnToMapBrowse} type="button">
-            지도 보기
-          </button>
         </div>
       </div>
       <div className="flex-1 overflow-auto px-4 py-5">
@@ -853,38 +989,71 @@ const MobileListPage = ({
           status={placeListLoad}
         />
       </div>
+      <div className="border-t border-[#efedf6] bg-white/95 px-4 pb-5 pt-4 backdrop-blur">
+        <div className="grid grid-cols-2 gap-3">
+          <button className={`${SECONDARY_BUTTON_CLASSES} h-12`} onClick={onReturnToMapBrowse} type="button">
+            지도 보기
+          </button>
+          <button className={`${PRIMARY_BUTTON_CLASSES} h-12 gap-2`} onClick={openPlaceAdd} type="button">
+            <PlusIcon className="h-4 w-4" />
+            장소 추가
+          </button>
+        </div>
+      </div>
     </section>
   )
 }
 
 const MobileDetailPage = ({
-  onBack,
+  detailChildSurface,
+  onAddRatingBack,
+  onBrowseBack,
+  onOpenAddRating,
+  onSubmitReview,
   place,
   status,
 }: {
-  onBack: () => void
+  detailChildSurface: 'detail' | 'add_rating'
+  onAddRatingBack: () => void
+  onBrowseBack: () => void
+  onOpenAddRating: () => void
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
   place: PlaceSummary | undefined
   status: PlaceDetailLoadState
 }) => (
   <section className="absolute inset-0 z-30 flex min-h-screen flex-col bg-white" data-testid="mobile-detail-page">
-    <DetailHeader ariaLabel="뒤로 가기" onBack={onBack} title="장소 상세" />
-    <div className="flex-1 overflow-auto">
-      <DetailBody onRetry={useAppShellStore.getState().retryPlaceDetail} place={place} status={status} />
-    </div>
+    <DetailScene
+      detailChildSurface={detailChildSurface}
+      onAddRatingBack={onAddRatingBack}
+      onBrowseBack={onBrowseBack}
+      onOpenAddRating={onOpenAddRating}
+      onRetry={useAppShellStore.getState().retryPlaceDetail}
+      onSubmitReview={onSubmitReview}
+      place={place}
+      status={status}
+    />
   </section>
 )
 
 const DesktopAppShell = ({
+  detailChildSurface,
   navigationState,
   mapPlaces,
+  onAddRatingBack,
+  onOpenAddRating,
   onOpenPlaceDetail,
   onReturnToMapBrowse,
+  onSubmitReview,
   selectedPlace,
 }: {
+  detailChildSurface: 'detail' | 'add_rating'
   navigationState: NavigationState
   mapPlaces: PlaceSummary[]
+  onAddRatingBack: () => void
+  onOpenAddRating: () => void
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
   selectedPlace: PlaceSummary | undefined
 }) => {
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
@@ -894,9 +1063,13 @@ const DesktopAppShell = ({
   return (
     <main className="hidden md:flex" data-testid="desktop-shell">
       <DesktopSidebar
+        detailChildSurface={detailChildSurface}
         navigationState={navigationState}
+        onAddRatingBack={onAddRatingBack}
+        onOpenAddRating={onOpenAddRating}
         onOpenPlaceDetail={onOpenPlaceDetail}
         onReturnToMapBrowse={onReturnToMapBrowse}
+        onSubmitReview={onSubmitReview}
         places={mapPlaces}
         selectedPlace={selectedPlace}
         selectedPlaceId={selectedPlaceId}
@@ -915,16 +1088,24 @@ const DesktopAppShell = ({
 }
 
 const MobileAppShell = ({
+  detailChildSurface,
   navigationState,
   mapPlaces,
+  onAddRatingBack,
+  onOpenAddRating,
   onOpenPlaceDetail,
   onReturnToMapBrowse,
+  onSubmitReview,
   selectedPlace,
 }: {
+  detailChildSurface: 'detail' | 'add_rating'
   navigationState: NavigationState
   mapPlaces: PlaceSummary[]
+  onAddRatingBack: () => void
+  onOpenAddRating: () => void
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
   selectedPlace: PlaceSummary | undefined
 }) => {
   const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
@@ -934,7 +1115,7 @@ const MobileAppShell = ({
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-base-100 md:hidden" data-testid="mobile-shell">
+    <main className="relative min-h-screen overflow-hidden bg-white md:hidden" data-testid="mobile-shell">
       <MapPane
         mapLevel={mapLevel}
         onMapLevelChange={setMapLevel}
@@ -951,7 +1132,15 @@ const MobileAppShell = ({
         />
       ) : null}
       {navigationState === 'place_detail_open' ? (
-        <MobileDetailPage onBack={onReturnToMapBrowse} place={selectedPlace} status={placeDetailLoad} />
+        <MobileDetailPage
+          detailChildSurface={detailChildSurface}
+          onAddRatingBack={onAddRatingBack}
+          onBrowseBack={onReturnToMapBrowse}
+          onOpenAddRating={onOpenAddRating}
+          onSubmitReview={onSubmitReview}
+          place={selectedPlace}
+          status={placeDetailLoad}
+        />
       ) : null}
       {navigationState === 'place_add_open' ? <MobilePlaceAddPage onClose={closePlaceAdd} /> : null}
       {navigationState === 'map_browse' ? <MobileFloatingActions /> : null}
@@ -968,14 +1157,30 @@ const subscribeToLocation = (callback: () => void) => {
 
 const getLocationPathname = () => window.location.pathname
 
+const readDetailChildSurfaceFromHistoryState = (state: unknown): 'detail' | 'add_rating' => {
+  if (!state || typeof state !== 'object') {
+    return 'detail'
+  }
+
+  return 'detailChildSurface' in state && state.detailChildSurface === 'add_rating'
+    ? 'add_rating'
+    : 'detail'
+}
+
 export const NurimapAppShell = () => {
   const { isDesktop } = useViewportMode()
   const pathname = useSyncExternalStore(subscribeToLocation, getLocationPathname, getLocationPathname)
   const navigationState = useAppShellStore((state) => state.navigationState)
+  const detailChildSurface = useAppShellStore((state) => state.detailChildSurface)
+  const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
+  const openDetailAddRating = useAppShellStore((state) => state.openDetailAddRating)
+  const closeDetailAddRating = useAppShellStore((state) => state.closeDetailAddRating)
+  const syncDetailChildSurface = useAppShellStore((state) => state.syncDetailChildSurface)
   const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
   const places = useAppShellStore((state) => state.places)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
   const setSelectedPlaceId = useAppShellStore((state) => state.setSelectedPlaceId)
+  const submitPlaceReview = useAppShellStore((state) => state.submitPlaceReview)
   const mapLevel = useAppShellStore((state) => state.mapLevel)
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
   const mapPlaces = places.filter(hasCoordinates)
@@ -987,6 +1192,32 @@ export const NurimapAppShell = () => {
     ? routeSelectedPlace
     : mapPlaces.find((place) => place.id === selectedPlaceId)
   const effectiveNavigationState = routePlaceId ? 'place_detail_open' : navigationState
+  const effectiveDetailChildSurface = routePlaceId ? detailChildSurface : 'detail'
+
+  useEffect(() => {
+    const nextSurface = routePlaceId
+      ? readDetailChildSurfaceFromHistoryState(window.history.state)
+      : 'detail'
+
+    if (detailChildSurface !== nextSurface) {
+      syncDetailChildSurface(nextSurface)
+    }
+  }, [detailChildSurface, routePlaceId, syncDetailChildSurface])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      syncDetailChildSurface(
+        window.location.pathname.startsWith(DETAIL_ROUTE_PREFIX)
+          ? readDetailChildSurfaceFromHistoryState(window.history.state)
+          : 'detail',
+      )
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [syncDetailChildSurface])
 
   useEffect(() => {
     if (!routePlaceId) {
@@ -1025,8 +1256,7 @@ export const NurimapAppShell = () => {
   }
 
   const handleOpenPlaceDetail = (placeId: string) => {
-    returnToMapBrowse()
-    setSelectedPlaceId(placeId)
+    openPlaceDetail(placeId)
     setMapLevel(2)
     navigateToPath(getDetailRoutePath(placeId))
   }
@@ -1036,20 +1266,60 @@ export const NurimapAppShell = () => {
     navigateToPath('/', true)
   }
 
+  const handleOpenAddRating = () => {
+    if (!routePlaceId) {
+      return
+    }
+
+    const currentState = window.history.state && typeof window.history.state === 'object'
+      ? window.history.state as Record<string, unknown>
+      : {}
+
+    window.history.pushState({ ...currentState, detailChildSurface: 'add_rating' }, '', window.location.pathname)
+    openDetailAddRating()
+  }
+
+  const handleCloseAddRating = () => {
+    if (readDetailChildSurfaceFromHistoryState(window.history.state) === 'add_rating') {
+      window.history.back()
+      return
+    }
+
+    closeDetailAddRating()
+  }
+
+  const handleSubmitReview = (placeId: string, draft: ReviewDraft) => {
+    const result = submitPlaceReview(placeId, draft)
+
+    if (result.status === 'saved') {
+      handleCloseAddRating()
+    }
+
+    return result
+  }
+
   return isDesktop ? (
     <DesktopAppShell
+      detailChildSurface={effectiveDetailChildSurface}
       navigationState={effectiveNavigationState}
       mapPlaces={mapPlaces}
+      onAddRatingBack={handleCloseAddRating}
+      onOpenAddRating={handleOpenAddRating}
       onOpenPlaceDetail={handleOpenPlaceDetail}
       onReturnToMapBrowse={handleReturnToMapBrowse}
+      onSubmitReview={handleSubmitReview}
       selectedPlace={selectedPlace}
     />
   ) : (
     <MobileAppShell
+      detailChildSurface={effectiveDetailChildSurface}
       navigationState={effectiveNavigationState}
       mapPlaces={mapPlaces}
+      onAddRatingBack={handleCloseAddRating}
+      onOpenAddRating={handleOpenAddRating}
       onOpenPlaceDetail={handleOpenPlaceDetail}
       onReturnToMapBrowse={handleReturnToMapBrowse}
+      onSubmitReview={handleSubmitReview}
       selectedPlace={selectedPlace}
     />
   )
