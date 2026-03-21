@@ -190,6 +190,9 @@ const AuthBrand = () => (
   </div>
 )
 
+const AUTH_INPUT_CLASSES = 'h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none'
+const AUTH_PRIMARY_BUTTON_CLASSES = 'inline-flex h-10 w-full items-center justify-center rounded-xl bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none transition-opacity'
+const AUTH_ERROR_TEXT_CLASSES = 'text-[#e53935]'
 const LOGIN_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const OTP_CODE_PATTERN = /^\d{6}$/
 const MAX_NAME_LENGTH = 10
@@ -236,10 +239,10 @@ const EmailRequestShell = ({
           void onSubmit(email)
         }}
       >
-        <label className="form-control w-full max-w-[320px] gap-2">
+        <label className="flex w-full max-w-[320px] flex-col gap-2">
           <span className="sr-only">이메일</span>
           <input
-            className={`input h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${hasInlineError ? 'border-error focus:border-error' : ''}`}
+            className={`${AUTH_INPUT_CLASSES} ${hasInlineError ? 'border-[#e53935] focus:border-[#e53935]' : ''}`}
             onChange={(event) => onEmailChange(event.target.value)}
             placeholder="example@nurimedia.co.kr"
             type="email"
@@ -248,12 +251,12 @@ const EmailRequestShell = ({
         </label>
 
         {hasInlineError ? (
-          <p className="w-full max-w-[320px] text-sm text-error">{message}</p>
+          <p className={`w-full max-w-[320px] text-sm ${AUTH_ERROR_TEXT_CLASSES}`}>{message}</p>
         ) : null}
 
         <button
           aria-label="인증 코드 전송"
-          className={`btn h-10 w-full max-w-[320px] rounded-xl border-none bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none ${
+          className={`${AUTH_PRIMARY_BUTTON_CLASSES} max-w-[320px] ${
             buttonDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
           }`}
           data-testid="auth-request-button"
@@ -261,7 +264,7 @@ const EmailRequestShell = ({
           type="submit"
         >
           {submitting ? (
-            <span aria-hidden="true" className="loading loading-spinner loading-sm" data-testid="auth-request-spinner" />
+            <span aria-hidden="true" className="ui-spinner ui-spinner-sm" data-testid="auth-request-spinner" />
           ) : (
             '인증 코드 전송'
           )}
@@ -308,11 +311,11 @@ const OtpShell = ({
         </div>
       </div>
       <div className="mt-6 flex flex-col items-center gap-3">
-        <label className="form-control w-full max-w-[320px] gap-2">
+        <label className="flex w-full max-w-[320px] flex-col gap-2">
           <span className="sr-only">인증 코드</span>
           <input
             aria-label="인증 코드"
-            className={`input h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-center text-base leading-6 tracking-[0.3em] text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${message ? 'border-error focus:border-error' : ''}`}
+            className={`${AUTH_INPUT_CLASSES} text-center tracking-[0.3em] ${message ? 'border-[#e53935] focus:border-[#e53935]' : ''}`}
             inputMode="numeric"
             maxLength={6}
             onChange={(event) => onCodeChange(event.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -322,14 +325,14 @@ const OtpShell = ({
         </label>
 
         {message ? (
-          <p className={`w-full max-w-[320px] text-center text-sm whitespace-pre-line ${hasErrorMessage ? 'text-error' : 'text-zinc-500'}`}>{message}</p>
+          <p className={`w-full max-w-[320px] text-center text-sm whitespace-pre-line ${hasErrorMessage ? AUTH_ERROR_TEXT_CLASSES : 'text-zinc-500'}`}>{message}</p>
         ) : (
           <p className="w-full max-w-[320px] text-center text-sm text-zinc-500">코드를 길게 눌러 복사하거나 직접 입력해 주세요.</p>
         )}
 
         <button
           aria-label="인증하기"
-          className={`btn h-10 w-full max-w-[320px] rounded-xl border-none bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none ${
+          className={`${AUTH_PRIMARY_BUTTON_CLASSES} max-w-[320px] ${
             buttonDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
           }`}
           data-testid="auth-verify-button"
@@ -337,7 +340,7 @@ const OtpShell = ({
           onClick={onSubmit}
           type="button"
         >
-          {submitting ? <span aria-hidden="true" className="loading loading-spinner loading-sm" data-testid="auth-verify-spinner" /> : '인증하기'}
+          {submitting ? <span aria-hidden="true" className="ui-spinner ui-spinner-sm" data-testid="auth-verify-spinner" /> : '인증하기'}
         </button>
 
         <button
@@ -428,20 +431,20 @@ const NameCaptureScreen = ({
         </p>
       </div>
       <div className="mt-6 flex flex-col items-center gap-3">
-        <label className="form-control w-full max-w-[276px] gap-2">
+        <label className="flex w-full max-w-[276px] flex-col gap-2">
           <span className="sr-only">이름</span>
           <input
             aria-label="이름"
-            className={`input h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none ${errorMessage ? 'border-error focus:border-error' : ''}`}
+            className={`${AUTH_INPUT_CLASSES} ${errorMessage ? 'border-[#e53935] focus:border-[#e53935]' : ''}`}
             onChange={(event) => setName(clampedName(event.target.value))}
             placeholder="김누리"
             value={name}
           />
         </label>
-        {errorMessage ? <p className="w-full max-w-[276px] text-sm text-error">{errorMessage}</p> : null}
+        {errorMessage ? <p className={`w-full max-w-[276px] text-sm ${AUTH_ERROR_TEXT_CLASSES}`}>{errorMessage}</p> : null}
         <button
           aria-label="저장"
-          className="btn h-10 w-full max-w-[276px] rounded-xl border-none bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none"
+          className={`${AUTH_PRIMARY_BUTTON_CLASSES} max-w-[276px] ${submitting ? 'cursor-wait' : 'cursor-pointer'}`}
           disabled={submitting}
           onClick={() => {
             if (!name.trim()) {
@@ -453,7 +456,7 @@ const NameCaptureScreen = ({
           }}
           type="button"
         >
-          {submitting ? <span aria-hidden="true" className="loading loading-spinner loading-sm" data-testid="name-submit-spinner" /> : '저장'}
+          {submitting ? <span aria-hidden="true" className="ui-spinner ui-spinner-sm" data-testid="name-submit-spinner" /> : '저장'}
         </button>
       </div>
     </AuthSurface>
@@ -463,7 +466,7 @@ const NameCaptureScreen = ({
 const VerifyingScreen = () => (
   <AuthSurface>
     <div className="flex flex-col items-center justify-center py-6 text-center">
-      <span className="loading loading-spinner loading-lg text-primary" />
+      <span aria-hidden="true" className="ui-spinner ui-spinner-lg text-[#5862fb]" />
       <div data-testid="auth-verifying-spinner">
         <span className="sr-only">인증 코드 확인 중</span>
       </div>

@@ -125,6 +125,75 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('detail-address')).toHaveTextContent('서울 마포구 양화로19길 22-16 1층')
     expect(screen.getByTestId('detail-added-by')).toHaveTextContent('김누리님이 추가한 장소')
     expect(screen.getByLabelText('뒤로 가기')).toBeInTheDocument()
+    expect(screen.queryByTestId('detail-review-cta')).not.toBeInTheDocument()
+  })
+
+  it('shows the 평가 남기기 CTA only when my_review is null on mobile detail', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+
+    expect(screen.getByTestId('detail-review-cta')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '평가 남기기' })).toBeInTheDocument()
+  })
+
+  it('opens the add-rating child surface and returns to detail on back', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+
+    expect(screen.getByTestId('mobile-review-add-page')).toBeInTheDocument()
+    expect(screen.getByTestId('review-add-surface')).toHaveTextContent('양화로 카페')
+    expect(window.location.pathname).toBe('/places/place-cafe-1')
+
+    await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
+
+    expect(screen.getByTestId('mobile-detail-page')).toBeInTheDocument()
+    expect(screen.queryByTestId('mobile-review-add-page')).not.toBeInTheDocument()
+    expect(window.location.pathname).toBe('/places/place-cafe-1')
+  })
+
+  it('returns to detail and shows the new review immediately after a successful add-rating submission', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+    await user.click(screen.getByTestId('review-add-rating-star-5'))
+    await user.type(screen.getByTestId('review-add-content-input'), '새 리뷰 작성 테스트')
+    await user.click(screen.getByTestId('review-add-submit-button'))
+
+    expect(await screen.findByTestId('mobile-detail-page')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-review-list')).toHaveTextContent('새 리뷰 작성 테스트')
+    expect(screen.getByTestId('detail-review-list')).toHaveTextContent('테스트 사용자')
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.4 (9)')
+    expect(screen.queryByTestId('detail-review-cta')).not.toBeInTheDocument()
+  })
+
+  it('keeps entered values visible when add-rating submission fails', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-review-fail'))
+    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+    await user.click(screen.getByTestId('review-add-rating-star-4'))
+    await user.type(screen.getByTestId('review-add-content-input'), '저장 실패 시도')
+    await user.click(screen.getByTestId('review-add-submit-button'))
+
+    expect(await screen.findByText('리뷰를 저장하지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-review-add-page')).toBeInTheDocument()
+    expect(screen.getByTestId('review-add-content-input')).toHaveValue('저장 실패 시도')
   })
 
   it('returns to the map screen on mobile back and keeps the selected place', async () => {
