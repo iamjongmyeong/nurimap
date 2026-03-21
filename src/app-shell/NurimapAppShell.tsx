@@ -549,9 +549,9 @@ const DetailHeader = ({
 )
 
 const DetailFooterCta = ({ onClick }: { onClick: () => void }) => (
-  <div className="border-t border-[#f0eff6] bg-white px-4 pb-5 pt-4">
+  <div className="flex items-center justify-center bg-white px-6 pb-6 pt-0" data-testid="detail-review-cta-container">
     <button
-      className={`${PRIMARY_BUTTON_CLASSES} h-12 w-full text-base`}
+      className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-[10px] rounded-[12px] bg-[#5862fb] px-0 py-2 text-sm font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50"
       data-testid="detail-review-cta"
       onClick={onClick}
       type="button"

@@ -136,7 +136,10 @@ describe('Sprint 16 place detail refresh', () => {
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
     await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
 
+    expect(screen.getByTestId('detail-review-cta-container')).toHaveClass('px-6', 'pb-6', 'pt-0', 'items-center', 'justify-center')
+    expect(screen.getByTestId('detail-review-cta-container').className).not.toContain('border-t')
     expect(screen.getByTestId('detail-review-cta')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-review-cta')).toHaveClass('h-10', 'w-full', 'shrink-0', 'gap-[10px]', 'px-0', 'py-2', 'text-sm', 'rounded-[12px]', 'bg-[#5862fb]')
     expect(screen.getByRole('button', { name: '평가 남기기' })).toBeInTheDocument()
   })
 
