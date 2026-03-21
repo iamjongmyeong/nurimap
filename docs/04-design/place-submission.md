@@ -14,6 +14,7 @@
 ## Visual Source Of Truth
 - 현재 작업에 제공된 screenshot / Figma / annotated handoff가 place submission surface의 시각 기준이다.
 - handoff가 없으면 기존 browse container 안에서 열리는 single-surface form 구조를 보존한다.
+- current Sprint가 mobile add surface를 새로 정리하더라도, 이 문서는 시각 토큰이 아니라 surface contract만 고정한다.
 - 이 문서는 세부 레이아웃 수치, 필드 스타일, 아이콘 처리, 문구를 고정하지 않는다.
 
 ## Surface Contract
