@@ -30,11 +30,13 @@ describe('Sprint 16 browse refresh', () => {
     document.querySelector('script[data-kakao-map-sdk="true"]')?.remove()
   })
 
-  it('shows the initial map center coordinates', () => {
+  it('starts the map at level 3 without center or selected-place overlays', () => {
     setViewport(1280)
     render(<App />)
 
-    expect(screen.getByTestId('map-center')).toHaveTextContent('37.558721, 126.92444')
+    expect(screen.getByTestId('map-level')).toHaveTextContent('level 3')
+    expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()
   })
 
   it('keeps the minimal desktop browse top bar and bottom logout action', () => {
@@ -82,6 +84,7 @@ describe('Sprint 16 browse refresh', () => {
     expect(detail).toHaveTextContent('양화로 카페')
     expect(detail.className).not.toContain('absolute')
     expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('map-level')).toHaveTextContent('level 2')
   })
 
   it('shows marker labels at level 5', () => {
@@ -111,13 +114,15 @@ describe('Sprint 16 browse refresh', () => {
 
     await user.click(screen.getByRole('button', { name: '지도 축소' }))
 
-    expect(screen.getByTestId('map-level')).toHaveTextContent('level 6')
-    expect(screen.queryByTestId('map-label-place-restaurant-1')).not.toBeInTheDocument()
+    expect(screen.getByTestId('map-level')).toHaveTextContent('level 4')
+    expect(screen.getByTestId('map-label-place-restaurant-1')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '지도 확대' }))
 
-    expect(screen.getByTestId('map-level')).toHaveTextContent('level 5')
+    expect(screen.getByTestId('map-level')).toHaveTextContent('level 3')
     expect(screen.getByTestId('map-label-place-restaurant-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()
   })
 
   it('renders the refreshed browse cards with place name top row and rating review type meta row', () => {

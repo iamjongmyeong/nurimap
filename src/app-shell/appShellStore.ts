@@ -51,7 +51,7 @@ const buildInitialState = () => ({
   placeListLoad: 'ready' as PlaceListLoadState,
   placeDetailLoad: 'ready' as PlaceDetailLoadState,
   selectedPlaceId: DEFAULT_SELECTED_PLACE_ID,
-  mapLevel: 5,
+  mapLevel: 3,
   places: createInitialPlaces(),
 })
 

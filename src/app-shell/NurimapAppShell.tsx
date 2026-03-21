@@ -972,6 +972,8 @@ export const NurimapAppShell = () => {
   const places = useAppShellStore((state) => state.places)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
   const setSelectedPlaceId = useAppShellStore((state) => state.setSelectedPlaceId)
+  const mapLevel = useAppShellStore((state) => state.mapLevel)
+  const setMapLevel = useAppShellStore((state) => state.setMapLevel)
   const mapPlaces = places.filter(hasCoordinates)
   const routePlaceId = getPlaceIdFromPathname(pathname)
   const routeSelectedPlace = routePlaceId
@@ -997,7 +999,11 @@ export const NurimapAppShell = () => {
     if (selectedPlaceId !== routePlaceId) {
       setSelectedPlaceId(routePlaceId)
     }
-  }, [returnToMapBrowse, routePlaceId, routeSelectedPlace, selectedPlaceId, setSelectedPlaceId])
+
+    if (mapLevel !== 2) {
+      setMapLevel(2)
+    }
+  }, [mapLevel, returnToMapBrowse, routePlaceId, routeSelectedPlace, selectedPlaceId, setMapLevel, setSelectedPlaceId])
 
   const navigateToPath = (path: string, replace = false) => {
     if (window.location.pathname === path) {
@@ -1017,6 +1023,7 @@ export const NurimapAppShell = () => {
   const handleOpenPlaceDetail = (placeId: string) => {
     returnToMapBrowse()
     setSelectedPlaceId(placeId)
+    setMapLevel(2)
     navigateToPath(getDetailRoutePath(placeId))
   }
 
