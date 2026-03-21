@@ -39,7 +39,7 @@ const DIRTY_EXIT_CONFIRM_MESSAGE = '작성 중인 내용이 사라져요. 나갈
 const REVIEW_LIMIT = 500
 const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-white px-3 text-base text-[#1f1f1f] placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
 const INPUT_CLASSES = `h-10 ${BASE_TEXT_FIELD_CLASSES}`
-const TEXTAREA_CLASSES = `min-h-[88px] resize-none overflow-hidden ${BASE_TEXT_FIELD_CLASSES}`
+const TEXTAREA_CLASSES = `min-h-[88px] resize-none overflow-hidden py-2 ${BASE_TEXT_FIELD_CLASSES}`
 const REVIEW_TEXTAREA_MIN_HEIGHT = 88
 const PLACE_ADD_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 
@@ -432,7 +432,7 @@ export const DesktopPlaceAddPanel = ({ onClose }: PlaceAddPanelProps) => (
 )
 
 export const MobilePlaceAddPage = ({ onClose }: PlaceAddPanelProps) => (
-  <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-white pb-14" data-testid="mobile-place-add-page">
+  <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-white" data-testid="mobile-place-add-page">
     <div className="flex-1 overflow-hidden">
       <PlaceAddForm onClose={onClose} />
     </div>

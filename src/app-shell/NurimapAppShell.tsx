@@ -1105,12 +1105,11 @@ const MobileAppShell = ({
   const mapLevel = useAppShellStore((state) => state.mapLevel)
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
   const activeMobileTab: MobilePrimaryTab =
-    navigationState === 'place_add_open'
-      ? 'add'
-      : navigationState === 'mobile_place_list_open'
+    navigationState === 'mobile_place_list_open'
         ? 'list'
         : 'map'
-  const showMobileBottomTabBar = navigationState !== 'place_detail_open'
+  const showMobileBottomTabBar =
+    navigationState === 'map_browse' || navigationState === 'mobile_place_list_open'
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-white md:hidden" data-testid="mobile-shell">

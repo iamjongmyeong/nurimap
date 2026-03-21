@@ -80,7 +80,7 @@ describe('Plan 05 direct place entry shell flow', () => {
     })
   })
 
-  it('uses the mobile list surface for direct entry and keeps the add tab active while open', async () => {
+  it('uses the mobile list surface for direct entry and hides the bottom tab bar while open', async () => {
     setViewport(390)
     const user = userEvent.setup()
     render(<App />)
@@ -90,11 +90,7 @@ describe('Plan 05 direct place entry shell flow', () => {
     await user.click(screen.getByRole('button', { name: '장소 추가' }))
 
     expect(screen.getByTestId('mobile-place-add-page')).toBeInTheDocument()
-    expect(screen.getByTestId('mobile-bottom-tab-bar')).toBeInTheDocument()
-    expect(screen.getByTestId('mobile-tab-add')).toHaveAttribute('data-active', 'true')
-    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'false')
-    expect(screen.getByTestId('mobile-tab-add-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-plus-black.svg')
-    expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-gray.svg')
+    expect(screen.queryByTestId('mobile-bottom-tab-bar')).not.toBeInTheDocument()
   })
 
   it('submits the direct-entry draft on register and shows the submit loading state', async () => {

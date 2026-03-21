@@ -148,7 +148,7 @@ describe('Plan 06 place registration flow', () => {
     expect(zeropayNeedsVerificationButton).toHaveClass('text-base', 'text-[#C9C9C9]')
     expect(screen.getByTestId('rating-field')).toHaveClass('space-y-3')
     expect(screen.getByTestId('rating-star-3')).toHaveClass('cursor-pointer', 'hover:scale-110')
-    expect(reviewInput).toHaveClass('w-full', 'min-h-[88px]', 'resize-none')
+    expect(reviewInput).toHaveClass('w-full', 'min-h-[88px]', 'resize-none', 'px-3', 'py-2')
     expect(screen.queryByText('0 / 500')).not.toBeInTheDocument()
     const submitButton = screen.getByTestId('place-submit-button')
     expect(submitButton).toHaveClass('mt-6')
