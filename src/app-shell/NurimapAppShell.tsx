@@ -169,6 +169,18 @@ const BackIcon = ({ className = 'h-6 w-6' }: { className?: string }) => (
   <img alt="" aria-hidden="true" className={className} src={DETAIL_BACK_ICON_SRC} />
 )
 
+const LogoutIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
+  <svg aria-hidden="true" className={className} fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M14 7L19 12L14 17M19 12H10M10 4H7C5.89543 4 5 4.89543 5 6V18C5 19.1046 5.89543 20 7 20H10"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.8"
+    />
+  </svg>
+)
+
 const LocationIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
   <img alt="" aria-hidden="true" className={className} src={PLACE_ADDRESS_ICON_SRC} />
 )
@@ -208,20 +220,6 @@ const getPlaceIdFromPathname = (pathname: string) => {
     return null
   }
 }
-
-const BrandBlock = ({ compact = false }: { compact?: boolean }) => (
-  <div className="flex items-center gap-3">
-    <img
-      alt="Nurimedia 로고"
-      className={compact ? 'h-12 w-12 rounded-[18px] object-cover shadow-sm' : 'h-14 w-14 rounded-[20px] object-cover shadow-sm'}
-      src={BRAND_LOGO_SRC}
-    />
-    <div>
-      <p className="brand-display text-[26px] leading-none text-[#1f1f25]">NuriMap</p>
-      <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-[#7d7a88]">Local lunch radar</p>
-    </div>
-  </div>
-)
 
 const DesktopBrowseBrand = () => (
   <div className="flex items-center gap-3">
@@ -311,33 +309,31 @@ const PlaceListItem = ({
 }) => (
   <div>
     <button
-      className={`w-full cursor-pointer bg-white px-6 text-left transition-colors ${
+      className={`flex h-24 w-full cursor-pointer flex-col items-start justify-center gap-4 bg-white px-6 py-5 text-left transition-colors ${
         selected ? 'bg-[#f7f8ff]' : ''
       }`}
       data-testid={`place-list-item-${place.id}`}
       onClick={() => onSelect(place.id)}
       type="button"
     >
-      <div className="flex h-24 flex-col py-5">
-        <div className="flex items-center gap-1">
-          <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[#1f1f1f]">{place.name}</p>
-          {place.zeropay_status === 'available' ? (
-            <ListZeroPayIcon placeId={place.id} />
-          ) : null}
-        </div>
+      <div className="flex w-full items-center gap-1">
+        <p className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[#1f1f1f]">{place.name}</p>
+        {place.zeropay_status === 'available' ? (
+          <ListZeroPayIcon placeId={place.id} />
+        ) : null}
+      </div>
 
-        <div className="mt-7 flex flex-wrap items-center gap-3">
-          <RatingMeta averageRating={place.average_rating} testId={`place-list-rating-icon-${place.id}`} />
-          <ReviewMeta reviewCount={place.review_count} />
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-[#7a7a7a]">
-            <PlaceTypeIcon
-              className="h-4 w-4 shrink-0"
-              placeType={place.place_type}
-              testId={`place-list-type-icon-${place.id}`}
-            />
-            <span>{BROWSE_PLACE_TYPE_LABEL[place.place_type]}</span>
-          </span>
-        </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <RatingMeta averageRating={place.average_rating} testId={`place-list-rating-icon-${place.id}`} />
+        <ReviewMeta reviewCount={place.review_count} />
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-[#7a7a7a]">
+          <PlaceTypeIcon
+            className="h-4 w-4 shrink-0"
+            placeType={place.place_type}
+            testId={`place-list-type-icon-${place.id}`}
+          />
+          <span>{BROWSE_PLACE_TYPE_LABEL[place.place_type]}</span>
+        </span>
       </div>
     </button>
     {showDivider ? <div aria-hidden="true" className="mx-6 my-1 border-b border-[#f0f0f0]" /> : null}
@@ -918,7 +914,7 @@ const MobileBottomTabBar = ({ activeTab }: { activeTab: MobilePrimaryTab }) => {
   return (
     <nav
       aria-label="모바일 하단 탭"
-      className="absolute inset-x-0 bottom-0 z-30 h-14 bg-white shadow-[0_-12px_32px_rgba(31,31,37,0.08)] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[#ebe7f1] before:content-['']"
+      className="absolute inset-x-0 bottom-0 z-30 h-14 bg-white before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[#f0f0f0] before:content-['']"
       data-testid="mobile-bottom-tab-bar"
     >
       <div className="grid h-14 grid-cols-3 items-center" data-testid="mobile-bottom-tab-bar-grid">
@@ -953,35 +949,42 @@ const MobileBottomTabBar = ({ activeTab }: { activeTab: MobilePrimaryTab }) => {
 
 const MobileListPage = ({
   onOpenPlaceDetail,
-  onReturnToMapBrowse,
   places,
   selectedPlaceId,
 }: {
   onOpenPlaceDetail: (placeId: string) => void
-  onReturnToMapBrowse: () => void
   places: PlaceSummary[]
   selectedPlaceId: string | null
 }) => {
+  const { signOut } = useAuth()
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
   const retryPlaceList = useAppShellStore((state) => state.retryPlaceList)
+  const handleSignOut = () => {
+    if (!window.confirm(LOGOUT_CONFIRM_MESSAGE)) {
+      return
+    }
+
+    void signOut()
+  }
 
   return (
-    <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-[#fcfbff] pb-14" data-testid="mobile-list-page">
-      <div className="border-b border-[#efedf6] px-4 pb-5 pt-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-4">
-            <BrandBlock compact />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8e89a1]">Browse</p>
-              <h2 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-[#222127]">오늘 둘러볼 장소</h2>
-            </div>
-          </div>
-          <button className="inline-flex h-9 items-center justify-center rounded-full px-3 text-[#5f5b6a]" onClick={onReturnToMapBrowse} type="button">
-            지도 보기
+    <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-white pb-14" data-testid="mobile-list-page">
+      <div className="shrink-0 bg-white pb-4 pl-6 pr-5 pt-6" data-testid="mobile-list-header">
+        <div className="flex items-center justify-between gap-3">
+          <DesktopBrowseBrand />
+          <button
+            aria-label="로그아웃"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-[10px] bg-white text-[#7a7a7a] transition hover:text-[#e52e30]"
+            data-testid="mobile-list-logout-button"
+            onClick={handleSignOut}
+            type="button"
+          >
+            <LogoutIcon className="h-4 w-4" />
+            <span className="sr-only">로그아웃</span>
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto px-4 py-5">
+      <div className="flex-1 overflow-auto bg-white">
         <PlaceListPanel
           onRetry={retryPlaceList}
           onSelect={onOpenPlaceDetail}
@@ -1121,7 +1124,6 @@ const MobileAppShell = ({
       {navigationState === 'mobile_place_list_open' ? (
         <MobileListPage
           onOpenPlaceDetail={onOpenPlaceDetail}
-          onReturnToMapBrowse={onReturnToMapBrowse}
           places={mapPlaces}
           selectedPlaceId={selectedPlaceId}
         />

@@ -21,6 +21,8 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 - 목록은 place를 빠르게 비교할 수 있어야 한다.
 - 목록 row 하단 메타 라인은 평균 별점, 리뷰 수, 장소 유형 순서로 표시한다.
 - 모바일 목록 페이지에서 place를 선택하면 전체 화면 상세 페이지로 이동한다.
+- 모바일 목록 페이지는 상단 고정 header에서 로고 + `누리맵` 브랜드를 왼쪽에, `로그아웃` control을 오른쪽에 표시한다.
+- 모바일 목록 페이지의 목록 row UI는 desktop browse row와 같은 구조를 재사용한다.
 - `장소 추가`를 누르면 같은 목록 영역이 등록 화면으로 전환된다.
 - 등록 화면을 닫으면 사용자는 직전 목록 상태로 돌아간다.
 - `장소 추가` 진입과 닫기 동안 현재 browse/detail URL은 place add 전용 route로 바뀌지 않는다.
@@ -36,6 +38,7 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 - `zeropay_status = unavailable | needs_verification`인 place 목록 item에는 제로페이 로고가 보이지 않는다.
 - 목록 선택 시 상세 화면이 열리고 canonical detail URL이 반영된다.
 - 모바일 목록 페이지에서 place 선택 시 전체 화면 상세 페이지가 열린다.
+- 모바일 목록 페이지에서 상단 고정 brand/logout header를 확인할 수 있다.
 - 목록 로딩 중에는 진행 중 상태가 보인다.
 - 목록 데이터가 없으면 empty state가 보인다.
 - 목록 로딩 실패 시 재시도 액션을 확인할 수 있다.

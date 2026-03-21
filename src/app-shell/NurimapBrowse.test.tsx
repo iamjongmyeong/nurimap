@@ -225,7 +225,11 @@ describe('Sprint 16 browse refresh', () => {
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
-    expect(screen.getByTestId('mobile-list-page')).toHaveTextContent('오늘 둘러볼 장소')
+    expect(screen.getByTestId('mobile-list-header')).toContainElement(screen.getByAltText('Nurimedia 로고'))
+    expect(screen.getByTestId('mobile-list-page')).toHaveTextContent('누리맵')
+    expect(screen.getByTestId('mobile-list-logout-button')).toHaveAccessibleName('로그아웃')
+    expect(screen.queryByText('오늘 둘러볼 장소')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
 
     await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
 
