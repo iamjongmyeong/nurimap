@@ -1,8 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL
+  ?? (import.meta.env.MODE === 'test' ? 'https://example.supabase.co' : undefined)
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+  ?? (import.meta.env.MODE === 'test' ? 'test-anon-key' : undefined)
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase browser environment is missing.')
+}
+
 export const supabaseBrowser = createClient(
-  import.meta.env.PUBLIC_SUPABASE_URL,
-  import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       persistSession: true,

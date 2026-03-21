@@ -55,13 +55,22 @@ const DETAIL_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 const LOGOUT_CONFIRM_MESSAGE = '로그아웃하시겠어요?'
 const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const DETAIL_ROUTE_PREFIX = '/places/'
+const REVIEW_LIMIT = 500
 const STAR_PATH =
   'M11.9995 19.3643L6.46613 22.6977C6.22168 22.8532 5.96613 22.9199 5.69946 22.8977C5.4328 22.8754 5.19946 22.7865 4.99946 22.631C4.79946 22.4754 4.64391 22.2812 4.5328 22.0483C4.42168 21.8154 4.39946 21.5541 4.46613 21.2643L5.9328 14.9643L1.0328 10.731C0.810573 10.531 0.671906 10.303 0.616795 10.047C0.561684 9.79099 0.578129 9.54121 0.666129 9.29766C0.754129 9.0541 0.887462 8.8541 1.06613 8.69766C1.2448 8.54121 1.48924 8.44121 1.79946 8.39766L8.26613 7.83099L10.7661 1.89766C10.8772 1.63099 11.0497 1.43099 11.2835 1.29766C11.5172 1.16432 11.7559 1.09766 11.9995 1.09766C12.243 1.09766 12.4817 1.16432 12.7155 1.29766C12.9492 1.43099 13.1217 1.63099 13.2328 1.89766L15.7328 7.83099L22.1995 8.39766C22.5106 8.4421 22.755 8.5421 22.9328 8.69766C23.1106 8.85321 23.2439 9.05321 23.3328 9.29766C23.4217 9.5421 23.4386 9.79232 23.3835 10.0483C23.3284 10.3043 23.1892 10.5319 22.9661 10.731L18.0661 14.9643L19.5328 21.2643C19.5995 21.5532 19.5772 21.8145 19.4661 22.0483C19.355 22.2821 19.1995 22.4763 18.9995 22.631C18.7995 22.7857 18.5661 22.8745 18.2995 22.8977C18.0328 22.9208 17.7772 22.8541 17.5328 22.6977L11.9995 19.3643Z'
 const PRIMARY_BUTTON_CLASSES = 'inline-flex items-center justify-center rounded-full bg-[#5862fb] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50'
 const SECONDARY_BUTTON_CLASSES = 'inline-flex items-center justify-center rounded-full border border-[#d9d8e6] bg-white px-4 py-3 text-sm font-semibold text-[#222127] transition hover:border-[#c8c7d7] hover:bg-[#fafaff] disabled:cursor-not-allowed disabled:opacity-50'
 const INPUT_SURFACE_CLASSES = 'w-full rounded-[24px] border border-[#e8e7f1] bg-white px-4 py-3 text-base leading-6 text-[#1f1f1f] outline-none transition placeholder:text-[#b7b5c5] focus:border-[#5862fb]'
 const INPUT_ERROR_CLASSES = 'border-[#d92d20] focus:border-[#d92d20]'
-const REVIEW_LIMIT = 500
+const ADD_RATING_TEXTAREA_MIN_HEIGHT = 176
+const ADD_RATING_TEXTAREA_CLASSES = 'min-h-[176px] w-full resize-none rounded-[24px] border border-[#ebe9f4] bg-[#fbfaff] px-5 py-4 text-base leading-7 text-[#1f1f1f] placeholder:text-[#b3afbf] focus:border-[#5862fb] focus:outline-none focus:ring-0 focus:shadow-none'
+
+const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
+
+const resizeReviewTextarea = (textarea: HTMLTextAreaElement) => {
+  textarea.style.height = `${ADD_RATING_TEXTAREA_MIN_HEIGHT}px`
+  textarea.style.height = `${Math.max(textarea.scrollHeight, ADD_RATING_TEXTAREA_MIN_HEIGHT)}px`
+}
 
 const EmptyState = () => (
   <div className="rounded-[28px] border border-dashed border-[#d9d9e7] bg-white px-5 py-8 text-left shadow-[0_20px_60px_rgba(40,47,88,0.08)]">
@@ -72,7 +81,7 @@ const EmptyState = () => (
 
 const LoadingState = () => (
   <div className="flex items-center gap-3 rounded-[28px] bg-white px-5 py-6 shadow-[0_20px_60px_rgba(40,47,88,0.08)]" data-testid="place-list-loading">
-    <span aria-hidden="true" className="app-spinner app-spinner-md text-[#5862fb]" />
+    <span aria-hidden="true" className="ui-spinner ui-spinner-md text-[#5862fb]" />
     <div>
       <p className="text-sm font-semibold text-[#222127]">장소 목록을 불러오는 중이에요</p>
       <p className="text-sm text-[#7e7b8b]">잠시만 기다려 주세요.</p>
@@ -82,7 +91,7 @@ const LoadingState = () => (
 
 const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
   <div className="rounded-[28px] bg-white px-5 py-6 shadow-[0_20px_60px_rgba(40,47,88,0.08)]" data-testid="place-list-error">
-    <p className="text-sm font-semibold text-[#d92d20]">장소 목록을 불러오지 못했어요</p>
+    <p className="text-sm font-semibold text-[#e53935]">장소 목록을 불러오지 못했어요</p>
     <p className="mt-2 text-sm text-[#7e7b8b]">기본 에러 상태는 유지하고, 재시도만 제공해요.</p>
     <button className={`${SECONDARY_BUTTON_CLASSES} mt-4`} onClick={onRetry} type="button">
       다시 시도
@@ -359,8 +368,8 @@ const PlaceListPanel = ({
 }
 
 const DetailLoadingState = () => (
-  <div className="flex items-center gap-3 rounded-[28px] bg-white p-5 shadow-[0_18px_48px_rgba(40,47,88,0.08)]" data-testid="place-detail-loading">
-    <span aria-hidden="true" className="app-spinner app-spinner-md text-[#5862fb]" />
+  <div className="mt-6 flex items-center gap-3 rounded-[28px] bg-[#f6f6fb] p-5" data-testid="place-detail-loading">
+    <span aria-hidden="true" className="ui-spinner ui-spinner-md text-[#5862fb]" />
     <div>
       <p className="text-sm font-semibold text-[#222127]">상세 정보를 불러오는 중이에요</p>
       <p className="text-sm text-[#7e7b8b]">기본 로딩 상태를 그대로 유지합니다.</p>
@@ -369,8 +378,8 @@ const DetailLoadingState = () => (
 )
 
 const DetailErrorState = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="rounded-[28px] bg-white p-5 shadow-[0_18px_48px_rgba(40,47,88,0.08)]" data-testid="place-detail-error">
-    <p className="text-sm font-semibold text-[#d92d20]">상세 정보를 불러오지 못했어요</p>
+  <div className="mt-6 rounded-[28px] bg-[#f6f6fb] p-5" data-testid="place-detail-error">
+    <p className="text-sm font-semibold text-[#e53935]">상세 정보를 불러오지 못했어요</p>
     <p className="mt-2 text-sm text-[#7e7b8b]">상세 화면에서 바로 재시도할 수 있어요.</p>
     <button className={`${SECONDARY_BUTTON_CLASSES} mt-4`} onClick={onRetry} type="button">
       다시 시도
