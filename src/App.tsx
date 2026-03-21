@@ -1,4 +1,5 @@
 import { type ComponentType, useEffect, useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { NurimapAppShell } from './app-shell/NurimapAppShell'
 import { AuthProvider } from './auth/AuthProvider'
 
@@ -59,6 +60,7 @@ function App() {
         <NurimapAppShell />
       </AuthProvider>
       <AgentationGate />
+      <Analytics />
     </>
   )
 }
