@@ -1,9 +1,9 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
-import type { IncomingMessage } from 'node:http'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { defineConfig } from 'vitest/config'
-import { consumeLoginLink, requestLoginLink, verifyAccessToken, verifyLoginLink } from './src/server/authService'
+import { consumeLoginLink, requestLoginLink, requestLoginOtp, verifyAccessToken, verifyLoginLink } from './src/server/authService'
 import { preparePlaceEntryFromDraft } from './src/server/placeEntryService'
 import { lookupPlaceFromRawUrl } from './src/server/placeLookupService'
 
@@ -21,14 +21,20 @@ const readJsonBody = async (req: IncomingMessage) => {
 const apiDevPlugin = (): Plugin => ({
   name: 'nurimap-api-dev-plugin',
   configureServer(server) {
-    server.middlewares.use('/api/auth/request-link', async (req, res, next) => {
+    const handleAuthRequest = async (
+      req: IncomingMessage,
+      res: ServerResponse<IncomingMessage>,
+      next: () => void,
+      handler: typeof requestLoginOtp,
+    ) => {
       if (req.method !== 'POST') {
         next()
         return
       }
+
       const body = await readJsonBody(req)
-      const parsedBody = body ? (JSON.parse(body) as { email?: string }) : {}
-      const result = await requestLoginLink(parsedBody.email ?? '')
+      const parsedBody = body ? (JSON.parse(body) as { email?: string; requireBypass?: boolean }) : {}
+      const result = await handler(parsedBody.email ?? '', { requireBypass: parsedBody.requireBypass === true })
       const statusCode = result.status === 'error'
         ? result.code === 'delivery_failed'
           ? 502
@@ -39,6 +45,14 @@ const apiDevPlugin = (): Plugin => ({
       res.statusCode = statusCode
       res.setHeader('Content-Type', 'application/json')
       res.end(JSON.stringify(result))
+    }
+
+    server.middlewares.use('/api/auth/request-otp', async (req, res, next) => {
+      await handleAuthRequest(req, res, next, requestLoginOtp)
+    })
+
+    server.middlewares.use('/api/auth/request-link', async (req, res, next) => {
+      await handleAuthRequest(req, res, next, requestLoginLink)
     })
 
     server.middlewares.use('/api/auth/verify-link', async (req, res, next) => {
