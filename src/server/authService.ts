@@ -4,6 +4,7 @@ import {
   isAllowedEmailDomain,
   type LoginOtpState,
 } from './authPolicy.js'
+import { AuthClient, type User } from '@supabase/supabase-js'
 import { logAuthBypassLogin, logAuthConsumeFailure, logAuthRequestAccepted, logAuthRequestFailure } from './opsLogger.js'
 import { createSupabaseAdminClient, createSupabaseBrowserlessClient } from './supabaseAdmin.js'
 
@@ -49,6 +50,14 @@ type AuthRequestSuccess =
       tokenHash: string
       verificationType: AuthVerifyType
     }
+
+type SupabaseAuthApi = Pick<InstanceType<typeof AuthClient>, 'admin' | 'getUser' | 'signInWithOtp'>
+
+const getAdminAuthClient = (): SupabaseAuthApi => createSupabaseAdminClient().auth as SupabaseAuthApi
+const getBrowserlessAuthClient = (): SupabaseAuthApi => createSupabaseBrowserlessClient().auth as SupabaseAuthApi
+const isSendLoginOtpFailure = (
+  result: SendLoginOtpResult,
+): result is Extract<SendLoginOtpResult, { ok: false }> => !result.ok
 
 const getBypassEmails = () =>
   (process.env.AUTH_BYPASS_EMAILS ?? '')
@@ -150,8 +159,8 @@ const generateImmediateBypassPayload = async (
   email: string,
   publicAppUrl: string,
 ): Promise<AuthRequestSuccess | { status: 'error'; code: AuthRequestErrorCode; message: string }> => {
-  const admin = createSupabaseAdminClient()
-  const { data, error } = await admin.auth.admin.generateLink({
+  const auth = getAdminAuthClient()
+  const { data, error } = await auth.admin.generateLink({
     type: 'magiclink',
     email,
     options: {
@@ -175,16 +184,16 @@ const generateImmediateBypassPayload = async (
 }
 
 const findUserByEmail = async (email: string) => {
-  const admin = createSupabaseAdminClient()
+  const auth = getAdminAuthClient()
   let page = 1
 
   while (page < 20) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 })
+    const { data, error } = await auth.admin.listUsers({ page, perPage: 200 })
     if (error) {
       throw error
     }
 
-    const matchedUser = data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase())
+    const matchedUser = data.users.find((user: User) => user.email?.toLowerCase() === email.toLowerCase())
     if (matchedUser) {
       return matchedUser
     }
@@ -220,8 +229,8 @@ const getLoginState = (user: { app_metadata?: Record<string, unknown> } | null):
 }
 
 const updateUserAuthState = async (userId: string, nextState: LoginOtpState, userMetadata?: Record<string, unknown>) => {
-  const admin = createSupabaseAdminClient()
-  const { error } = await admin.auth.admin.updateUserById(userId, {
+  const auth = getAdminAuthClient()
+  const { error } = await auth.admin.updateUserById(userId, {
     app_metadata: {
       nurimap_auth: nextState,
     },
@@ -238,8 +247,8 @@ const sendLoginOtp = async ({
   email: string
 }): Promise<SendLoginOtpResult> => {
   try {
-    const client = createSupabaseBrowserlessClient()
-    const { error } = await client.auth.signInWithOtp({
+    const auth = getBrowserlessAuthClient()
+    const { error } = await auth.signInWithOtp({
       email,
       options: {
         shouldCreateUser: true,
@@ -319,7 +328,7 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
   const deliveryResult = await sendLoginOtp({ email: normalizedEmail })
   const sendOtpMs = getDurationMs(sendOtpStartedAt)
 
-  if (!deliveryResult.ok) {
+  if (isSendLoginOtpFailure(deliveryResult)) {
     return deliveryFailedResult(normalizedEmail, {
       failure_stage: 'send_otp',
       provider: 'supabase',
@@ -389,8 +398,8 @@ export const consumeLoginLink = async ({ email }: { email: string; nonce: string
 }
 
 export const verifyAccessToken = async (accessToken: string) => {
-  const client = createSupabaseBrowserlessClient()
-  const { data, error } = await client.auth.getUser(accessToken)
+  const auth = getBrowserlessAuthClient()
+  const { data, error } = await auth.getUser(accessToken)
   if (error || !data.user) {
     return null
   }
