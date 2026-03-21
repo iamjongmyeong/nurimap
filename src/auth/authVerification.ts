@@ -1,4 +1,5 @@
 export const AUTH_BOOTSTRAP_TIMEOUT_MS = 5000
+export const AUTH_REQUEST_TIMEOUT_MS = 15000
 export const GENERIC_AUTH_FAILURE_MESSAGE = '인증에 실패했어요. 새 코드를 받아주세요.'
 export const OTP_ENTRY_FAILURE_MESSAGE = '이 코드는 사용할 수 없어요.'
 

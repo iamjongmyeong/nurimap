@@ -60,7 +60,13 @@ describe('Plan 11 release hardening', () => {
 
   it('does not reference sensitive server env vars from client code', () => {
     const clientFiles = collectClientFiles(path.resolve(process.cwd(), 'src'))
-    const forbiddenEnvNames = ['SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'KAKAO_REST_API_KEY']
+    const forbiddenEnvNames = [
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'SUPABASE_SECRET_KEY',
+      'SUPABASE_JWT_SECRET',
+      'RESEND_API_KEY',
+      'KAKAO_REST_API_KEY',
+    ]
 
     for (const file of clientFiles) {
       const source = readFileSync(file, 'utf8')

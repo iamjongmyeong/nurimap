@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AuthContext, type AuthContextValue, type AuthPhase } from './authContext'
 import { supabaseBrowser } from './supabaseBrowser'
 import { requestTestOtp, setTestAuthState, signOutTestUser, submitTestName, useTestAuthState, verifyTestOtp } from './testAuthState'
-import { GENERIC_AUTH_FAILURE_MESSAGE, resolveBypassVerification, resolveOtpVerifyFailureMessage, withTimeout } from './authVerification'
+import {
+  AUTH_REQUEST_TIMEOUT_MS,
+  GENERIC_AUTH_FAILURE_MESSAGE,
+  resolveBypassVerification,
+  resolveOtpVerifyFailureMessage,
+  withTimeout,
+} from './authVerification'
 
 declare global {
   interface ImportMetaEnv {
@@ -713,7 +719,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: trimmedEmail,
           requireBypass: options?.requireBypass === true,
         }),
-      }))
+      }), AUTH_REQUEST_TIMEOUT_MS)
       const payload = (await response.json()) as
         | { status: 'success'; mode: 'otp'; message: string }
         | {

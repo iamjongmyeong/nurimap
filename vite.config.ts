@@ -111,7 +111,7 @@ const apiDevPlugin = (): Plugin => ({
 })
 
 export default defineConfig({
-  envPrefix: ['VITE_', 'PUBLIC_'],
+  envPrefix: ['VITE_', 'NEXT_PUBLIC_', 'PUBLIC_'],
   plugins: [react(), tailwindcss(), apiDevPlugin()],
   test: {
     globals: true,

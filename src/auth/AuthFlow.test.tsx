@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { AuthProvider } from './AuthProvider'
-import { AUTH_BOOTSTRAP_TIMEOUT_MS, OTP_ENTRY_FAILURE_MESSAGE } from './authVerification'
+import { AUTH_BOOTSTRAP_TIMEOUT_MS, AUTH_REQUEST_TIMEOUT_MS, OTP_ENTRY_FAILURE_MESSAGE } from './authVerification'
 import { resetTestAuthState, setTestAuthState } from './testAuthState'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -400,7 +400,7 @@ describe('Sprint 18 OTP auth flow', () => {
     expect(screen.getByTestId('auth-request-button')).toBeDisabled()
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(AUTH_BOOTSTRAP_TIMEOUT_MS)
+      await vi.advanceTimersByTimeAsync(AUTH_REQUEST_TIMEOUT_MS)
     })
 
     expect(screen.getByText('인증 코드를 보내지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()

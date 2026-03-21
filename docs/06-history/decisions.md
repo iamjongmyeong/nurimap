@@ -684,3 +684,18 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/05-sprints/sprint-18/review.md
   - docs/06-history/decisions.md
 - Related commit: TBD
+
+## 2026-03-22 Production auth hotfix - Prefer Vercel/Supabase integration env names and separate OTP request timeout from bootstrap timeout
+- Context: Vercel의 Supabase/Resend 연동 후 production env에는 `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 같은 새 변수들이 추가되었지만, Nurimap runtime은 여전히 `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`를 기준으로 읽고 있었다. 동시에 deployed OTP request는 메일이 실제 mailbox에 도착해도 `/api/auth/request-otp` 응답이 5초를 넘으면 client가 generic delivery failure로 처리해 OTP 입력 화면으로 전환하지 못했다.
+- Options considered:
+  - Option A: legacy env 이름을 계속 source of truth로 유지하고 Vercel 설정에서 값만 수동 복제한다.
+  - Option B: runtime을 Vercel/Supabase integration env 이름 기준으로 옮기되 legacy env fallback을 남기고, OTP request timeout만 bootstrap timeout과 분리해 production latency를 흡수한다.
+- Decision: Option B를 선택한다.
+- Rationale: integration이 생성한 최신 env 이름을 우선 사용하면 Vercel/Supabase 공식 연동과 runtime 계약이 맞춰지고, 기존 env를 fallback으로 유지하면 즉시 배포 리스크를 줄일 수 있다. 또 OTP request는 server-side user lookup + `signInWithOtp` + bookkeeping 후처리를 거치므로 bootstrap과 동일한 5초 timeout을 공유하면 실제 메일 발송 성공 후에도 UI가 실패로 수렴할 수 있다. request timeout을 별도로 늘리면 deployed auth UX를 안정화하면서도 bootstrap hang 보호는 유지할 수 있다.
+- Impact: client는 `NEXT_PUBLIC_SUPABASE_*`를 우선 읽고, server/Vercel API boundary는 `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`를 우선 사용한다. legacy `PUBLIC_*` / `SUPABASE_SERVICE_ROLE_KEY`는 fallback으로만 유지한다. OTP request fetch는 bootstrap timeout과 분리된 15초 timeout을 사용해 mailbox delivery와 UI state transition 사이의 false failure를 줄인다.
+- Revisit trigger: legacy env를 더 이상 유지할 필요가 없고 모든 배포 환경이 Vercel integration env로 정리되면 fallback을 제거할 수 있다. deployed production에서도 15초를 넘는 OTP request 지연이나 post-send bookkeeping failure가 계속 보이면 timeout 조정 대신 server auth flow 구조를 다시 본다.
+- Related docs:
+  - docs/03-specs/05-auth-email-login-link.md
+  - docs/05-sprints/sprint-18/planning.md
+  - docs/06-history/decisions.md
+- Related commit: TBD
