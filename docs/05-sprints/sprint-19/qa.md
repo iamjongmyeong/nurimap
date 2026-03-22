@@ -7,10 +7,10 @@
 # Automated Checks Result
 
 - 실행 명령:
-  - `PUBLIC_SUPABASE_URL='https://example.supabase.co' PUBLIC_SUPABASE_ANON_KEY='test-anon-key' pnpm exec vitest run src/App.test.tsx src/app-shell/NurimapBrowse.test.tsx src/app-shell/NurimapDetail.test.tsx src/app-shell/PlaceLookupFlow.test.tsx src/app-shell/PlaceRegistrationFlow.test.tsx src/app-shell/placeRepository.test.ts src/auth/AuthFlow.test.tsx`
+  - `NEXT_PUBLIC_SUPABASE_URL='https://example.supabase.co' NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='test-anon-key' pnpm exec vitest run src/App.test.tsx src/app-shell/NurimapBrowse.test.tsx src/app-shell/NurimapDetail.test.tsx src/app-shell/PlaceLookupFlow.test.tsx src/app-shell/PlaceRegistrationFlow.test.tsx src/auth/AuthFlow.test.tsx`
   - `pnpm lint`
   - `pnpm exec tsc --noEmit`
-  - `PUBLIC_SUPABASE_URL='https://example.supabase.co' PUBLIC_SUPABASE_ANON_KEY='test-anon-key' pnpm build`
+  - `NEXT_PUBLIC_SUPABASE_URL='https://example.supabase.co' NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='test-anon-key' pnpm build`
   - `rg -n 'daisyui|@plugin "daisyui"|btn-(circle|ghost|outline|primary|secondary|warning|sm)|\bbtn\b|form-control|loading(-spinner|-xs|-sm|-md|-lg)|bg-base-[0-9]+|text-error|text-primary|textarea-bordered' src package.json`
   - `rg -n 'Tailwind CSS \+ daisyUI|daisyUI를 기준|floating detail panel|detail-review-compose|리뷰 작성 UI를 본다' docs/03-specs/01-app-shell-and-layout.md docs/03-specs/04-place-detail.md docs/03-specs/10-review.md docs/01-product/user-flows/browse-and-detail.md docs/01-product/user-flows/review.md docs/04-design/browse-and-detail.md docs/04-design/place-submission.md docs/00-governance/agent-workflow.md docs/05-sprints/sprint-19/planning.md`
 - 결과:
