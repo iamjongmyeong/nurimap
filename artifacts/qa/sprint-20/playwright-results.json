@@ -1,0 +1,63 @@
+{
+  "startedAt": "2026-03-22T11:05:28.016Z",
+  "baseURL": "http://localhost:5173",
+  "dialogs": [
+    {
+      "type": "alert",
+      "message": "장소를 추가했어요."
+    },
+    {
+      "type": "confirm",
+      "message": "이미 내가 리뷰를 남긴 장소예요.\n지금 입력한 정보를 반영할까요?"
+    },
+    {
+      "type": "alert",
+      "message": "기존 장소에 정보를 반영했어요."
+    },
+    {
+      "type": "confirm",
+      "message": "로그아웃하시겠어요?"
+    }
+  ],
+  "checks": [
+    {
+      "name": "mobile auto-login reaches authenticated shell",
+      "passed": true
+    },
+    {
+      "name": "mobile empty-state shown on clean DB",
+      "passed": true
+    },
+    {
+      "name": "mobile place create opens detail with initial review",
+      "passed": true,
+      "placeId": "736a8ad5-62aa-48ab-a120-214f7347a001"
+    },
+    {
+      "name": "refresh after create preserves DB-backed detail",
+      "passed": true
+    },
+    {
+      "name": "direct detail route revisit works",
+      "passed": true
+    },
+    {
+      "name": "duplicate create/overwrite flow preserves old text when content omitted",
+      "passed": true
+    },
+    {
+      "name": "desktop revisit with existing session cookie works",
+      "passed": true
+    },
+    {
+      "name": "desktop logout returns to auth request screen",
+      "passed": true
+    },
+    {
+      "name": "desktop relogin via local auto-login works after reload",
+      "passed": true
+    }
+  ],
+  "finishedAt": "2026-03-22T11:05:51.484Z",
+  "success": true
+}

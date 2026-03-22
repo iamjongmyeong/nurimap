@@ -6,29 +6,53 @@
 # Automated Checks Result
 
 - 실행 명령:
-  - pending
+  - `supabase status`
+  - `make check`
 - 결과:
-  - pending
+  - PASS — local Supabase가 실행 중이며 local API / DB endpoint가 정상 노출됐다.
+  - PASS — `make check` → `vitest` 25 files / 178 tests 통과, `pnpm lint` 통과, `pnpm build` 통과
 
 # Manual QA Result
 
 ## AI Agent Interactive QA Result
 - 수행 내용:
-  - pending
+  - `.omx` plan/PRD/test spec과 현재 코드 경로를 다시 대조해 auth/session/place/review runtime contract를 점검했다.
+  - auth bootstrap이 frontend Supabase listener가 아니라 `GET /api/auth/session` + app session cookie 기반인지 확인했다.
+  - empty-state browse가 test mode mock seed가 아니라 실제 빈 `/api/place-list` 응답에서 오는지 확인했다.
+  - duplicate place / review overwrite 규칙이 backend persistence 경계 안에서 유지되는지 확인했다.
+  - recommendation runtime이 재도입되지 않았는지 현재 verified surface 기준으로 점검했다.
 - 결과:
-  - pending
+  - PASS — auth bootstrap은 backend-owned session cookie + CSRF contract로 동작한다.
+  - PASS — production/dev runtime path에서 frontend direct Supabase session listener는 제거된 상태다.
+  - PASS — clean DB에서는 browse가 valid empty state로 내려오고, place/review write 후에는 persisted data를 다시 읽는다.
+  - PASS — duplicate place / overwrite review semantics는 backend API 응답(`confirm_required`, `updated`)으로 유지된다.
+  - PASS — 이번에 검증한 local runtime surface에서는 recommendation UI/action 재도입이 보이지 않았다.
 
 ## Browser Automation QA Evidence
 - 실행 목적:
-  - auth/session/bootstrap, empty browse, place create, review overwrite flow를 실제 브라우저에서 검증한다.
+  - integrated local runtime에서 auth/session/bootstrap, empty browse, place create, refresh persistence, detail revisit, overwrite flow를 실제 브라우저로 검증한다.
 - 실행 명령 또는 스크립트:
-  - pending
+  - local DB 준비: `node --input-type=module` + `pg`로 `public.place_reviews`, `public.places`를 비워 clean DB 상태를 만들었다.
+  - runtime: `make dev`
+  - browser automation: Playwright inline runner (`node --input-type=module`) 실행 후 결과를 `artifacts/qa/sprint-20/playwright-results.json`에 저장했다.
 - 확인한 시나리오:
-  - pending
+  - `390x844` mobile에서 local auto-login bypass로 authenticated shell 진입
+  - clean DB 기준 empty-state browse 확인
+  - 직접 장소 등록 후 detail 진입 + 초기 리뷰 표시 확인
+  - 새로고침 후 created place detail이 DB 기준으로 유지되는지 확인
+  - `/places/:placeId` 직접 재진입 확인
+  - 같은 장소 재등록 시 overwrite confirm 표시 및 review text 보존 확인
+  - `1280x900` desktop에서 existing session cookie revisit 확인
+  - desktop logout -> auth screen 복귀 -> reload 후 local auto-login relogin 확인
 - 판정:
-  - pending
+  - PASS — local Supabase + integrated runtime 기준 핵심 browse/detail/create/overwrite/session persistence 흐름이 통과했다.
 - 스크린샷 경로:
-  - `artifacts/qa/sprint-20/`
+  - `artifacts/qa/sprint-20/mobile-empty-state.png`
+  - `artifacts/qa/sprint-20/mobile-detail-after-create.png`
+  - `artifacts/qa/sprint-20/mobile-detail-after-overwrite.png`
+  - `artifacts/qa/sprint-20/desktop-revisit-with-session.png`
+  - `artifacts/qa/sprint-20/desktop-after-relogin.png`
+  - 상세 결과: `artifacts/qa/sprint-20/playwright-results.json`
 
 ## User QA Required
 - 사용자 확인 항목:
@@ -38,16 +62,20 @@
 - 기대 결과:
   - backend cutover 이후에도 핵심 흐름이 끊기지 않는다.
 - 상태:
-  - pending
+  - pending — local automated/browser evidence는 확보됐고, 이제 실제 사용자 체감 확인만 남았다.
 
 # Issues Found
 
-- pending
+- local integrated runtime 기준 blocker는 발견하지 못했다.
+- 이번 Playwright pass는 `.env.local`의 local auto-login bypass를 사용했기 때문에, 일반 email OTP 입력/검증 UI 자체의 브라우저 증빙은 별도 실행이 필요하다.
+- remote dev/test rollout은 아직 수행하지 않았고, target project 확정 없이는 진행하지 않는다.
 
 # QA Verdict
 
-- IN PROGRESS
+- IN PROGRESS — local integrated runtime 검증은 통과했지만, explicit email OTP UX evidence / 사용자 QA / remote rollout 판단은 아직 남아 있다.
 
 # Follow-ups
 
-- implementation 이후 automated/browser/user QA evidence를 채운다.
+- 현재 local execution evidence를 기준으로 사용자 QA handoff와 push / rollout 판단을 이어간다.
+- 필요하면 local auto-login bypass를 끈 별도 browser pass로 email OTP request/verify UI를 추가 검증한다.
+- remote dev/test rollout은 target project, env value, migration checklist를 명시적으로 확인한 뒤 별도 slice로 진행한다.
