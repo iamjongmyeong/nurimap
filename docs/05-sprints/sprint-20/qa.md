@@ -71,6 +71,7 @@
 - 2026-03-22 `vercel env ls` 확인 결과, core Supabase/Postgres env(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `POSTGRES_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)는 현재 Production에만 있고 Preview / Development에는 없다.
 - 따라서 remote dev/test rollout은 아직 실행 준비가 끝난 상태가 아니다. 먼저 preview/development target과 env set을 명시적으로 채워야 한다.
 - 현재 코드 레벨에서는 `test` 전용 DB URL 분기를 지원하지만(`TEST_DATABASE_URL` 계열), local `.env.local`에는 아직 dedicated test target이 없다. 현재 단기 운영 모델은 reset 가능한 local DB를 isolated run에서 재사용하는 방식이다.
+- 현재 판단 기준으로 push와 remote rollout은 모두 보류가 맞다. production만 core backend env가 준비된 상태라, preview/development readiness와 deploy trigger path 확인 전에는 `main` push를 안전하다고 볼 수 없다.
 - remote dev/test rollout은 아직 수행하지 않았고, target project 확정 없이는 진행하지 않는다.
 
 # QA Verdict

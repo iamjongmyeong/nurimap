@@ -62,6 +62,15 @@
   5. auth -> browse -> create -> overwrite -> logout smoke scope를 적었다.
   6. 결과를 Sprint 20 `qa.md` / `review.md`에 남길 준비가 됐다.
 
+# Current Decision
+
+- **Push:** deferred
+  - 이유: 현재 remote에서 core backend env가 준비된 곳은 Production뿐이고, preview/development rollout target은 아직 준비되지 않았다.
+  - 추가 이유: `main` push의 실제 Vercel deploy trigger path를 안전하다고 확인하기 전에는 production 영향 가능성을 열어두지 않는다.
+- **Remote dev/test rollout:** deferred
+  - 이유: preview/development에 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, DB target, public Supabase key set이 없어서 rollout-ready가 아니다.
+- **Current safe posture:** local verified baseline을 유지하고, env/target readiness를 먼저 채운 뒤 다음 slice에서 remote rollout 여부를 다시 판단한다.
+
 # Risks
 
 - local bypass auto-login이 일반 email OTP UI regression을 가릴 수 있다.
