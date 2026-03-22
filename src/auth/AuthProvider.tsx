@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AuthContext, type AuthContextValue, type AuthPhase } from './authContext'
-import { supabaseBrowser } from './supabaseBrowser'
+import {
+  getSessionViaApi,
+  requestOtpViaApi,
+  saveNameViaApi,
+  signOutViaApi,
+  verifyOtpViaApi,
+} from './authApi'
 import { requestTestOtp, setTestAuthState, signOutTestUser, submitTestName, useTestAuthState, verifyTestOtp } from './testAuthState'
 import {
   AUTH_REQUEST_TIMEOUT_MS,
@@ -19,6 +25,7 @@ declare global {
 
 const SESSION_STARTED_AT_KEY = 'nurimap_session_started_at'
 const SESSION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
+const CSRF_COOKIE_NAME = 'nurimap_csrf'
 const LOCAL_AUTO_LOGIN_REQUIRES_BYPASS_MESSAGE = '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.'
 const AUTH_BRAND_ICON_SRC = '/assets/branding/brand-nurimap-logo.jpeg'
 const authBrandTextStyle = {
@@ -56,6 +63,21 @@ const markSessionStarted = () => {
 
 const clearSessionStarted = () => {
   window.localStorage.removeItem(SESSION_STARTED_AT_KEY)
+}
+
+const readCookieValue = (name: string) => {
+  const cookie = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`))
+
+  if (!cookie) {
+    return null
+  }
+
+  const [, rawValue] = cookie.split('=', 2)
+  const value = rawValue ? decodeURIComponent(rawValue) : ''
+  return value || null
 }
 
 const getDevAuthOverride = () => {
@@ -452,6 +474,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [hasResentOtp, setHasResentOtp] = useState(false)
   const [cooldownState, setCooldownState] = useState<{ email: string; remainingSeconds: number } | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [csrfHeaderName, setCsrfHeaderName] = useState<string | null>(null)
+  const [csrfToken, setCsrfToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const hasAttemptedLocalAutoLoginRef = useRef(false)
   const phaseRef = useRef<AuthPhase>('loading')
@@ -493,9 +517,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const applyAuthenticatedState = useCallback(({
     accessToken,
+    csrfHeaderName,
     user,
   }: {
-    accessToken: string
+    accessToken: string | null
+    csrfHeaderName: string | null
     user:
       | {
           email?: string | null
@@ -508,6 +534,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }) => {
     markSessionStarted()
     setAccessToken(accessToken)
+    setCsrfHeaderName(csrfHeaderName)
+    setCsrfToken(readCookieValue(CSRF_COOKIE_NAME))
     setEmail(user?.email ?? '')
     setRequestedEmail(null)
     setOtpCode('')
@@ -525,27 +553,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     tokenHash: string
     verificationType: 'magiclink' | 'signup' | 'invite'
   }) => {
-    const { data, error } = await supabaseBrowser.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: verificationType,
+    const { payload } = await verifyOtpViaApi({
+      email,
+      token: '',
+      tokenHash,
+      verificationType,
     })
 
-    if (error || !data.session || !data.user) {
+    if (payload.status === 'error') {
       return {
         status: 'error' as const,
-        message: error?.message ?? GENERIC_AUTH_FAILURE_MESSAGE,
+        message: payload.message ?? GENERIC_AUTH_FAILURE_MESSAGE,
       }
     }
 
     applyAuthenticatedState({
-      accessToken: data.session.access_token,
-      user: data.user,
+      accessToken: null,
+      csrfHeaderName: payload.csrfHeaderName,
+      user: {
+        email: payload.user.email,
+        user_metadata: {
+          name: payload.user.name,
+        },
+      },
     })
 
     return {
       status: 'success' as const,
     }
-  }, [applyAuthenticatedState])
+  }, [applyAuthenticatedState, email])
 
   useEffect(() => {
     if (devOverrideState) {
@@ -564,39 +600,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     let isMounted = true
 
-    const restoreSession = async (token: string) => {
-      const { data, error } = await withTimeout(supabaseBrowser.auth.getUser())
-      if (error || !data.user) {
-        await supabaseBrowser.auth.signOut()
-        clearSessionStarted()
-        if (isMounted) {
-          setAccessToken(null)
-          setPhase('auth_required')
-        }
-        return
-      }
-
-      if (isMounted) {
-        applyAuthenticatedState({
-          accessToken: token,
-          user: data.user,
-        })
-      }
-    }
-
     const bootstrap = async () => {
       try {
         if (getStoredSessionAgeExceeded()) {
-          await supabaseBrowser.auth.signOut()
           clearSessionStarted()
+          setAccessToken(null)
+          setCsrfHeaderName(null)
+          setCsrfToken(null)
+          if (isMounted) {
+            setPhase('auth_required')
+          }
+          return
         }
 
-        const {
-          data: { session },
-        } = await withTimeout(supabaseBrowser.auth.getSession())
+        const { payload } = await withTimeout(getSessionViaApi())
 
-        if (session?.access_token) {
-          await restoreSession(session.access_token)
+        if (payload.status === 'authenticated') {
+          applyAuthenticatedState({
+            accessToken: null,
+            csrfHeaderName: payload.csrfHeaderName,
+            user: {
+              email: payload.user.email,
+              user_metadata: {
+                name: payload.user.name,
+              },
+            },
+          })
           return
         }
 
@@ -614,43 +643,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     void bootstrap()
 
-    const { data: listener } = supabaseBrowser.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        clearSessionStarted()
-        setAccessToken(null)
-
-        if (phaseRef.current === 'verifying' || phaseRef.current === 'auth_failure') {
-          return
-        }
-
-        setPhase('auth_required')
-        return
-      }
-
-      if (event === 'SIGNED_IN' && session?.access_token) {
-        applyAuthenticatedState({
-          accessToken: session.access_token,
-          user: session.user,
-        })
-
-        queueMicrotask(() => {
-          void withTimeout(supabaseBrowser.auth.getUser()).then(({ data, error }) => {
-            if (!isMounted || error || !data.user) {
-              return
-            }
-
-            applyAuthenticatedState({
-              accessToken: session.access_token,
-              user: data.user,
-            })
-          }).catch(() => {})
-        })
-      }
-    })
-
     return () => {
       isMounted = false
-      listener.subscription.unsubscribe()
     }
   }, [applyAuthenticatedState, isTestMode])
 
@@ -712,25 +706,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      const response = await withTimeout(fetch('/api/auth/request-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: trimmedEmail,
-          requireBypass: options?.requireBypass === true,
-        }),
+      const { response, payload } = await withTimeout(requestOtpViaApi({
+        email: trimmedEmail,
+        requireBypass: options?.requireBypass === true,
       }), AUTH_REQUEST_TIMEOUT_MS)
-      const payload = (await response.json()) as
-        | { status: 'success'; mode: 'otp'; message: string }
-        | {
-            status: 'success'
-            mode: 'bypass'
-            message: string
-            tokenHash: string
-            verificationType: 'magiclink' | 'signup' | 'invite'
-          }
-        | { status: 'error'; code: 'cooldown'; message: string; retryAfterSeconds: number }
-        | { status: 'error'; code?: string; message: string }
 
       if (!response.ok || payload.status === 'error') {
         if (payload.status === 'error' && payload.code === 'cooldown' && 'retryAfterSeconds' in payload) {
@@ -819,15 +798,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       setPhase('verifying')
-      const { data, error } = await withTimeout(supabaseBrowser.auth.verifyOtp({
+      const { response, payload } = await withTimeout(verifyOtpViaApi({
         email: verifyEmail,
         token: otpCode,
-        type: 'email',
       }))
 
-      if (error || !data.session || !data.user) {
+      if (!response.ok || payload.status === 'error') {
         const failureMessage = resolveOtpVerifyFailureMessage({
-          errorMessage: error?.message,
+          errorMessage: payload.status === 'error' ? payload.message : null,
           hasResent: hasResentOtp,
         })
 
@@ -842,8 +820,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       applyAuthenticatedState({
-        accessToken: data.session.access_token,
-        user: data.user,
+        accessToken: null,
+        csrfHeaderName: payload.csrfHeaderName,
+        user: {
+          email: payload.user.email,
+          user_metadata: {
+            name: payload.user.name,
+          },
+        },
       })
     } catch {
       setFailureReason(GENERIC_AUTH_FAILURE_MESSAGE)
@@ -885,13 +869,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return
     }
 
-    const { error } = await supabaseBrowser.auth.updateUser({
-      data: { name },
+    const resolvedCsrfHeaderName = csrfHeaderName ?? 'x-nurimap-csrf-token'
+    const resolvedCsrfToken = csrfToken ?? readCookieValue(CSRF_COOKIE_NAME)
+    if (!resolvedCsrfToken) {
+      setSubmitting(false)
+      setMessage('이름을 저장하지 못했어요. 다시 시도해 주세요.')
+      return
+    }
+
+    const { response, payload } = await saveNameViaApi({
+      csrfHeaderName: resolvedCsrfHeaderName,
+      csrfToken: resolvedCsrfToken,
+      name,
     })
 
     setSubmitting(false)
-    if (error) {
-      setMessage(error.message)
+    if (!response.ok || 'error' in payload) {
+      setMessage('error' in payload ? payload.error.message : '이름을 저장하지 못했어요. 다시 시도해 주세요.')
       return
     }
 
@@ -907,9 +901,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return
     }
 
-    await supabaseBrowser.auth.signOut()
+    const resolvedCsrfHeaderName = csrfHeaderName ?? 'x-nurimap-csrf-token'
+    const resolvedCsrfToken = csrfToken ?? readCookieValue(CSRF_COOKIE_NAME)
+    if (resolvedCsrfToken) {
+      await signOutViaApi({
+        csrfHeaderName: resolvedCsrfHeaderName,
+        csrfToken: resolvedCsrfToken,
+      })
+    }
     clearSessionStarted()
     setAccessToken(null)
+    setCsrfHeaderName(null)
+    setCsrfToken(null)
     setCooldownState(null)
     setRequestedEmail(null)
     setOtpCode('')
@@ -928,6 +931,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const value: AuthContextValue = {
     accessToken: resolvedAccessToken,
+    csrfHeaderName: isTestMode ? 'x-nurimap-csrf-token' : csrfHeaderName,
+    csrfToken: isTestMode ? 'test-csrf-token' : csrfToken,
     email: resolvedEmail,
     failureReason: rawFailureReason,
     message: rawMessage,

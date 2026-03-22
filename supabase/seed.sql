@@ -1,0 +1,1 @@
+-- Sprint 20 baseline: start with an empty database.

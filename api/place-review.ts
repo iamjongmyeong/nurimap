@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+
 import {
   findActiveAppSessionById,
   isValidCsrfTokenPair,
@@ -7,8 +8,7 @@ import {
   readSessionIdFromCookieHeader,
 } from './_lib/_appSessionService.js'
 import { getAuthenticatedSession } from './_lib/_authService.js'
-import { lookupPlaceFromRawUrl } from './_lib/_placeLookupService.js'
-import { NAVER_URL_ERROR_MESSAGE } from './_lib/_naverUrl.js'
+import { submitPersistedPlaceReview } from './_lib/_placeDataService.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -18,14 +18,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const sessionId = readSessionIdFromCookieHeader(req.headers.cookie)
   const session = sessionId ? await findActiveAppSessionById({ sessionId }) : null
-  const cookieCsrfToken = readCsrfTokenFromCookieHeader(req.headers.cookie)
-  const headerCsrfToken = readCsrfTokenFromHeaders(req.headers)
-
   if (!sessionId || !session) {
     res.status(401).json({ error: { code: 'unauthorized', message: 'Unauthorized' } })
     return
   }
 
+  const cookieCsrfToken = readCsrfTokenFromCookieHeader(req.headers.cookie)
+  const headerCsrfToken = readCsrfTokenFromHeaders(req.headers)
   if (!isValidCsrfTokenPair({
     cookieToken: cookieCsrfToken,
     headerToken: headerCsrfToken,
@@ -41,24 +40,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const rawUrl = typeof req.body?.rawUrl === 'string' ? req.body.rawUrl : ''
+  const placeId = typeof req.body?.placeId === 'string' ? req.body.placeId : ''
+  const ratingScore = typeof req.body?.ratingScore === 'number' ? req.body.ratingScore : 0
+  const reviewContent = typeof req.body?.reviewContent === 'string' ? req.body.reviewContent : ''
+  const allowOverwrite = req.body?.allowOverwrite === true
 
-  try {
-    const result = await lookupPlaceFromRawUrl(rawUrl)
-    if (result.status === 'error') {
-      res.status(result.error.code === 'lookup_failed' ? 502 : 422).json(result)
-      return
-    }
+  const result = await submitPersistedPlaceReview({
+    placeId,
+    userId: authSession.user.id,
+    allowOverwrite,
+    draft: {
+      rating_score: ratingScore,
+      review_content: reviewContent,
+    },
+  })
 
-    res.status(200).json(result)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : NAVER_URL_ERROR_MESSAGE
-    res.status(400).json({
-      status: 'error',
+  if (result.status === 'error') {
+    res.status(422).json({
       error: {
-        code: 'lookup_failed',
-        message,
+        code: 'review_save_failed',
+        message: result.message,
       },
     })
+    return
   }
+
+  if (result.status === 'existing_review') {
+    res.status(409).json(result)
+    return
+  }
+
+  res.status(200).json(result)
 }

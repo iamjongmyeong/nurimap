@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import {
   createInitialPlaces,
+  loadPlaceDetail,
+  loadPlaceList,
   submitReviewForPlace,
   type PlaceRegistrationResult,
   type ReviewDraft,
   type ReviewSubmissionResult,
 } from './placeRepository'
-import { DEFAULT_SELECTED_PLACE_ID } from './mockPlaces'
 import type { PlaceSummary } from './types'
 
 export type NavigationState =
@@ -42,18 +43,25 @@ type AppShellState = {
   setMapLevel: (level: number) => void
   setPlaces: (places: PlaceSummary[]) => void
   applyRegistrationResult: (result: PlaceRegistrationResult) => void
-  submitPlaceReview: (placeId: string, draft: ReviewDraft) => ReviewSubmissionResult
-  retryPlaceList: () => void
-  retryPlaceDetail: () => void
+  loadPlaces: () => Promise<void>
+  loadPlaceDetail: (placeId: string) => Promise<void>
+  submitPlaceReview: (args: {
+    placeId: string
+    draft: ReviewDraft
+    csrfHeaderName: string | null
+    csrfToken: string | null
+  }) => Promise<ReviewSubmissionResult>
+  retryPlaceList: () => Promise<void>
+  retryPlaceDetail: () => Promise<void>
   reset: () => void
 }
 
 const buildInitialState = () => ({
   navigationState: 'map_browse' as NavigationState,
   detailChildSurface: 'detail' as DetailChildSurface,
-  placeListLoad: 'ready' as PlaceListLoadState,
-  placeDetailLoad: 'ready' as PlaceDetailLoadState,
-  selectedPlaceId: DEFAULT_SELECTED_PLACE_ID,
+  placeListLoad: (import.meta.env.MODE === 'test' ? 'ready' : 'idle') as PlaceListLoadState,
+  placeDetailLoad: (import.meta.env.MODE === 'test' ? 'ready' : 'idle') as PlaceDetailLoadState,
+  selectedPlaceId: null,
   mapLevel: 3,
   places: createInitialPlaces(),
 })
@@ -88,11 +96,42 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       detailChildSurface: 'detail',
       placeDetailLoad: 'ready',
     }),
-  submitPlaceReview: (placeId, draft) => {
-    const result = submitReviewForPlace({
+  loadPlaces: async () => {
+    set({ placeListLoad: 'loading' })
+
+    try {
+      const places = await loadPlaceList()
+      set({
+        places,
+        placeListLoad: places.length === 0 ? 'empty' : 'ready',
+      })
+    } catch {
+      set({ placeListLoad: 'error' })
+    }
+  },
+  loadPlaceDetail: async (placeId) => {
+    set({ placeDetailLoad: 'loading' })
+
+    try {
+      const place = await loadPlaceDetail(placeId)
+      const places = get().places
+      const hasExistingPlace = places.some((candidate) => candidate.id === place.id)
+      set({
+        places: hasExistingPlace ? places.map((candidate) => (candidate.id === place.id ? place : candidate)) : [...places, place],
+        selectedPlaceId: place.id,
+        placeDetailLoad: 'ready',
+      })
+    } catch {
+      set({ placeDetailLoad: 'error' })
+    }
+  },
+  submitPlaceReview: async ({ placeId, draft, csrfHeaderName, csrfToken }) => {
+    const result = await submitReviewForPlace({
       placeId,
       draft,
       places: get().places,
+      csrfHeaderName,
+      csrfToken,
     })
 
     if (result.status === 'saved') {
@@ -107,8 +146,17 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
 
     return result
   },
-  retryPlaceList: () => set({ placeListLoad: 'ready' }),
-  retryPlaceDetail: () => set({ placeDetailLoad: 'ready' }),
+  retryPlaceList: async () => {
+    await get().loadPlaces()
+  },
+  retryPlaceDetail: async () => {
+    const placeId = get().selectedPlaceId
+    if (!placeId) {
+      set({ placeDetailLoad: 'error' })
+      return
+    }
+    await get().loadPlaceDetail(placeId)
+  },
   reset: () => set(buildInitialState()),
 }))
 

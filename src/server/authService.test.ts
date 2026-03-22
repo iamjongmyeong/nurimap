@@ -1,10 +1,36 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const listUsersMock = vi.fn()
-const generateLinkMock = vi.fn()
-const updateUserByIdMock = vi.fn()
-const getUserMock = vi.fn()
-const signInWithOtpMock = vi.fn()
+const {
+  listUsersMock,
+  generateLinkMock,
+  updateUserByIdMock,
+  getUserMock,
+  signInWithOtpMock,
+  verifyOtpMock,
+  adminSignOutMock,
+  withDatabaseConnectionMock,
+  withDatabaseTransactionMock,
+  createAppSessionMock,
+  createAppSessionTokensMock,
+  findActiveAppSessionByIdMock,
+  revokeAppSessionMock,
+  touchAppSessionMock,
+} = vi.hoisted(() => ({
+  listUsersMock: vi.fn(),
+  generateLinkMock: vi.fn(),
+  updateUserByIdMock: vi.fn(),
+  getUserMock: vi.fn(),
+  signInWithOtpMock: vi.fn(),
+  verifyOtpMock: vi.fn(),
+  adminSignOutMock: vi.fn(),
+  withDatabaseConnectionMock: vi.fn(),
+  withDatabaseTransactionMock: vi.fn(),
+  createAppSessionMock: vi.fn(),
+  createAppSessionTokensMock: vi.fn(),
+  findActiveAppSessionByIdMock: vi.fn(),
+  revokeAppSessionMock: vi.fn(),
+  touchAppSessionMock: vi.fn(),
+}))
 
 vi.mock('./supabaseAdmin.js', () => ({
   createSupabaseAdminClient: () => ({
@@ -13,18 +39,35 @@ vi.mock('./supabaseAdmin.js', () => ({
         listUsers: listUsersMock,
         generateLink: generateLinkMock,
         updateUserById: updateUserByIdMock,
+        signOut: adminSignOutMock,
       },
-    },
-  }),
-  createSupabaseBrowserlessClient: () => ({
-    auth: {
       getUser: getUserMock,
       signInWithOtp: signInWithOtpMock,
+      verifyOtp: verifyOtpMock,
     },
   }),
 }))
 
-import { requestLoginOtp } from './authService'
+vi.mock('./database.js', () => ({
+  withDatabaseConnection: withDatabaseConnectionMock,
+  withDatabaseTransaction: withDatabaseTransactionMock,
+}))
+
+vi.mock('./appSessionService.js', () => ({
+  createAppSession: createAppSessionMock,
+  createAppSessionTokens: createAppSessionTokensMock,
+  findActiveAppSessionById: findActiveAppSessionByIdMock,
+  revokeAppSession: revokeAppSessionMock,
+  touchAppSession: touchAppSessionMock,
+}))
+
+import {
+  getAuthenticatedSession,
+  requestLoginOtp,
+  saveAuthenticatedUserName,
+  signOutAppSession,
+  verifyLoginOtp,
+} from './authService'
 
 const originalEnv = { ...process.env }
 
@@ -37,9 +80,44 @@ describe('Sprint 18 otp auth request flow', () => {
     updateUserByIdMock.mockReset()
     getUserMock.mockReset()
     signInWithOtpMock.mockReset()
+    verifyOtpMock.mockReset()
+    adminSignOutMock.mockReset()
+    withDatabaseConnectionMock.mockReset()
+    withDatabaseTransactionMock.mockReset()
+    createAppSessionMock.mockReset()
+    createAppSessionTokensMock.mockReset()
+    findActiveAppSessionByIdMock.mockReset()
+    revokeAppSessionMock.mockReset()
+    touchAppSessionMock.mockReset()
     listUsersMock.mockResolvedValue({ data: { users: [] }, error: null })
     updateUserByIdMock.mockResolvedValue({ error: null })
     signInWithOtpMock.mockResolvedValue({ data: { user: null, session: null }, error: null })
+    verifyOtpMock.mockResolvedValue({ data: { user: null, session: null }, error: null })
+    createAppSessionTokensMock.mockReturnValue({
+      sessionId: 'session-123',
+      csrfToken: 'csrf-123',
+    })
+    withDatabaseConnectionMock.mockImplementation(async (work: (client: unknown) => Promise<unknown>) =>
+      work({
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+      }))
+    withDatabaseTransactionMock.mockImplementation(async (work: (client: unknown) => Promise<unknown>) =>
+      work({
+        query: vi.fn().mockResolvedValue({ rows: [] }),
+      }))
+    createAppSessionMock.mockResolvedValue({
+      id: 'session-123',
+      user_id: 'user-1',
+      csrf_token_hash: 'hashed',
+      expires_at: '2026-06-20T00:00:00.000Z',
+      revoked_at: null,
+      created_at: '2026-03-22T00:00:00.000Z',
+      updated_at: '2026-03-22T00:00:00.000Z',
+      last_seen_at: '2026-03-22T00:00:00.000Z',
+    })
+    findActiveAppSessionByIdMock.mockResolvedValue(null)
+    revokeAppSessionMock.mockResolvedValue(null)
+    touchAppSessionMock.mockResolvedValue(null)
   })
 
   afterEach(() => {
@@ -344,6 +422,135 @@ describe('Sprint 18 otp auth request flow', () => {
       retryAfterSeconds: 67,
     })
     expect(signInWithOtpMock).not.toHaveBeenCalled()
+  })
+
+  it('verifies otp via backend and returns an opaque app session contract', async () => {
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'tester@nurimedia.co.kr',
+          app_metadata: {
+            nurimap_auth: {
+              day_key: '2026-03-22',
+              day_count: 1,
+              last_requested_at: '2026-03-22T00:00:00.000Z',
+              last_verified_at: null,
+            },
+          },
+          user_metadata: { name: '테스트 사용자' },
+        },
+        session: {
+          access_token: 'provider-access-token',
+        },
+      },
+      error: null,
+    })
+
+    const result = await verifyLoginOtp({
+      email: 'tester@nurimedia.co.kr',
+      token: '123456',
+    })
+
+    expect(verifyOtpMock).toHaveBeenCalledWith({
+      email: 'tester@nurimedia.co.kr',
+      token: '123456',
+      type: 'email',
+    })
+    expect(createAppSessionMock).toHaveBeenCalled()
+    expect(result).toEqual({
+      status: 'success',
+      csrfToken: 'csrf-123',
+      sessionId: 'session-123',
+      nextPhase: 'authenticated',
+      user: {
+        id: 'user-1',
+        email: 'tester@nurimedia.co.kr',
+        name: '테스트 사용자',
+      },
+    })
+  })
+
+  it('returns a recoverable otp error when verification fails', async () => {
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        user: null,
+        session: null,
+      },
+      error: {
+        message: 'otp expired',
+      },
+    })
+
+    await expect(verifyLoginOtp({
+      email: 'tester@nurimedia.co.kr',
+      token: '000000',
+    })).resolves.toEqual({
+      status: 'error',
+      message: '이 코드는 사용할 수 없어요.',
+    })
+  })
+
+  it('loads an authenticated session user from the opaque app session id', async () => {
+    findActiveAppSessionByIdMock.mockResolvedValue({
+      id: 'session-123',
+      user_id: 'user-1',
+      csrf_token_hash: 'hashed',
+      expires_at: '2026-06-20T00:00:00.000Z',
+      revoked_at: null,
+      created_at: '2026-03-22T00:00:00.000Z',
+      updated_at: '2026-03-22T00:00:00.000Z',
+      last_seen_at: '2026-03-22T00:00:00.000Z',
+    })
+    withDatabaseConnectionMock.mockImplementation(async (work: (client: { query: ReturnType<typeof vi.fn> }) => Promise<unknown>) =>
+      work({
+        query: vi.fn().mockResolvedValue({
+          rows: [
+            {
+              id: 'user-1',
+              email: 'tester@nurimedia.co.kr',
+              name: '테스트 사용자',
+            },
+          ],
+        }),
+      }))
+
+    await expect(getAuthenticatedSession('session-123')).resolves.toEqual({
+      status: 'authenticated',
+      sessionId: 'session-123',
+      user: {
+        id: 'user-1',
+        email: 'tester@nurimedia.co.kr',
+        name: '테스트 사용자',
+      },
+    })
+    expect(touchAppSessionMock).toHaveBeenCalledWith({ sessionId: 'session-123' })
+  })
+
+  it('saves a validated display name through backend-owned profile logic', async () => {
+    const result = await saveAuthenticatedUserName({
+      userId: 'user-1',
+      name: '홍길동',
+    })
+
+    expect(result).toEqual({
+      status: 'success',
+      name: '홍길동',
+    })
+    expect(updateUserByIdMock).toHaveBeenCalledWith('user-1', {
+      user_metadata: {
+        name: '홍길동',
+      },
+    })
+  })
+
+  it('revokes the opaque app session on sign out', async () => {
+    await expect(signOutAppSession('session-123')).resolves.toEqual({
+      status: 'success',
+    })
+    expect(revokeAppSessionMock).toHaveBeenCalledWith({
+      sessionId: 'session-123',
+    })
   })
 
   it('formats cooldown messages as 0분 SS초 when less than a minute remains', async () => {

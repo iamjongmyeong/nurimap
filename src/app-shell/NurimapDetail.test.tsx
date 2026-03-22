@@ -2,7 +2,75 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
+import { MOCK_PLACES } from './mockPlaces'
 import type { PlaceSummary } from './types'
+
+const originalFetch = globalThis.fetch
+
+const cloneMockPlace = (placeId: string) => {
+  const matched = MOCK_PLACES.find((place) => place.id === placeId)
+  if (!matched) return null
+  return {
+    ...matched,
+    my_review: matched.my_review ? { ...matched.my_review } : null,
+    reviews: matched.reviews.map((review) => ({ ...review })),
+  }
+}
+
+const createDetailFetchMock = () =>
+  vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+
+    if (url === '/api/place-list') {
+      return new Response(JSON.stringify({
+        status: 'success',
+        places: MOCK_PLACES,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    if (url.startsWith('/api/place-detail?placeId=')) {
+      const placeId = decodeURIComponent(url.split('=')[1] ?? '')
+      const place = cloneMockPlace(placeId)
+      if (!place) {
+        return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: { 'Content-Type': 'application/json' } })
+      }
+      return new Response(JSON.stringify({ status: 'success', place }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    if (url === '/api/place-review') {
+      const body = init?.body ? JSON.parse(String(init.body)) : {}
+      const place = cloneMockPlace(body.placeId)
+      if (!place) {
+        return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      if (place.id === 'place-review-fail') {
+        return new Response(JSON.stringify({ error: { message: '리뷰를 저장하지 못했어요. 다시 시도해 주세요.' } }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      const nextReview = {
+        id: `review-${place.id}-mine`,
+        author_name: '테스트 사용자',
+        content: body.reviewContent ?? '',
+        created_at: '2026-03-08',
+        rating_score: body.ratingScore,
+      }
+      const reviewCount = place.review_count + 1
+      const averageRating = Math.round(((place.average_rating * place.review_count + body.ratingScore) / reviewCount) * 10) / 10
+      return new Response(JSON.stringify({
+        status: 'saved',
+        place: {
+          ...place,
+          average_rating: averageRating,
+          review_count: reviewCount,
+          my_review: nextReview,
+          reviews: [nextReview, ...place.reviews],
+        },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    return new Response(JSON.stringify({ error: { message: 'unexpected request' } }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+  })
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
@@ -20,6 +88,11 @@ describe('Sprint 16 place detail refresh', () => {
   beforeEach(() => {
     resetAppShellStore()
     window.history.replaceState({}, '', '/')
+    globalThis.fetch = createDetailFetchMock() as typeof fetch
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
   })
 
   it('shows the redesigned desktop detail fields and removes legacy modules', async () => {

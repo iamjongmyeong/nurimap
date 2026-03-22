@@ -28,7 +28,6 @@ flowchart LR
   U["User"] --> B["Browser App"]
   B --> A["App Server / Vercel"]
   B --> K["Kakao Map SDK"]
-  B --> S["Supabase Auth / DB"]
   A --> G["Kakao Local / Geocoder"]
   A --> S
 ```
@@ -176,8 +175,8 @@ flowchart LR
 ## Auth And Session Runtime Touchpoints
 - 로그인 요청은 `auth_required` surface에서 시작한다.
 - OTP 요청 성공 후에는 같은 auth surface 안에서 `otp_required` 상태로 전환된다.
-- 일반 OTP 검증은 client-side `verifyOtp({ email, token, type: 'email' })`를 사용한다.
+- 일반 OTP 검증은 `POST /api/auth/verify-otp`를 통해 backend가 수행한다.
 - auth bootstrap은 refresh, hard refresh, logout 후 재로그인에서도 `auth_required`, `otp_required`, `auth_failure`, `name_required`, `authenticated` 중 하나의 terminal state로 수렴해야 한다.
 - `verifying`는 transient phase이며, OTP verify failure가 무한 대기로 남아서는 안 된다.
-- 로그인 성공 시 저장된 세션을 같은 브라우저 프로필에서 복원하고, 앱 시작 시 `getUser()` 또는 보호된 API 확인으로 유효성을 재검증한다.
+- 로그인 성공 시 backend-issued app session cookie를 같은 브라우저 프로필에서 복원하고, 앱 시작 시 `GET /api/auth/session` 또는 보호된 API 확인으로 유효성을 재검증한다.
 - 세션 절대 만료와 token refresh 정책의 상세 보안 규칙은 [Security And Ops](./security-and-ops.md)를 따른다.

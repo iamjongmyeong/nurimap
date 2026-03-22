@@ -1,13 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  confirmPlaceRegistration,
-  preparePlaceRegistration,
-  validateRegistrationDraft,
-} from './placeRepository'
+import type { PlaceRegistrationPreparationResult, PlaceRegistrationResult } from './placeRepository'
 import { useAppShellStore } from './appShellStore'
 import { useAuth } from '../auth/authContext'
 import { useViewportMode } from './useViewportMode'
-import type { PlaceLookupResult, PlaceLookupSuccess } from '../server/placeLookupTypes'
 import type { PlaceType, ZeropayStatus } from './types'
 
 type PlaceAddPanelProps = {
@@ -34,7 +29,6 @@ type SegmentedOption<T extends string> = {
 }
 
 const GENERIC_SUBMIT_ERROR_MESSAGE = '등록하지 못했어요. 잠시 후 다시 시도해 주세요.'
-const GEOCODE_ERROR_MESSAGE = '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.'
 const REVIEW_LIMIT = 500
 const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-white px-3 text-base text-[#1f1f1f] placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
 const INPUT_CLASSES = `h-10 ${BASE_TEXT_FIELD_CLASSES}`
@@ -143,12 +137,21 @@ const createInitialDraft = (): RegistrationDraft => ({
   review_content: '',
 })
 
-const toRepositoryDraft = (draft: RegistrationDraft) => ({
-  place_type: draft.place_type,
-  zeropay_status: draft.zeropay_status,
-  rating_score: draft.rating_score,
-  review_content: draft.review_content,
-})
+type PlaceEntryResponse =
+  | PlaceRegistrationResult
+  | PlaceRegistrationPreparationResult
+  | {
+      status: 'error'
+      error: {
+        code: string
+        message: string
+      }
+    }
+  | {
+      error?: {
+        message?: string
+      }
+    }
 
 const buildRequiredFieldErrors = (draft: RegistrationDraft): FieldErrors => {
   const errors: FieldErrors = {}
@@ -178,10 +181,9 @@ const resizeReviewTextarea = (textarea: HTMLTextAreaElement) => {
 }
 
 const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
-  const { accessToken } = useAuth()
+  const { csrfHeaderName, csrfToken } = useAuth()
   const { isDesktop } = useViewportMode()
   const applyRegistrationResult = useAppShellStore((state) => state.applyRegistrationResult)
-  const places = useAppShellStore((state) => state.places)
 
   const [draft, setDraft] = useState<RegistrationDraft>(createInitialDraft)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -225,22 +227,46 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
     setFieldErrors({})
 
     try {
-      const response = await fetch('/api/place-entry', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({
-          name: draft.name.trim(),
-          roadAddress: draft.road_address.trim(),
-        }),
-      })
+      const submitRequest = async (confirmDuplicate: boolean) => {
+        const response = await fetch('/api/place-entry', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrfHeaderName && csrfToken ? { [csrfHeaderName]: csrfToken } : {}),
+          },
+          body: JSON.stringify({
+            name: draft.name.trim(),
+            roadAddress: draft.road_address.trim(),
+            placeType: draft.place_type,
+            zeropayStatus: draft.zeropay_status,
+            ratingScore: draft.rating_score,
+            reviewContent: draft.review_content,
+            confirmDuplicate,
+          }),
+        })
 
-      const result = (await response.json()) as PlaceLookupResult | { error?: { message?: string } }
+        return {
+          response,
+          payload: (await response.json()) as PlaceEntryResponse,
+        }
+      }
 
-      if ('status' in result && result.status === 'error') {
-        const message = result.error.message || GEOCODE_ERROR_MESSAGE
+      let { response, payload } = await submitRequest(false)
+
+      if ('status' in payload && payload.status === 'confirm_required') {
+        const confirmed = window.confirm(formatDialogMessage(payload.confirmMessage))
+        if (!confirmed) {
+          setSubmitState('idle')
+          return
+        }
+
+        const confirmedResult = await submitRequest(true)
+        response = confirmedResult.response
+        payload = confirmedResult.payload
+      }
+
+      if ('status' in payload && payload.status === 'error') {
+        const message = payload.error.message || GENERIC_SUBMIT_ERROR_MESSAGE
         window.alert(formatDialogMessage(message))
         setFieldErrors({ road_address: message })
         setSubmitState('error')
@@ -249,8 +275,8 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 
       if (!response.ok) {
         const message =
-          !('status' in result) && result.error?.message
-            ? result.error.message
+          typeof payload === 'object' && payload !== null && 'error' in payload && payload.error?.message
+            ? payload.error.message
             : GENERIC_SUBMIT_ERROR_MESSAGE
         window.alert(formatDialogMessage(message))
         setFieldErrors({ form: message })
@@ -258,55 +284,19 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
         return
       }
 
-      const preparedPlace = ('status' in result ? result.data : null) as PlaceLookupSuccess['data'] | null
-      if (!preparedPlace) {
-        window.alert(formatDialogMessage(GENERIC_SUBMIT_ERROR_MESSAGE))
-        setFieldErrors({ form: GENERIC_SUBMIT_ERROR_MESSAGE })
-        setSubmitState('error')
+      if ('status' in payload && (payload.status === 'created' || payload.status === 'merged' || payload.status === 'updated')) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        applyRegistrationResult(payload)
+        window.history.pushState({}, '', getDetailRoutePath(payload.place.id))
+        window.dispatchEvent(new PopStateEvent('popstate'))
+        window.alert(formatDialogMessage(payload.message))
+        setSubmitState('idle')
         return
       }
 
-      const validationError = validateRegistrationDraft({
-        draft: toRepositoryDraft(draft),
-        lookupData: { latitude: preparedPlace.latitude, longitude: preparedPlace.longitude },
-      })
-      if (validationError) {
-        setFieldErrors({ form: validationError })
-        setSubmitState('error')
-        return
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 50))
-
-      if (preparedPlace.name === '저장 실패 장소') {
-        window.alert(formatDialogMessage(GENERIC_SUBMIT_ERROR_MESSAGE))
-        setFieldErrors({ form: GENERIC_SUBMIT_ERROR_MESSAGE })
-        setSubmitState('error')
-        return
-      }
-
-      const repositoryDraft = toRepositoryDraft(draft)
-      const preparation = preparePlaceRegistration({ lookupData: preparedPlace, places })
-
-      if (preparation.status === 'confirm_required') {
-        const confirmed = window.confirm(formatDialogMessage(preparation.confirmMessage))
-        if (!confirmed) {
-          setSubmitState('idle')
-          return
-        }
-      }
-
-      const registrationResult = confirmPlaceRegistration({
-        draft: repositoryDraft,
-        lookupData: preparedPlace,
-        places,
-      })
-
-      applyRegistrationResult(registrationResult)
-      window.history.pushState({}, '', getDetailRoutePath(registrationResult.place.id))
-      window.dispatchEvent(new PopStateEvent('popstate'))
-      window.alert(formatDialogMessage(registrationResult.message))
-      setSubmitState('idle')
+      window.alert(formatDialogMessage(GENERIC_SUBMIT_ERROR_MESSAGE))
+      setFieldErrors({ form: GENERIC_SUBMIT_ERROR_MESSAGE })
+      setSubmitState('error')
     } catch (error) {
       const message = error instanceof Error && error.message ? error.message : GENERIC_SUBMIT_ERROR_MESSAGE
       window.alert(formatDialogMessage(message))

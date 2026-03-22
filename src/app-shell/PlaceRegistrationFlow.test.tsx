@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
+import { MOCK_PLACES } from './mockPlaces'
 import { resetAppShellStore } from './appShellStore'
 
 const originalFetch = globalThis.fetch
@@ -9,6 +10,116 @@ const GEOCODE_FAILURE_ALERT_MESSAGE = '주소를 찾지 못했어요.\n입력한
 const GENERIC_SAVE_FAILURE_ALERT_MESSAGE = '등록하지 못했어요.\n잠시 후 다시 시도해 주세요.'
 const DUPLICATE_CONFIRM_MESSAGE = '이미 등록된 장소예요.\n지금 입력한 정보를 이 장소에 반영할까요?'
 const OVERWRITE_CONFIRM_MESSAGE = '이미 내가 리뷰를 남긴 장소예요.\n지금 입력한 정보를 반영할까요?'
+const cloneMockPlace = (placeId: string) => {
+  const matched = MOCK_PLACES.find((place) => place.id === placeId)
+  if (!matched) return null
+  return {
+    ...matched,
+    my_review: matched.my_review ? { ...matched.my_review } : null,
+    reviews: matched.reviews.map((review) => ({ ...review })),
+  }
+}
+
+const cloneMockPlaces = () =>
+  MOCK_PLACES.map((place) => ({
+    ...place,
+    my_review: place.my_review ? { ...place.my_review } : null,
+    reviews: place.reviews.map((review) => ({ ...review })),
+  }))
+
+const replacePlaceInList = (nextPlace: ReturnType<typeof cloneMockPlace>) =>
+  cloneMockPlaces().map((place) => (place.id === nextPlace?.id ? (nextPlace as typeof place) : place))
+
+const buildCreatedPlacePayload = (body: Record<string, unknown>) => {
+  const reviewContent = typeof body.reviewContent === 'string' ? body.reviewContent : ''
+  const ratingScore = typeof body.ratingScore === 'number' ? body.ratingScore : 5
+  const name = typeof body.name === 'string' ? body.name : '등록 테스트 장소'
+  const roadAddress = typeof body.roadAddress === 'string' ? body.roadAddress : '서울 마포구 등록로 1'
+  const placeType = body.placeType === 'cafe' ? 'cafe' : 'restaurant'
+  const zeropayStatus =
+    body.zeropayStatus === 'available'
+    || body.zeropayStatus === 'unavailable'
+    || body.zeropayStatus === 'needs_verification'
+      ? body.zeropayStatus
+      : 'available'
+
+  const place = {
+    id: 'place-direct-entry-123456789',
+    naver_place_id: 'direct-entry-123456789',
+    naver_place_url: 'https://map.naver.com/p/search/%EB%93%B1%EB%A1%9D%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EC%9E%A5%EC%86%8C',
+    name,
+    road_address: roadAddress,
+    latitude: 37.558721,
+    longitude: 126.92444,
+    place_type: placeType,
+    zeropay_status: zeropayStatus,
+    average_rating: ratingScore,
+    review_count: 1,
+    added_by_name: '테스트 사용자',
+    my_review: {
+      id: 'review-new-direct-entry-123456789',
+      author_name: '테스트 사용자',
+      content: reviewContent,
+      created_at: '2026-03-08',
+      rating_score: ratingScore,
+    },
+    reviews: [
+      {
+        id: 'review-new-direct-entry-123456789',
+        author_name: '테스트 사용자',
+        content: reviewContent,
+        created_at: '2026-03-08',
+        rating_score: ratingScore,
+      },
+    ],
+  }
+
+  return {
+    status: 'created',
+    place,
+    places: [place, ...cloneMockPlaces()],
+    message: '장소를 추가했어요.',
+  }
+}
+
+const createRegistrationFetchMock = (placeEntryResponse?: Response | ((input: RequestInfo | URL, init?: RequestInit) => Promise<Response>)) =>
+  vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+
+    if (url === '/api/place-list') {
+      return new Response(JSON.stringify({ status: 'success', places: MOCK_PLACES }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (url.startsWith('/api/place-detail?placeId=')) {
+      const placeId = decodeURIComponent(url.split('=')[1] ?? '')
+      const place = cloneMockPlace(placeId)
+      return new Response(JSON.stringify(place ? { status: 'success', place } : { error: { message: 'not found' } }), {
+        status: place ? 200 : 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (url === '/api/place-entry') {
+      if (typeof placeEntryResponse === 'function') {
+        return placeEntryResponse(input, init)
+      }
+      if (placeEntryResponse) {
+        return placeEntryResponse
+      }
+
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+      return mockPlaceEntrySuccess(buildCreatedPlacePayload(body))
+    }
+
+    return new Response(JSON.stringify({ error: { message: 'unexpected request' } }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
@@ -24,19 +135,8 @@ const setViewport = (width: number) => {
 const mockPlaceEntrySuccess = (overrides: Record<string, unknown> = {}) =>
   new Response(
     JSON.stringify({
-      status: 'success',
-      data: {
-        naver_place_id: 'direct-entry-123456789',
-        canonical_url: 'https://map.naver.com/p/search/%EB%93%B1%EB%A1%9D%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EC%9E%A5%EC%86%8C',
-        name: '등록 테스트 장소',
-        road_address: '서울 마포구 등록로 1',
-        land_lot_address: null,
-        representative_address: '서울 마포구 등록로 1',
-        latitude: 37.558721,
-        longitude: 126.92444,
-        coordinate_source: 'road_address_geocode',
-        ...overrides,
-      },
+      ...buildCreatedPlacePayload({}),
+      ...overrides,
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   )
@@ -66,6 +166,10 @@ describe('Plan 06 place registration flow', () => {
     vi.spyOn(window, 'alert').mockImplementation(() => {})
     resetAppShellStore()
     window.history.replaceState({}, '', '/')
+    globalThis.fetch = createRegistrationFetchMock() as typeof fetch
+  })
+
+  afterEach(() => {
     globalThis.fetch = originalFetch
   })
 
@@ -178,7 +282,7 @@ describe('Plan 06 place registration flow', () => {
   })
 
   it('clamps pasted review content to 500 characters and discards the overflow', async () => {
-    globalThis.fetch = vi.fn(async () => mockPlaceEntrySuccess()) as typeof fetch
+    globalThis.fetch = createRegistrationFetchMock() as typeof fetch
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
@@ -224,7 +328,7 @@ describe('Plan 06 place registration flow', () => {
   })
 
   it('creates the initial review for a newly registered place', async () => {
-    globalThis.fetch = vi.fn(async () => mockPlaceEntrySuccess()) as typeof fetch
+    globalThis.fetch = createRegistrationFetchMock() as typeof fetch
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
@@ -243,15 +347,54 @@ describe('Plan 06 place registration flow', () => {
 
   it('shows one browser confirm and merges the existing place when confirmed', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    globalThis.fetch = vi.fn(async () =>
-      mockPlaceEntrySuccess({
-        naver_place_id: '10002',
-        canonical_url: 'https://map.naver.com/p/entry/place/10002',
+    let placeEntryCall = 0
+    globalThis.fetch = createRegistrationFetchMock(async () => {
+      placeEntryCall += 1
+
+      if (placeEntryCall === 1) {
+        return new Response(JSON.stringify({
+          status: 'confirm_required',
+          reason: 'merge_place',
+          place: cloneMockPlace('place-cafe-1'),
+          confirmMessage: '이미 등록된 장소예요. 지금 입력한 정보를 이 장소에 반영할까요?',
+        }), { status: 409, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      const existingPlace = cloneMockPlace('place-cafe-1')
+      if (!existingPlace) {
+        throw new Error('expected place-cafe-1 fixture')
+      }
+      const mergedPlace = {
+        ...existingPlace,
         name: '양화로 카페 리프레시',
-        road_address: '서울 마포구 양화로19길 20 2층',
-        representative_address: '서울 마포구 양화로19길 20 2층',
-      }),
-    ) as typeof fetch
+        zeropay_status: 'available' as const,
+        average_rating: 4.4,
+        review_count: 9,
+        my_review: {
+          id: 'review-merge',
+          author_name: '테스트 사용자',
+          content: '병합 테스트 리뷰',
+          created_at: '2026-03-08',
+          rating_score: 4,
+        },
+        reviews: [
+          {
+            id: 'review-merge',
+            author_name: '테스트 사용자',
+            content: '병합 테스트 리뷰',
+            created_at: '2026-03-08',
+            rating_score: 4,
+          },
+          ...(existingPlace?.reviews ?? []),
+        ],
+      }
+      return new Response(JSON.stringify({
+        status: 'merged',
+        place: mergedPlace,
+        places: replacePlaceInList(mergedPlace),
+        message: '기존 장소에 정보를 합쳤어요.',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }) as typeof fetch
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
@@ -278,15 +421,49 @@ describe('Plan 06 place registration flow', () => {
 
   it('allows overwrite through the same confirm and preserves old review text when new review is blank', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    globalThis.fetch = vi.fn(async () =>
-      mockPlaceEntrySuccess({
-        naver_place_id: '10001',
-        canonical_url: 'https://map.naver.com/p/entry/place/10001',
-        name: '누리 식당',
-        road_address: '서울 마포구 양화로19길 22-16 1층',
-        representative_address: '서울 마포구 양화로19길 22-16 1층',
-      }),
-    ) as typeof fetch
+    let placeEntryCall = 0
+    globalThis.fetch = createRegistrationFetchMock(async () => {
+      placeEntryCall += 1
+
+      if (placeEntryCall === 1) {
+        return new Response(JSON.stringify({
+          status: 'confirm_required',
+          reason: 'overwrite_review',
+          place: cloneMockPlace('place-restaurant-1'),
+          confirmMessage: '이미 내가 리뷰를 남긴 장소예요. 지금 입력한 정보를 반영할까요?',
+        }), { status: 409, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      const existingPlace = cloneMockPlace('place-restaurant-1')
+      if (!existingPlace) {
+        throw new Error('expected place-restaurant-1 fixture')
+      }
+      const updatedPlace = {
+        ...existingPlace,
+        average_rating: 4.5,
+        review_count: 12,
+        my_review: {
+          ...(existingPlace?.my_review ?? {
+            id: 'review-mine-1',
+            author_name: '테스트 사용자',
+            content: '점심 모임으로 가기 좋은 식당이에요.',
+            created_at: '2026-03-08',
+            rating_score: 3,
+          }),
+          rating_score: 3,
+        },
+        reviews: (existingPlace?.reviews ?? []).map((review) =>
+          review.id === existingPlace?.my_review?.id
+            ? { ...review, rating_score: 3 }
+            : review),
+      }
+      return new Response(JSON.stringify({
+        status: 'updated',
+        place: updatedPlace,
+        places: replacePlaceInList(updatedPlace),
+        message: '기존 장소에 정보를 반영했어요.',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }) as typeof fetch
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
@@ -311,14 +488,13 @@ describe('Plan 06 place registration flow', () => {
 
   it('keeps form values and stays on screen when duplicate confirm is cancelled', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    globalThis.fetch = vi.fn(async () =>
-      mockPlaceEntrySuccess({
-        naver_place_id: '10002',
-        canonical_url: 'https://map.naver.com/p/entry/place/10002',
-        name: '양화로 카페 리프레시',
-        road_address: '서울 마포구 양화로19길 20 2층',
-        representative_address: '서울 마포구 양화로19길 20 2층',
-      }),
+    globalThis.fetch = createRegistrationFetchMock(async () =>
+      new Response(JSON.stringify({
+        status: 'confirm_required',
+        reason: 'merge_place',
+        place: cloneMockPlace('place-cafe-1'),
+        confirmMessage: '이미 등록된 장소예요. 지금 입력한 정보를 이 장소에 반영할까요?',
+      }), { status: 409, headers: { 'Content-Type': 'application/json' } }),
     ) as typeof fetch
     setViewport(1280)
     const user = userEvent.setup()
@@ -404,7 +580,17 @@ describe('Plan 06 place registration flow', () => {
 
   it('keeps the entered values after a save failure', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
-    globalThis.fetch = vi.fn(async () => mockPlaceEntrySuccess({ name: '저장 실패 장소' })) as typeof fetch
+    globalThis.fetch = createRegistrationFetchMock(async () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 'place_save_failed',
+            message: '등록하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          },
+        }),
+        { status: 422, headers: { 'Content-Type': 'application/json' } },
+      ),
+    ) as typeof fetch
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)

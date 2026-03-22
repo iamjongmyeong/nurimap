@@ -624,7 +624,7 @@ const AddRatingScreen = ({
   place,
 }: {
   onBack: () => void
-  onSubmit: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
+  onSubmit: (placeId: string, draft: ReviewDraft) => Promise<{ status: 'saved' | 'existing_review' | 'error'; message?: string }>
   place: PlaceSummary | undefined
 }) => {
   const [draft, setDraft] = useState(createInitialReviewDraft)
@@ -653,7 +653,7 @@ const AddRatingScreen = ({
     setErrorMessage(null)
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const result = onSubmit(place.id, draft)
+    const result = await onSubmit(place.id, draft)
     if (result.status !== 'saved') {
       setSubmitState('error')
       setErrorMessage(result.message ?? '평가를 저장하지 못했어요. 다시 시도해 주세요.')
@@ -987,7 +987,7 @@ const MobileDetailPage = ({
   onAddRatingBack: () => void
   onBrowseBack: () => void
   onOpenAddRating: () => void
-  onSubmitReview: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => Promise<{ status: 'saved' | 'existing_review' | 'error'; message?: string }>
   place: PlaceSummary | undefined
   status: PlaceDetailLoadState
 }) => {
@@ -1071,7 +1071,7 @@ const MobileAppShell = ({
   onOpenAddRating: () => void
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
-  onSubmitReview: (placeId: string, draft: ReviewDraft) => { status: 'saved' | 'existing_review' | 'error'; message?: string }
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => Promise<{ status: 'saved' | 'existing_review' | 'error'; message?: string }>
   selectedPlace: PlaceSummary | undefined
 }) => {
   const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
@@ -1152,19 +1152,32 @@ export const NurimapAppShell = () => {
   const places = useAppShellStore((state) => state.places)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
   const setSelectedPlaceId = useAppShellStore((state) => state.setSelectedPlaceId)
+  const loadPlaceDetailFromApi = useAppShellStore((state) => state.loadPlaceDetail)
+  const loadPlaces = useAppShellStore((state) => state.loadPlaces)
+  const placeListLoad = useAppShellStore((state) => state.placeListLoad)
+  const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
   const submitPlaceReview = useAppShellStore((state) => state.submitPlaceReview)
   const mapLevel = useAppShellStore((state) => state.mapLevel)
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
+  const { csrfHeaderName, csrfToken } = useAuth()
   const mapPlaces = places.filter(hasCoordinates)
   const routePlaceId = getPlaceIdFromPathname(pathname)
   const routeSelectedPlace = routePlaceId
-    ? mapPlaces.find((place) => place.id === routePlaceId)
+    ? places.find((place) => place.id === routePlaceId)
     : undefined
   const selectedPlace = routePlaceId
     ? routeSelectedPlace
-    : mapPlaces.find((place) => place.id === selectedPlaceId)
+    : places.find((place) => place.id === selectedPlaceId)
   const effectiveNavigationState = routePlaceId ? 'place_detail_open' : navigationState
   const effectiveDetailChildSurface = routePlaceId ? detailChildSurface : 'detail'
+
+  useEffect(() => {
+    if (placeListLoad !== 'idle') {
+      return
+    }
+
+    void loadPlaces()
+  }, [loadPlaces, placeListLoad])
 
   useEffect(() => {
     const nextSurface = routePlaceId
@@ -1198,9 +1211,9 @@ export const NurimapAppShell = () => {
     }
 
     if (!routeSelectedPlace) {
-      returnToMapBrowse()
-      window.history.replaceState({}, '', '/')
-      window.dispatchEvent(new PopStateEvent('popstate'))
+      if (placeDetailLoad !== 'loading') {
+        void loadPlaceDetailFromApi(routePlaceId)
+      }
       return
     }
 
@@ -1211,7 +1224,7 @@ export const NurimapAppShell = () => {
     if (mapLevel !== 2) {
       setMapLevel(2)
     }
-  }, [mapLevel, returnToMapBrowse, routePlaceId, routeSelectedPlace, selectedPlaceId, setMapLevel, setSelectedPlaceId])
+  }, [loadPlaceDetailFromApi, mapLevel, placeDetailLoad, routePlaceId, routeSelectedPlace, selectedPlaceId, setMapLevel, setSelectedPlaceId])
 
   const navigateToPath = (path: string, replace = false) => {
     if (window.location.pathname === path) {
@@ -1268,8 +1281,13 @@ export const NurimapAppShell = () => {
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
-  const handleSubmitReview = (placeId: string, draft: ReviewDraft) => {
-    const result = submitPlaceReview(placeId, draft)
+  const handleSubmitReview = async (placeId: string, draft: ReviewDraft) => {
+    const result = await submitPlaceReview({
+      placeId,
+      draft,
+      csrfHeaderName,
+      csrfToken,
+    })
 
     if (result.status === 'saved') {
       handleCloseAddRating()

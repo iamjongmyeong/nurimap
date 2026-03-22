@@ -2,7 +2,43 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { MapPane } from './MapPane'
+import { MOCK_PLACES } from './mockPlaces'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
+
+const originalFetch = globalThis.fetch
+
+const cloneMockPlace = (placeId: string) => {
+  const matched = MOCK_PLACES.find((place) => place.id === placeId)
+  if (!matched) return null
+  return {
+    ...matched,
+    my_review: matched.my_review ? { ...matched.my_review } : null,
+    reviews: matched.reviews.map((review) => ({ ...review })),
+  }
+}
+
+const createBrowseFetchMock = () =>
+  vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input)
+
+    if (url === '/api/place-list') {
+      return new Response(JSON.stringify({
+        status: 'success',
+        places: MOCK_PLACES,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    if (url.startsWith('/api/place-detail?placeId=')) {
+      const placeId = decodeURIComponent(url.split('=')[1] ?? '')
+      const place = cloneMockPlace(placeId)
+      if (!place) {
+        return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: { 'Content-Type': 'application/json' } })
+      }
+      return new Response(JSON.stringify({ status: 'success', place }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    return new Response(JSON.stringify({ error: { message: 'unexpected request' } }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+  })
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
@@ -23,11 +59,13 @@ describe('Sprint 16 browse refresh', () => {
     vi.unstubAllEnvs()
     window.history.replaceState({}, '', '/')
     document.querySelector('script[data-kakao-map-sdk="true"]')?.remove()
+    globalThis.fetch = createBrowseFetchMock() as typeof fetch
   })
 
   afterEach(() => {
     vi.unstubAllEnvs()
     document.querySelector('script[data-kakao-map-sdk="true"]')?.remove()
+    globalThis.fetch = originalFetch
   })
 
   it('starts the map at level 3 without center or selected-place overlays', () => {

@@ -51,25 +51,19 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - bypass 로그인 사용도 운영 로그에 남긴다.
 
 ## Session Policy
-- 로그인 성공 시 Supabase 세션을 브라우저 저장소에 영속 저장한다.
-- 같은 브라우저 프로필로 재접속하면 저장된 세션을 읽는다.
-- access token이 만료되면 refresh token으로 자동 갱신한다.
+- 로그인 성공 시 backend-issued app session cookie를 사용한다.
+- 같은 브라우저 프로필로 재접속하면 backend session bootstrap으로 로그인 상태를 복원한다.
+- frontend는 Supabase access token / refresh token을 직접 저장하거나 갱신하지 않는다.
 - 세션 절대 만료는 90일이다.
 - 90일이 지나면 재로그인이 필요하다.
-- 다른 브라우저, 시크릿 창, 저장소 삭제, 로그아웃 시에는 세션이 유지되지 않는다.
-- 앱 시작 시 저장 세션이 있어도 `getUser()` 또는 보호된 API 확인으로 유효성을 재검증한다.
-
-Supabase 설정 reference defaults:
-- `persistSession: true`
-- `autoRefreshToken: true`
-- `SESSIONS_TIMEBOX = 2160 hours`
-- `SESSIONS_INACTIVITY_TIMEOUT = 0`
-- `SESSIONS_SINGLE_PER_USER = false`
+- 다른 브라우저, 시크릿 창, 쿠키 삭제, 로그아웃 시에는 세션이 유지되지 않는다.
+- 앱 시작 시 session cookie가 있어도 `GET /api/auth/session` 또는 보호된 API 확인으로 유효성을 재검증한다.
 
 ## Authorization Policy
 - place 등록과 리뷰 작성은 인증된 사용자만 수행한다.
 - 등록자와 리뷰 작성자 정보는 사용자 ID와 연결한다.
-- DB 레벨에서는 RLS를 전제로 한다.
+- backend authorization/business logic이 canonical enforcement다.
+- DB 레벨 RLS는 필요 시 defense-in-depth로만 사용할 수 있으며, 제품 규칙의 primary source of truth로 삼지 않는다.
 - 클라이언트에는 service role key를 노출하지 않는다.
 
 ## Search Engine Blocking

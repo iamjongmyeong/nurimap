@@ -11,6 +11,8 @@ export type AuthPhase =
 
 export type AuthContextValue = {
   accessToken: string | null
+  csrfHeaderName: string | null
+  csrfToken: string | null
   email: string
   failureReason: string | null
   message: string | null

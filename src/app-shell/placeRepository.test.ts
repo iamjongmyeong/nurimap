@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { MOCK_PLACES } from './mockPlaces'
 import {
   confirmPlaceRegistration,
   createInitialPlaces,
@@ -21,10 +22,21 @@ const baseLookupData = {
   coordinate_source: 'naver' as const,
 }
 
+const cloneMockPlaces = () =>
+  MOCK_PLACES.map((place) => ({
+    ...place,
+    my_review: place.my_review ? { ...place.my_review } : null,
+    reviews: place.reviews.map((review) => ({ ...review })),
+  }))
+
 describe('Plan 06 place repository', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('creates a new place when the naver_place_id is new', () => {
     const result = registerOrMergePlace({
-      places: createInitialPlaces(),
+      places: cloneMockPlaces(),
       lookupData: baseLookupData,
       draft: {
         place_type: 'restaurant',
@@ -40,7 +52,7 @@ describe('Plan 06 place repository', () => {
 
   it('merges into an existing place when the naver_place_id already exists', () => {
     const result = registerOrMergePlace({
-      places: createInitialPlaces(),
+      places: cloneMockPlaces(),
       lookupData: {
         ...baseLookupData,
         naver_place_id: '10002',
@@ -62,7 +74,7 @@ describe('Plan 06 place repository', () => {
 
   it('prefers the latest extracted fields for name, address, and coordinates', () => {
     const result = registerOrMergePlace({
-      places: createInitialPlaces(),
+      places: cloneMockPlaces(),
       lookupData: {
         ...baseLookupData,
         naver_place_id: '10002',
@@ -87,7 +99,7 @@ describe('Plan 06 place repository', () => {
 
   it('prefers confirmed zeropay status over needs_verification', () => {
     const result = registerOrMergePlace({
-      places: createInitialPlaces(),
+      places: cloneMockPlaces(),
       lookupData: {
         ...baseLookupData,
         naver_place_id: '10002',
@@ -106,7 +118,7 @@ describe('Plan 06 place repository', () => {
 
   it('requires a single confirm when a duplicate place is found by canonical name and address', () => {
     const result = preparePlaceRegistration({
-      places: createInitialPlaces(),
+      places: cloneMockPlaces(),
       lookupData: {
         ...baseLookupData,
         naver_place_id: '99999',
@@ -128,7 +140,7 @@ describe('Plan 06 place repository', () => {
 
   it('requires an overwrite confirm when my review already exists on the duplicate place', () => {
     const result = preparePlaceRegistration({
-      places: createInitialPlaces(),
+      places: cloneMockPlaces(),
       lookupData: {
         ...baseLookupData,
         naver_place_id: '10001',
@@ -150,7 +162,7 @@ describe('Plan 06 place repository', () => {
 
   it('applies a confirmed duplicate merge and keeps review uniqueness when my review is absent', () => {
     const result = confirmPlaceRegistration({
-      places: createInitialPlaces(),
+      places: cloneMockPlaces(),
       lookupData: {
         ...baseLookupData,
         naver_place_id: '10002',
@@ -180,7 +192,7 @@ describe('Plan 06 place repository', () => {
 
   it('overwrites my existing review after confirm and preserves old review text when the new text is blank', () => {
     const result = confirmPlaceRegistration({
-      places: createInitialPlaces(),
+      places: cloneMockPlaces(),
       lookupData: {
         ...baseLookupData,
         naver_place_id: '10001',
@@ -257,7 +269,7 @@ describe('Plan 06 place repository', () => {
 
   it('returns the duplicate review modal result when my review already exists', () => {
     const result = registerOrMergePlace({
-      places: createInitialPlaces(),
+      places: cloneMockPlaces(),
       lookupData: {
         ...baseLookupData,
         naver_place_id: '10001',
@@ -278,8 +290,38 @@ describe('Plan 06 place repository', () => {
     expect(result.message).toBe('이미 리뷰를 남긴 장소예요')
   })
 
-  it('submits a review for a place without my review and updates aggregate summary fields', () => {
-    const result = submitReviewForPlace({
+  it('submits a review for a place without my review and updates aggregate summary fields', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify({
+        status: 'saved',
+        place: {
+          ...cloneMockPlaces().find((place) => place.id === 'place-cafe-1')!,
+          average_rating: 4.4,
+          review_count: 9,
+          my_review: {
+            id: 'review-place-cafe-1-mine',
+            author_name: '테스트 사용자',
+            content: '새 리뷰 작성 테스트',
+            created_at: '2026-03-08',
+            rating_score: 5,
+          },
+          reviews: [
+            {
+              id: 'review-place-cafe-1-mine',
+              author_name: '테스트 사용자',
+              content: '새 리뷰 작성 테스트',
+              created_at: '2026-03-08',
+              rating_score: 5,
+            },
+            ...cloneMockPlaces().find((place) => place.id === 'place-cafe-1')!.reviews,
+          ],
+        },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    ) as typeof fetch
+
+    const result = await submitReviewForPlace({
+      csrfHeaderName: 'x-nurimap-csrf-token',
+      csrfToken: 'csrf-123',
       placeId: 'place-cafe-1',
       places: createInitialPlaces(),
       draft: {
@@ -300,8 +342,18 @@ describe('Plan 06 place repository', () => {
     expect(result.place.reviews[0]?.content).toBe('새 리뷰 작성 테스트')
   })
 
-  it('rejects a second review submission for the same place', () => {
-    const result = submitReviewForPlace({
+  it('rejects a second review submission for the same place', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify({
+        status: 'existing_review',
+        place: cloneMockPlaces().find((place) => place.id === 'place-restaurant-1'),
+        message: '이미 리뷰를 남긴 장소예요',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    ) as typeof fetch
+
+    const result = await submitReviewForPlace({
+      csrfHeaderName: 'x-nurimap-csrf-token',
+      csrfToken: 'csrf-123',
       placeId: 'place-restaurant-1',
       places: createInitialPlaces(),
       draft: {

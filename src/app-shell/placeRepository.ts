@@ -78,8 +78,21 @@ export type ReviewSubmissionResult =
       status: 'error'
       place: PlaceSummary | null
       places: PlaceSummary[]
-      message: typeof REVIEW_SAVE_FAILED_MESSAGE
+      message: string
     }
+
+type PlaceListResponse =
+  | { status: 'success'; places: PlaceSummary[] }
+  | { error?: { message?: string } }
+
+type PlaceDetailResponse =
+  | { status: 'success'; place: PlaceSummary }
+  | { error?: { message?: string } }
+
+type PlaceReviewResponse =
+  | { status: 'saved'; place: PlaceSummary }
+  | { status: 'existing_review'; place: PlaceSummary; message: '이미 리뷰를 남긴 장소예요' }
+  | { error?: { message?: string } }
 
 const roundAverage = (value: number) => Math.round(value * 10) / 10
 
@@ -136,14 +149,6 @@ const mergeZeropayStatus = (currentStatus: ZeropayStatus, nextStatus: ZeropaySta
 }
 
 const createReview = (draft: RegistrationDraft, idSeed: string): ReviewSummary => ({
-  id: `review-${idSeed}`,
-  author_name: CURRENT_USER_NAME,
-  content: draft.review_content,
-  created_at: '2026-03-08',
-  rating_score: draft.rating_score,
-})
-
-const createReviewFromDraft = (draft: ReviewDraft, idSeed: string): ReviewSummary => ({
   id: `review-${idSeed}`,
   author_name: CURRENT_USER_NAME,
   content: draft.review_content,
@@ -391,11 +396,39 @@ export const validateReviewDraft = (draft: ReviewDraft) => {
 }
 
 export const createInitialPlaces = () =>
-  MOCK_PLACES.map((place) => ({
-    ...place,
-    my_review: place.my_review ? { ...place.my_review } : null,
-    reviews: place.reviews.map((review) => ({ ...review })),
-  }))
+  import.meta.env.MODE === 'test'
+    ? MOCK_PLACES.map(clonePlace)
+    : [] as PlaceSummary[]
+
+const clonePlace = (place: PlaceSummary): PlaceSummary => ({
+  ...place,
+  my_review: place.my_review ? { ...place.my_review } : null,
+  reviews: place.reviews.map((review) => ({ ...review })),
+})
+
+const parseJson = async <T>(response: Response) => response.json() as Promise<T>
+
+export const loadPlaceList = async () => {
+  const response = await fetch('/api/place-list')
+  const payload = await parseJson<PlaceListResponse>(response)
+
+  if (!response.ok || !('status' in payload) || payload.status !== 'success') {
+    throw new Error(getErrorMessage(payload as ErrorResponse, '장소 목록을 불러오지 못했어요.'))
+  }
+
+  return payload.places.map(clonePlace)
+}
+
+export const loadPlaceDetail = async (placeId: string) => {
+  const response = await fetch(`/api/place-detail?placeId=${encodeURIComponent(placeId)}`)
+  const payload = await parseJson<PlaceDetailResponse>(response)
+
+  if (!response.ok || !('status' in payload) || payload.status !== 'success') {
+    throw new Error(getErrorMessage(payload as ErrorResponse, '장소 상세를 불러오지 못했어요.'))
+  }
+
+  return clonePlace(payload.place)
+}
 
 export const preparePlaceRegistration = ({
   lookupData,
@@ -518,61 +551,92 @@ export const registerOrMergePlace = ({
   })
 }
 
-export const submitReviewForPlace = ({
+export const submitReviewForPlace = async ({
+  csrfHeaderName,
+  csrfToken,
   draft,
   placeId,
   places,
 }: {
+  csrfHeaderName: string | null
+  csrfToken: string | null
   draft: ReviewDraft
   placeId: string
   places: PlaceSummary[]
-}): ReviewSubmissionResult => {
+}): Promise<ReviewSubmissionResult> => {
   const targetPlace = places.find((place) => place.id === placeId) ?? null
 
-  if (!targetPlace) {
+  if (!csrfHeaderName || !csrfToken) {
     return {
       status: 'error',
-      place: null,
+      place: targetPlace,
       places,
       message: REVIEW_SAVE_FAILED_MESSAGE,
     }
   }
 
-  if (targetPlace.my_review) {
+  const response = await fetch('/api/place-review', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      [csrfHeaderName]: csrfToken,
+    },
+    body: JSON.stringify({
+      placeId,
+      ratingScore: draft.rating_score,
+      reviewContent: draft.review_content,
+    }),
+  })
+  const payload = await parseJson<PlaceReviewResponse>(response)
+
+  if (!response.ok) {
+    return {
+      status: 'error',
+      place: targetPlace,
+      places,
+      message: getErrorMessage(payload as ErrorResponse, REVIEW_SAVE_FAILED_MESSAGE),
+    }
+  }
+
+  if ('status' in payload && payload.status === 'existing_review') {
+    const nextPlace = clonePlace(payload.place)
     return {
       status: 'existing_review',
-      place: targetPlace,
-      places,
-      message: '이미 리뷰를 남긴 장소예요',
+      place: nextPlace,
+      places: places.map((place) => (place.id === nextPlace.id ? nextPlace : place)),
+      message: payload.message,
     }
   }
 
-  if (targetPlace.name === '리뷰 저장 실패 장소') {
+  if ('status' in payload && payload.status === 'saved') {
+    const nextPlace = clonePlace(payload.place)
     return {
-      status: 'error',
-      place: targetPlace,
-      places,
-      message: REVIEW_SAVE_FAILED_MESSAGE,
+      status: 'saved',
+      place: nextPlace,
+      places: places.map((place) => (place.id === nextPlace.id ? nextPlace : place)),
     }
-  }
-
-  const review = createReviewFromDraft(draft, `${targetPlace.id}-${targetPlace.review_count + 1}`)
-  const nextPlace: PlaceSummary = {
-    ...targetPlace,
-    average_rating: computeAverageRatingFromAggregate({
-      currentAverage: targetPlace.average_rating,
-      currentCount: targetPlace.review_count,
-      nextRating: draft.rating_score,
-    }),
-    review_count: targetPlace.review_count + 1,
-    my_review: review,
-    reviews: [review, ...targetPlace.reviews],
   }
 
   return {
-    status: 'saved',
-    place: nextPlace,
-    places: places.map((place) => (place.id === targetPlace.id ? nextPlace : place)),
+    status: 'error',
+    place: targetPlace,
+    places,
+    message: REVIEW_SAVE_FAILED_MESSAGE,
+  }
+}
+type ErrorResponse = {
+  error?: {
+    message?: string
   }
 }
 
+const getErrorMessage = (payload: unknown, fallbackMessage: string) =>
+  typeof payload === 'object'
+  && payload !== null
+  && 'error' in payload
+  && typeof payload.error === 'object'
+  && payload.error !== null
+  && 'message' in payload.error
+  && typeof payload.error.message === 'string'
+    ? payload.error.message
+    : fallbackMessage

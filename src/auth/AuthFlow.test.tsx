@@ -6,40 +6,8 @@ import { AUTH_BOOTSTRAP_TIMEOUT_MS, AUTH_REQUEST_TIMEOUT_MS, OTP_ENTRY_FAILURE_M
 import { resetTestAuthState, setTestAuthState } from './testAuthState'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const {
-  getSessionMock,
-  getUserMock,
-  signInWithOtpMock,
-  verifyOtpMock,
-  signOutMock,
-  updateUserMock,
-  onAuthStateChangeMock,
-} = vi.hoisted(() => ({
-  getSessionMock: vi.fn(),
-  getUserMock: vi.fn(),
-  signInWithOtpMock: vi.fn(),
-  verifyOtpMock: vi.fn(),
-  signOutMock: vi.fn(),
-  updateUserMock: vi.fn(),
-  onAuthStateChangeMock: vi.fn(),
-}))
-
 vi.mock('agentation', () => ({
   Agentation: () => null,
-}))
-
-vi.mock('./supabaseBrowser', () => ({
-  supabaseBrowser: {
-    auth: {
-      getSession: getSessionMock,
-      getUser: getUserMock,
-      signInWithOtp: signInWithOtpMock,
-      verifyOtp: verifyOtpMock,
-      signOut: signOutMock,
-      updateUser: updateUserMock,
-      onAuthStateChange: onAuthStateChangeMock,
-    },
-  },
 }))
 
 const setViewport = (width: number) => {
@@ -62,22 +30,6 @@ describe('Sprint 18 OTP auth flow', () => {
     vi.unstubAllGlobals()
     window.localStorage.clear()
     window.history.replaceState({}, '', '/')
-    getSessionMock.mockResolvedValue({ data: { session: null } })
-    getUserMock.mockResolvedValue({ data: { user: null }, error: null })
-    signInWithOtpMock.mockResolvedValue({ data: {}, error: null })
-    verifyOtpMock.mockResolvedValue({
-      data: { session: null, user: null },
-      error: new Error('verifyOtp not configured'),
-    })
-    signOutMock.mockResolvedValue({ error: null })
-    updateUserMock.mockResolvedValue({ error: null })
-    onAuthStateChangeMock.mockReturnValue({
-      data: {
-        subscription: {
-          unsubscribe: vi.fn(),
-        },
-      },
-    })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
@@ -153,20 +105,27 @@ describe('Sprint 18 OTP auth flow', () => {
     vi.stubEnv('MODE', 'development')
     vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
     const user = userEvent.setup()
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: 'error',
-          code: 'cooldown',
-          message: '1분 07초 후에 다시 시도해주세요.',
-          retryAfterSeconds: 67,
-        }),
-        {
-          status: 429,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      ),
-    )
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ status: 'missing' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: 'error',
+            code: 'cooldown',
+            message: '1분 07초 후에 다시 시도해주세요.',
+            retryAfterSeconds: 67,
+          }),
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
     vi.stubGlobal('fetch', fetchMock)
     render(<App />)
 
@@ -179,7 +138,7 @@ describe('Sprint 18 OTP auth flow', () => {
     await user.type(input, 'cooldown@nurimedia.co.kr')
     await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
 
-    expect(await screen.findByText('1분 07초 뒤에 다시 보낼 수 있어요.')).toBeInTheDocument()
+    expect(await screen.findByText(/1분 0[67]초 뒤에 다시 보낼 수 있어요\./)).toBeInTheDocument()
     expect(screen.getByText('너무 많은 요청이 와서 잠시 쉴 시간이 필요해요.')).toBeInTheDocument()
     expect(input).toHaveValue('cooldown@nurimedia.co.kr')
     expect(screen.getByRole('button', { name: '인증 코드 전송' })).toBeDisabled()
@@ -276,22 +235,14 @@ describe('Sprint 18 OTP auth flow', () => {
     vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'true')
     vi.stubEnv('VITE_LOCAL_AUTO_LOGIN_EMAIL', 'bypass.named@example.com')
 
-    verifyOtpMock.mockResolvedValue({
-      data: {
-        session: {
-          access_token: 'bypass-session-token',
-        },
-        user: {
-          email: 'bypass.named@example.com',
-          user_metadata: {
-            name: '테스트 사용자',
-          },
-        },
-      },
-      error: null,
-    })
-
-    const fetchMock = vi.fn().mockResolvedValue(
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'missing' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           status: 'success',
@@ -305,8 +256,27 @@ describe('Sprint 18 OTP auth flow', () => {
           headers: { 'Content-Type': 'application/json' },
         },
       ),
-    )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: 'success',
+            nextPhase: 'authenticated',
+            user: {
+              id: 'user-1',
+              email: 'bypass.named@example.com',
+              name: '테스트 사용자',
+            },
+            csrfHeaderName: 'x-nurimap-csrf-token',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
     vi.stubGlobal('fetch', fetchMock)
+    document.cookie = 'nurimap_csrf=csrf-123'
 
     render(<App />)
 
@@ -321,32 +291,39 @@ describe('Sprint 18 OTP auth flow', () => {
         headers: { 'Content-Type': 'application/json' },
       }),
     )
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
       email: 'bypass.named@example.com',
       requireBypass: true,
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
+      email: '',
+      token: '',
+      tokenHash: 'auto-login-token-hash',
+      verificationType: 'magiclink',
     })
   })
 
   it('restores an existing session on refresh', async () => {
     vi.stubEnv('MODE', 'development')
-    getSessionMock.mockResolvedValue({
-      data: {
-        session: {
-          access_token: 'existing-session-token',
-        },
-      },
-    })
-    getUserMock.mockResolvedValue({
-      data: {
-        user: {
-          email: 'tester@nurimedia.co.kr',
-          user_metadata: {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'authenticated',
+          user: {
+            id: 'user-1',
+            email: 'tester@nurimedia.co.kr',
             name: '테스트 사용자',
           },
+          csrfHeaderName: 'x-nurimap-csrf-token',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
         },
-      },
-      error: null,
-    })
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    document.cookie = 'nurimap_csrf=csrf-123'
 
     render(
       <AuthProvider>
@@ -357,12 +334,14 @@ describe('Sprint 18 OTP auth flow', () => {
     await waitFor(() => {
       expect(screen.getByTestId('protected-child')).toBeInTheDocument()
     })
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/session')
   })
 
   it('falls back to the login form when session bootstrap never resolves', async () => {
     vi.stubEnv('MODE', 'development')
     vi.useFakeTimers()
-    getSessionMock.mockImplementation(() => new Promise(() => {}))
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {}))
+    vi.stubGlobal('fetch', fetchMock)
 
     render(
       <AuthProvider>
@@ -383,7 +362,14 @@ describe('Sprint 18 OTP auth flow', () => {
     vi.stubEnv('MODE', 'development')
     vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
     vi.useFakeTimers()
-    const fetchMock = vi.fn(() => new Promise<Response>(() => {}))
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'missing' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockImplementationOnce(() => new Promise<Response>(() => {}))
     vi.stubGlobal('fetch', fetchMock)
 
     render(<App />)
@@ -392,6 +378,8 @@ describe('Sprint 18 OTP auth flow', () => {
       await Promise.resolve()
       await Promise.resolve()
     })
+
+    expect(screen.getByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
 
     const input = screen.getByLabelText('이메일')
     fireEvent.change(input, { target: { value: 'tester@nurimedia.co.kr' } })

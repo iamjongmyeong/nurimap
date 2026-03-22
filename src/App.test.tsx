@@ -2,6 +2,47 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import { resetAppShellStore, useAppShellStore } from './app-shell/appShellStore'
+import { MOCK_PLACES } from './app-shell/mockPlaces'
+
+const originalFetch = globalThis.fetch
+
+const cloneMockPlace = (placeId: string) => {
+  const matched = MOCK_PLACES.find((place) => place.id === placeId)
+  if (!matched) return null
+  return {
+    ...matched,
+    my_review: matched.my_review ? { ...matched.my_review } : null,
+    reviews: matched.reviews.map((review) => ({ ...review })),
+  }
+}
+
+const createAppShellFetchMock = () =>
+  vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input)
+
+    if (url === '/api/place-list') {
+      return new Response(JSON.stringify({
+        status: 'success',
+        places: MOCK_PLACES,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    if (url.startsWith('/api/place-detail?placeId=')) {
+      const placeId = decodeURIComponent(url.split('=')[1] ?? '')
+      const place = cloneMockPlace(placeId)
+      if (!place) {
+        return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      return new Response(JSON.stringify({ status: 'success', place }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    if (url === '/api/place-review') {
+      return new Response(JSON.stringify({ error: { message: 'not implemented in this suite' } }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    return new Response(JSON.stringify({ status: 'missing' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  })
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
@@ -19,6 +60,11 @@ describe('Nurimap app shell', () => {
   beforeEach(() => {
     resetAppShellStore()
     window.history.replaceState({}, '', '/')
+    globalThis.fetch = createAppShellFetchMock() as typeof fetch
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
   })
 
   it('renders the desktop sidebar with the white surface background', () => {

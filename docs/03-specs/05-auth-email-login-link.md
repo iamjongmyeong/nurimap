@@ -73,7 +73,10 @@
 - bypass 성공 응답은 `{ status: 'success', mode: 'bypass', message: '테스트 계정으로 바로 로그인합니다.', tokenHash: string, verificationType: 'magiclink' | 'signup' | 'invite' }`를 사용한다.
 - cooldown 응답은 `{ status: 'error', code: 'cooldown', message: string, retryAfterSeconds: number }`를 사용한다.
 - 일반 request error 응답은 `{ status: 'error', code: 'invalid_domain' | 'delivery_failed' | 'bypass_required', message: string }`를 사용한다.
-- canonical 일반 OTP verify는 별도 앱 서버 route를 두지 않고 클라이언트가 `supabaseBrowser.auth.verifyOtp({ email, token, type: 'email' })`를 직접 호출한다.
+- canonical 일반 OTP verify endpoint는 `POST /api/auth/verify-otp`다.
+- verify request body는 `{ email: string, token: string }`를 사용한다.
+- verify 성공 시 backend는 app session cookie를 설정하고 `{ status: 'success', nextPhase: 'authenticated' | 'name_required' }`를 반환한다.
+- auth bootstrap source of truth는 `GET /api/auth/session`이다.
 - server-side resend/cooldown bookkeeping은 Supabase auth user의 `app_metadata.nurimap_auth` 안에 유지하되 `day_key`, `day_count`, `last_requested_at`, `last_verified_at` 같은 OTP-era 필드만 남긴다.
 - bypass 경로는 canonical user auth flow가 아니라 dev/test convenience 예외다. 이 경로는 기존 `tokenHash` + `verificationType` session adoption shape를 유지할 수 있다.
 
@@ -106,7 +109,8 @@
 - 이름 입력을 완료해야 앱 메인 화면으로 진입할 수 있다.
 - 이름이 이미 저장된 사용자는 이름 입력 없이 앱으로 진입한다.
 - `POST /api/auth/request-otp` 응답 계약과 bypass 응답 계약이 문서와 구현에서 일치한다.
-- 일반 OTP verify는 별도 서버 verify route 없이 client-side `verifyOtp({ email, token, type: 'email' })`로 동작한다.
+- 일반 OTP verify는 `POST /api/auth/verify-otp`를 통해 backend가 수행한다.
+- verify 성공 시 app session cookie가 설정되고, 앱은 `GET /api/auth/session`을 기준으로 인증 상태를 복원한다.
 - server-side resend/cooldown state는 `app_metadata.nurimap_auth`에 남고 OTP-era 필드로 정리된다.
 
 ## TDD Implementation Order

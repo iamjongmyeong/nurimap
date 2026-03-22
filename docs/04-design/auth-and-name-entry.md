@@ -28,7 +28,7 @@
 
 ## Hidden Invariants
 - `verifying`는 transient state이며 refresh, hard refresh, 예외 상황에서도 terminal auth state로 수렴해야 한다.
-- 유효 세션이 있으면 세션 복원을 우선한다.
+- backend-issued session이 유효하면 세션 복원을 우선한다.
 - 인증 전에는 app shell의 탐색 surface를 노출하지 않는다.
 - 이름 입력은 browse 진입 전 마지막 gate로 유지한다.
 

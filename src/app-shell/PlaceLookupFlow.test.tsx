@@ -1,9 +1,110 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
+import { MOCK_PLACES } from './mockPlaces'
 import { resetAppShellStore } from './appShellStore'
 
 const originalFetch = globalThis.fetch
+
+const cloneMockPlace = (placeId: string) => {
+  const matched = MOCK_PLACES.find((place) => place.id === placeId)
+  if (!matched) return null
+  return {
+    ...matched,
+    my_review: matched.my_review ? { ...matched.my_review } : null,
+    reviews: matched.reviews.map((review) => ({ ...review })),
+  }
+}
+
+const cloneMockPlaces = () =>
+  MOCK_PLACES.map((place) => ({
+    ...place,
+    my_review: place.my_review ? { ...place.my_review } : null,
+    reviews: place.reviews.map((review) => ({ ...review })),
+  }))
+
+const buildCreatedPlacePayload = (body: Record<string, unknown>) => {
+  const reviewContent = typeof body.reviewContent === 'string' ? body.reviewContent : ''
+  const ratingScore = typeof body.ratingScore === 'number' ? body.ratingScore : 5
+  const name = typeof body.name === 'string' ? body.name : '등록 테스트 장소'
+  const roadAddress = typeof body.roadAddress === 'string' ? body.roadAddress : '서울 마포구 등록로 1'
+  const placeType = body.placeType === 'cafe' ? 'cafe' : 'restaurant'
+  const zeropayStatus =
+    body.zeropayStatus === 'available'
+    || body.zeropayStatus === 'unavailable'
+    || body.zeropayStatus === 'needs_verification'
+      ? body.zeropayStatus
+      : 'available'
+
+  const place = {
+    id: 'place-direct-entry-123456789',
+    naver_place_id: 'direct-entry-123456789',
+    naver_place_url: 'https://map.naver.com/p/search/%EB%93%B1%EB%A1%9D%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EC%9E%A5%EC%86%8C',
+    name,
+    road_address: roadAddress,
+    latitude: 37.558721,
+    longitude: 126.92444,
+    place_type: placeType,
+    zeropay_status: zeropayStatus,
+    average_rating: ratingScore,
+    review_count: 1,
+    added_by_name: '테스트 사용자',
+    my_review: {
+      id: 'review-new-direct-entry-123456789',
+      author_name: '테스트 사용자',
+      content: reviewContent,
+      created_at: '2026-03-08',
+      rating_score: ratingScore,
+    },
+    reviews: [
+      {
+        id: 'review-new-direct-entry-123456789',
+        author_name: '테스트 사용자',
+        content: reviewContent,
+        created_at: '2026-03-08',
+        rating_score: ratingScore,
+      },
+    ],
+  }
+
+  return {
+    status: 'created',
+    place,
+    places: [place, ...cloneMockPlaces()],
+    message: '장소를 추가했어요.',
+  }
+}
+
+const createFetchMock = () =>
+  vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+
+    if (url === '/api/place-list') {
+      return new Response(JSON.stringify({ status: 'success', places: MOCK_PLACES }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (url.startsWith('/api/place-detail?placeId=')) {
+      const placeId = decodeURIComponent(url.split('=')[1] ?? '')
+      const place = cloneMockPlace(placeId)
+      return new Response(JSON.stringify(place ? { status: 'success', place } : { error: { message: 'not found' } }), {
+        status: place ? 200 : 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (url === '/api/place-entry') {
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+      return mockPlaceEntrySuccess(buildCreatedPlacePayload(body))
+    }
+
+    return new Response(JSON.stringify({ error: { message: `unexpected request: ${url} ${init?.method ?? 'GET'}` } }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
 
 const setViewport = (width: number) => {
   Object.defineProperty(window, 'innerWidth', {
@@ -20,19 +121,8 @@ const setViewport = (width: number) => {
 const mockPlaceEntrySuccess = (overrides: Record<string, unknown> = {}) =>
   new Response(
     JSON.stringify({
-      status: 'success',
-      data: {
-        naver_place_id: 'direct-entry-123456789',
-        canonical_url: 'https://map.naver.com/p/search/%EB%93%B1%EB%A1%9D%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EC%9E%A5%EC%86%8C',
-        name: '등록 테스트 장소',
-        road_address: '서울 마포구 등록로 1',
-        land_lot_address: null,
-        representative_address: '서울 마포구 등록로 1',
-        latitude: 37.558721,
-        longitude: 126.92444,
-        coordinate_source: 'road_address_geocode',
-        ...overrides,
-      },
+      ...buildCreatedPlacePayload({}),
+      ...overrides,
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   )
@@ -40,6 +130,11 @@ const mockPlaceEntrySuccess = (overrides: Record<string, unknown> = {}) =>
 describe('Plan 05 direct place entry shell flow', () => {
   beforeEach(() => {
     resetAppShellStore()
+    window.history.replaceState({}, '', '/')
+    globalThis.fetch = createFetchMock() as typeof fetch
+  })
+
+  afterEach(() => {
     globalThis.fetch = originalFetch
   })
 
@@ -127,11 +222,23 @@ describe('Plan 05 direct place entry shell flow', () => {
     const [requestUrl, requestInit] = firstCall ?? ['/api/place-entry', undefined]
     expect(requestUrl).toBe('/api/place-entry')
     expect(JSON.parse(String(requestInit?.body))).toEqual({
+      confirmDuplicate: false,
       name: '등록 테스트 장소',
+      placeType: 'restaurant',
+      ratingScore: 5,
       roadAddress: '서울 마포구 등록로 1',
+      reviewContent: '',
+      zeropayStatus: 'available',
     })
 
-    resolveResponse(mockPlaceEntrySuccess())
+    resolveResponse(mockPlaceEntrySuccess(buildCreatedPlacePayload({
+      name: '등록 테스트 장소',
+      roadAddress: '서울 마포구 등록로 1',
+      placeType: 'restaurant',
+      zeropayStatus: 'available',
+      ratingScore: 5,
+      reviewContent: '',
+    })))
 
     await submitPromise
     await waitFor(() => {
@@ -164,7 +271,14 @@ describe('Plan 05 direct place entry shell flow', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(submitButton).toBeDisabled()
 
-    resolveResponse(mockPlaceEntrySuccess({ name: '중복 방지 테스트 장소' }))
+    resolveResponse(mockPlaceEntrySuccess(buildCreatedPlacePayload({
+      name: '중복 방지 테스트 장소',
+      roadAddress: '서울 마포구 등록로 1',
+      placeType: 'restaurant',
+      zeropayStatus: 'available',
+      ratingScore: 5,
+      reviewContent: '',
+    })))
 
     await waitFor(() => {
       expect(screen.getByTestId('desktop-detail-panel')).toHaveTextContent('중복 방지 테스트 장소')

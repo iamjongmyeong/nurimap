@@ -2,11 +2,20 @@ import {
   createEmptyLoginOtpState,
   evaluateRequestPolicy,
   isAllowedEmailDomain,
+  recordVerifiedOtpState,
   type LoginOtpState,
 } from './authPolicy.js'
 import { AuthClient, type User } from '@supabase/supabase-js'
+import {
+  createAppSession,
+  createAppSessionTokens,
+  findActiveAppSessionById,
+  revokeAppSession,
+  touchAppSession,
+} from './appSessionService.js'
+import { withDatabaseConnection, withDatabaseTransaction } from './database.js'
 import { logAuthBypassLogin, logAuthRequestAccepted, logAuthRequestFailure } from './opsLogger.js'
-import { createSupabaseAdminClient, createSupabaseBrowserlessClient } from './supabaseAdmin.js'
+import { createSupabaseAdminClient } from './supabaseAdmin.js'
 
 type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'delivery_failed' | 'bypass_required'
 type AuthVerifyType = 'magiclink' | 'signup' | 'invite'
@@ -50,10 +59,42 @@ type AuthRequestSuccess =
       verificationType: AuthVerifyType
     }
 
-type SupabaseAuthApi = Pick<InstanceType<typeof AuthClient>, 'admin' | 'getUser' | 'signInWithOtp'>
+type AuthVerifySuccess = {
+  status: 'success'
+  csrfToken: string
+  sessionId: string
+  user: {
+    id: string
+    email: string
+    name: string | null
+  }
+  nextPhase: 'authenticated' | 'name_required'
+}
+
+type AuthVerifyFailure = {
+  status: 'error'
+  message: string
+}
+
+type AuthSessionUser = {
+  id: string
+  email: string
+  name: string | null
+}
+
+type AuthSessionResult =
+  | {
+      status: 'authenticated'
+      user: AuthSessionUser
+      sessionId: string
+    }
+  | {
+      status: 'missing'
+    }
+
+type SupabaseAuthApi = Pick<InstanceType<typeof AuthClient>, 'admin' | 'getUser' | 'signInWithOtp' | 'verifyOtp'>
 
 const getAdminAuthClient = (): SupabaseAuthApi => createSupabaseAdminClient().auth as SupabaseAuthApi
-const getBrowserlessAuthClient = (): SupabaseAuthApi => createSupabaseBrowserlessClient().auth as SupabaseAuthApi
 const isSendLoginOtpFailure = (
   result: SendLoginOtpResult,
 ): result is Extract<SendLoginOtpResult, { ok: false }> => !result.ok
@@ -112,6 +153,16 @@ const formatCooldownTime = (remainingSeconds: number) => {
 const formatCooldownMessage = (remainingSeconds: number) => `${formatCooldownTime(remainingSeconds)} 후에 다시 시도해주세요.`
 
 const getDurationMs = (startedAt: number) => Date.now() - startedAt
+const OTP_VERIFY_FAILURE_MESSAGE = '이 코드는 사용할 수 없어요.'
+
+const getRequiredName = (value: unknown) => {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  return trimmed ? trimmed : null
+}
 
 const getErrorCode = (error: unknown) => {
   if (!(error instanceof Error) && (typeof error !== 'object' || error === null)) {
@@ -244,7 +295,7 @@ const sendLoginOtp = async ({
   email: string
 }): Promise<SendLoginOtpResult> => {
   try {
-    const auth = getBrowserlessAuthClient()
+    const auth = getAdminAuthClient()
     const { error } = await auth.signInWithOtp({
       email,
       options: {
@@ -376,8 +427,198 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
   }
 }
 
+export const verifyLoginOtp = async ({
+  email,
+  token,
+  tokenHash,
+  verificationType,
+}: {
+  email: string
+  token: string
+  tokenHash?: string
+  verificationType?: AuthVerifyType
+}): Promise<AuthVerifySuccess | AuthVerifyFailure> => {
+  const auth = getAdminAuthClient()
+  const normalizedEmail = email.trim().toLowerCase()
+  const now = new Date()
+  const verifyParams = tokenHash
+    ? {
+        token_hash: tokenHash,
+        type: verificationType ?? 'magiclink',
+      }
+    : {
+        email: normalizedEmail,
+        token,
+        type: 'email' as const,
+      }
+  const { data, error } = await auth.verifyOtp(verifyParams)
+
+  if (error || !data.user) {
+    return {
+      status: 'error',
+      message: OTP_VERIFY_FAILURE_MESSAGE,
+    }
+  }
+
+  const verifiedUser = data.user
+  const resolvedName = getRequiredName(verifiedUser.user_metadata?.name)
+  const tokens = createAppSessionTokens()
+
+  try {
+    await withDatabaseTransaction(async (client) => {
+      await client.query(
+        `
+          insert into public.user_profiles (
+            id,
+            email,
+            name,
+            last_seen_at
+          )
+          values ($1, $2, $3, $4)
+          on conflict (id) do update
+          set
+            email = excluded.email,
+            name = coalesce(excluded.name, public.user_profiles.name),
+            last_seen_at = excluded.last_seen_at
+        `,
+        [verifiedUser.id, normalizedEmail, resolvedName, now.toISOString()],
+      )
+
+      await createAppSession({
+        client,
+        csrfToken: tokens.csrfToken,
+        now,
+        sessionId: tokens.sessionId,
+        userId: verifiedUser.id,
+      })
+    })
+  } catch (databaseError) {
+    if (data.session?.access_token) {
+      try {
+        await auth.admin.signOut(data.session.access_token)
+      } catch {
+        // best-effort cleanup only
+      }
+    }
+
+    throw databaseError
+  }
+
+  await updateUserAuthState(
+    verifiedUser.id,
+    recordVerifiedOtpState({
+      now,
+      state: getLoginState(verifiedUser),
+    }),
+    verifiedUser.user_metadata ?? undefined,
+  )
+
+  return {
+    status: 'success',
+    csrfToken: tokens.csrfToken,
+    sessionId: tokens.sessionId,
+    user: {
+      id: verifiedUser.id,
+      email: normalizedEmail,
+      name: resolvedName,
+    },
+    nextPhase: resolvedName ? 'authenticated' : 'name_required',
+  }
+}
+
+export const getAuthenticatedSession = async (sessionId: string | null): Promise<AuthSessionResult> => {
+  if (!sessionId) {
+    return { status: 'missing' }
+  }
+
+  const session = await findActiveAppSessionById({ sessionId })
+  if (!session) {
+    return { status: 'missing' }
+  }
+
+  await touchAppSession({ sessionId })
+
+  const user = await withDatabaseConnection(async (client) => {
+    const { rows } = await client.query<AuthSessionUser>(
+      `
+        select
+          id,
+          email,
+          name
+        from public.user_profiles
+        where id = $1
+        limit 1
+      `,
+      [session.user_id],
+    )
+
+    return rows[0] ?? null
+  })
+
+  if (!user) {
+    return { status: 'missing' }
+  }
+
+  return {
+    status: 'authenticated',
+    sessionId: session.id,
+    user,
+  }
+}
+
+export const saveAuthenticatedUserName = async ({
+  name,
+  userId,
+}: {
+  name: string
+  userId: string
+}) => {
+  const resolvedName = getRequiredName(name)
+  if (!resolvedName || resolvedName.length > 10) {
+    throw new Error('Name is invalid.')
+  }
+
+  await withDatabaseTransaction(async (client) => {
+    await client.query(
+      `
+        update public.user_profiles
+        set
+          name = $2,
+          last_seen_at = timezone('utc'::text, now())
+        where id = $1
+      `,
+      [userId, resolvedName],
+    )
+  })
+
+  const auth = getAdminAuthClient()
+  const { error } = await auth.admin.updateUserById(userId, {
+    user_metadata: {
+      name: resolvedName,
+    },
+  })
+
+  if (error) {
+    throw error
+  }
+
+  return {
+    status: 'success' as const,
+    name: resolvedName,
+  }
+}
+
+export const signOutAppSession = async (sessionId: string | null) => {
+  if (!sessionId) {
+    return { status: 'success' as const }
+  }
+
+  await revokeAppSession({ sessionId })
+  return { status: 'success' as const }
+}
+
 export const verifyAccessToken = async (accessToken: string) => {
-  const auth = getBrowserlessAuthClient()
+  const auth = getAdminAuthClient()
   const { data, error } = await auth.getUser(accessToken)
   if (error || !data.user) {
     return null
