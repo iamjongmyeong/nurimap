@@ -64,9 +64,11 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 각 환경은 secret과 mutable data target을 명시적으로 구분해야 하며, 특히 `production`은 다른 환경과 DB write target을 공유하면 안 된다.
 - local dev는 local Supabase와 loopback origin을 사용한다. local runtime은 remote project를 암묵적으로 기본값으로 삼지 않는다.
 - `test`는 가능하면 전용 test DB 또는 전용 test Supabase target을 사용한다. 전용 target이 아직 없을 때만 reset 가능한 local DB를 짧은 범위의 isolated run에 재사용할 수 있다.
-- remote preview/development는 production과 분리된 backend target을 가져야 한다. core backend key/DB target이 비어 있으면 rollout-ready 환경으로 간주하지 않는다.
+- remote preview/development의 기본 역할은 production과 분리된 deploy/release 확인이다.
+- preview/development가 **UI/deploy separation check만 수행하는 경우**, 별도 backend target을 필수로 요구하지 않는다.
+- preview/development가 **backend-integrated verification**까지 수행하려면, 그때는 production과 분리된 non-production backend target을 명시적으로 연결해야 한다.
 - production은 production 전용 DB/Supabase/auth origin을 사용하고, destructive verification이나 migration은 explicit target confirmation 이후에만 수행한다.
-- rollout 전에 최소한 아래 server-side key set의 존재를 확인한다:
+- backend-integrated verification을 수행하는 환경에서는 최소한 아래 server-side key set의 존재를 확인한다:
   - DB target: `DATABASE_URL` 또는 동등한 server DB URL
   - Supabase server target: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`
   - browser bootstrap/public origin: `PUBLIC_APP_URL`

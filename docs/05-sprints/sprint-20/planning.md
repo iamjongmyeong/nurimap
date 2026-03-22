@@ -104,13 +104,12 @@
 
 ## Browser Automation QA
 - 대상 시나리오:
-  - email OTP request -> verify -> name entry -> browse empty state
-  - revisit with cookie session -> logout -> relogin
-  - empty DB -> place create -> detail -> review overwrite
+  - local integrated runtime에서 auth/session bootstrap, empty browse, place create, detail revisit, overwrite flow
+  - Preview deploy smoke: `/` bootstraps without crash, `/places/:placeId` rewrite works, static assets load
 - 실행 주체:
   - AI Agent
 - 종료 기준:
-  - Playwright 우선, 실패 시 blocker를 기록한다.
+  - local backend-integrated browser checks와 Preview deploy/UI smoke 중 가능한 범위를 Playwright 우선으로 수행하고, 실패 시 blocker를 기록한다.
 - 예상 증빙 경로:
   - `artifacts/qa/sprint-20/`
 

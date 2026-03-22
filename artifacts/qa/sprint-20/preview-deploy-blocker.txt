@@ -1,0 +1,5 @@
+Command: pnpm exec vercel deploy --yes
+Result: FAILED
+Reason: No more than 12 Serverless Functions can be added to a Deployment on the Hobby plan. Create a team (Pro plan) to deploy more.
+Reference URL: https://vercel.link/function-count-limit
+Observed during Sprint 20 Preview smoke attempt on 2026-03-22.
