@@ -461,6 +461,7 @@ export const verifyLoginOtp = async ({
   }
 
   const verifiedUser = data.user
+  const persistedEmail = (verifiedUser.email ?? normalizedEmail).trim().toLowerCase()
   const resolvedName = getRequiredName(verifiedUser.user_metadata?.name)
   const tokens = createAppSessionTokens()
 
@@ -481,7 +482,7 @@ export const verifyLoginOtp = async ({
             name = coalesce(excluded.name, public.user_profiles.name),
             last_seen_at = excluded.last_seen_at
         `,
-        [verifiedUser.id, normalizedEmail, resolvedName, now.toISOString()],
+        [verifiedUser.id, persistedEmail, resolvedName, now.toISOString()],
       )
 
       await createAppSession({
@@ -514,14 +515,14 @@ export const verifyLoginOtp = async ({
   )
 
   return {
-    status: 'success',
-    csrfToken: tokens.csrfToken,
-    sessionId: tokens.sessionId,
-    user: {
-      id: verifiedUser.id,
-      email: normalizedEmail,
-      name: resolvedName,
-    },
+      status: 'success',
+      csrfToken: tokens.csrfToken,
+      sessionId: tokens.sessionId,
+      user: {
+        id: verifiedUser.id,
+        email: persistedEmail,
+        name: resolvedName,
+      },
     nextPhase: resolvedName ? 'authenticated' : 'name_required',
   }
 }

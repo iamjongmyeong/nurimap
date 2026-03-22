@@ -50,7 +50,7 @@ const createResponse = () => {
 describe('/api/auth/verify-otp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    serializeAppSessionCookieMock.mockReturnValue('__Host-nurimap_session=session-123')
+    serializeAppSessionCookieMock.mockReturnValue('nurimap_session=session-123')
     serializeCsrfCookieMock.mockReturnValue('nurimap_csrf=csrf-123')
   })
 
@@ -85,7 +85,7 @@ describe('/api/auth/verify-otp', () => {
     })
     expect(state.statusCode).toBe(200)
     expect(state.headers?.['Set-Cookie']).toEqual([
-      '__Host-nurimap_session=session-123',
+      'nurimap_session=session-123',
       'nurimap_csrf=csrf-123',
     ])
     expect(state.body).toEqual({

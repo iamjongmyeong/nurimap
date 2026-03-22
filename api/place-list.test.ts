@@ -59,6 +59,6 @@ describe('/api/place-list', () => {
 
     expect(listPlacesForUserMock).toHaveBeenCalledWith('user-1')
     expect(state.statusCode).toBe(200)
-    expect(state.body).toEqual({ status: 'success', data: [{ id: 'place-1', name: '누리 식당' }] })
+    expect(state.body).toEqual({ status: 'success', places: [{ id: 'place-1', name: '누리 식당' }] })
   })
 })

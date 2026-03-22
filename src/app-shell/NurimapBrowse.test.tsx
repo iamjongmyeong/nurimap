@@ -335,6 +335,29 @@ describe('Sprint 16 browse refresh', () => {
     expect(screen.getByTestId('map-loading-state')).toHaveTextContent('지도를 불러오는 중이에요.')
   })
 
+  it('treats an incomplete kakao runtime as an error instead of trying to construct the map', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('PUBLIC_KAKAO_MAP_APP_KEY', 'test-kakao-key')
+    setViewport(1280)
+    window.kakao = {
+      maps: {
+        load: (callback) => callback(),
+      } as unknown as NonNullable<typeof window.kakao>['maps'],
+    }
+
+    render(
+      <MapPane
+        mapLevel={5}
+        onMapLevelChange={() => {}}
+        onMarkerSelect={() => {}}
+        places={useAppShellStore.getState().places}
+        selectedPlaceId={useAppShellStore.getState().selectedPlaceId}
+      />,
+    )
+
+    expect(await screen.findByTestId('map-error-state')).toBeInTheDocument()
+  })
+
   it('renders the error state and retry action in the list area', () => {
     setViewport(1280)
     useAppShellStore.setState({ placeListLoad: 'error' })

@@ -88,6 +88,20 @@ const markerPalette: Record<PlaceType, { fill: string; stroke: string; label: st
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
+const hasUsableKakaoRuntime = () =>
+  typeof window.kakao?.maps?.load === 'function'
+  && typeof window.kakao?.maps?.Map === 'function'
+  && typeof window.kakao?.maps?.LatLng === 'function'
+  && typeof window.kakao?.maps?.Marker === 'function'
+  && typeof window.kakao?.maps?.MarkerImage === 'function'
+  && typeof window.kakao?.maps?.Size === 'function'
+  && typeof window.kakao?.maps?.ZoomControl === 'function'
+  && typeof window.kakao?.maps?.CustomOverlay === 'function'
+  && typeof window.kakao?.maps?.event?.addListener === 'function'
+
+const hasKakaoLoader = () =>
+  typeof window.kakao?.maps?.load === 'function'
+
 const toMarkerImageSource = (placeType: PlaceType) => {
   const palette = markerPalette[placeType]
 
@@ -103,13 +117,16 @@ const useKakaoScript = () => {
   const appKey = import.meta.env.PUBLIC_KAKAO_MAP_APP_KEY
   const isTestMode = import.meta.env.MODE === 'test'
   const [retryKey, setRetryKey] = useState(0)
-  const hasExistingRuntime = Boolean(window.kakao?.maps)
-  const canUseRuntime = hasExistingRuntime || (Boolean(appKey) && !isTestMode)
+  const hasExistingRuntime = hasUsableKakaoRuntime()
+  const hasLoader = hasKakaoLoader()
+  const canUseRuntime = hasLoader || (Boolean(appKey) && !isTestMode)
   const [runtimeStatus, setRuntimeStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
   useEffect(() => {
-    if (window.kakao?.maps) {
-      window.kakao.maps.load(() => setRuntimeStatus('ready'))
+    if (hasKakaoLoader()) {
+      window.kakao.maps.load(() => {
+        setRuntimeStatus(hasUsableKakaoRuntime() ? 'ready' : 'error')
+      })
       return
     }
 
@@ -120,12 +137,14 @@ const useKakaoScript = () => {
     const existingScript = document.querySelector<HTMLScriptElement>(KAKAO_SCRIPT_SELECTOR)
 
     const handleReady = () => {
-      if (!window.kakao?.maps) {
+      if (!hasKakaoLoader()) {
         setRuntimeStatus('error')
         return
       }
 
-      window.kakao.maps.load(() => setRuntimeStatus('ready'))
+      window.kakao.maps.load(() => {
+        setRuntimeStatus(hasUsableKakaoRuntime() ? 'ready' : 'error')
+      })
     }
 
     const handleError = () => {

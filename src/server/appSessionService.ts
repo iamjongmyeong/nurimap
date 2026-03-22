@@ -4,7 +4,9 @@ import type { PoolClient } from 'pg'
 
 import { withDatabaseConnection } from './database'
 
-export const APP_SESSION_COOKIE_NAME = '__Host-nurimap_session'
+export const APP_SESSION_COOKIE_NAME = process.env.NODE_ENV === 'production'
+  ? '__Host-nurimap_session'
+  : 'nurimap_session'
 export const APP_CSRF_COOKIE_NAME = 'nurimap_csrf'
 export const APP_CSRF_HEADER_NAME = 'x-nurimap-csrf-token'
 export const APP_SESSION_MAX_AGE_SECONDS = 90 * 24 * 60 * 60
@@ -156,6 +158,7 @@ export const createAppSession = async ({
   const parameters = [
     sessionId,
     userId,
+    hashOpaqueToken(sessionId),
     hashOpaqueToken(csrfToken),
     expiresAt.toISOString(),
     now.toISOString(),
@@ -167,11 +170,12 @@ export const createAppSession = async ({
         insert into public.app_sessions (
           id,
           user_id,
+          session_token_hash,
           csrf_token_hash,
           expires_at,
           last_seen_at
         )
-        values ($1, $2, $3, $4, $5)
+        values ($1, $2, $3, $4, $5, $6)
         returning
           id,
           user_id,

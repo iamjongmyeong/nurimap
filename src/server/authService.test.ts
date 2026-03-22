@@ -471,6 +471,48 @@ describe('Sprint 18 otp auth request flow', () => {
     })
   })
 
+  it('uses the verified user email when token-hash verify is called without an email body value', async () => {
+    let recordedInsertParams: unknown[] | null = null
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'bypass.user@example.com',
+          app_metadata: {
+            nurimap_auth: {
+              day_key: '2026-03-22',
+              day_count: 1,
+              last_requested_at: '2026-03-22T00:00:00.000Z',
+              last_verified_at: null,
+            },
+          },
+          user_metadata: {},
+        },
+        session: {
+          access_token: 'provider-access-token',
+        },
+      },
+      error: null,
+    })
+    withDatabaseTransactionMock.mockImplementation(async (work: (client: { query: ReturnType<typeof vi.fn> }) => Promise<unknown>) =>
+      work({
+        query: vi.fn(async (...args: unknown[]) => {
+          recordedInsertParams = (args[1] as unknown[]) ?? null
+          return { rows: [] }
+        }),
+      }))
+
+    const result = await verifyLoginOtp({
+      email: '',
+      token: '',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })
+
+    expect(result.status).toBe('success')
+    expect(recordedInsertParams?.[1]).toBe('bypass.user@example.com')
+  })
+
   it('returns a recoverable otp error when verification fails', async () => {
     verifyOtpMock.mockResolvedValue({
       data: {

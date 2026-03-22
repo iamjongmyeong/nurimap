@@ -20,6 +20,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const places = await listPlacesForUser(authSession.user.id)
   res.status(200).json({
     status: 'success',
-    data: places,
+    places,
   })
 }

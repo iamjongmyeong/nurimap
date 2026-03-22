@@ -20,3 +20,5 @@ coverage/
 .omx/plans/
 .omx/state/
 .omx/tmux-hook.json
+.vercel
+.env*.local

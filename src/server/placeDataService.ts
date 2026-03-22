@@ -251,21 +251,63 @@ const loadReviewRows = async ({
   return rows
 }
 
-export const listPlacesForUser = async (viewerUserId: string | null) =>
-  withDatabaseConnection(async (client) => {
-    const places = await loadPlaceRows({ client })
-    const reviews = await loadReviewRows({
-      client,
-      placeIds: places.map((place) => place.id),
-    })
-
-    return places.map((place) =>
-      buildPlaceSummary({
-        place,
-        reviews,
-        viewerUserId,
-      }))
+const listPlacesForUserWithClient = async ({
+  client,
+  viewerUserId,
+}: {
+  client: PoolClient
+  viewerUserId: string | null
+}) => {
+  const places = await loadPlaceRows({ client })
+  const reviews = await loadReviewRows({
+    client,
+    placeIds: places.map((place) => place.id),
   })
+
+  return places.map((place) =>
+    buildPlaceSummary({
+      place,
+      reviews,
+      viewerUserId,
+    }))
+}
+
+export const listPlacesForUser = async (viewerUserId: string | null) =>
+  withDatabaseConnection(async (client) =>
+    listPlacesForUserWithClient({
+      client,
+      viewerUserId,
+    }))
+
+const getPlaceDetailForUserWithClient = async ({
+  client,
+  placeId,
+  viewerUserId,
+}: {
+  client: PoolClient
+  placeId: string
+  viewerUserId: string | null
+}) => {
+  const places = await loadPlaceRows({
+    client,
+    placeId,
+  })
+  const place = places[0]
+  if (!place) {
+    return null
+  }
+
+  const reviews = await loadReviewRows({
+    client,
+    placeIds: [place.id],
+  })
+
+  return buildPlaceSummary({
+    place,
+    reviews,
+    viewerUserId,
+  })
+}
 
 export const getPlaceDetailForUser = async ({
   placeId,
@@ -274,27 +316,12 @@ export const getPlaceDetailForUser = async ({
   placeId: string
   viewerUserId: string | null
 }) =>
-  withDatabaseConnection(async (client) => {
-    const places = await loadPlaceRows({
+  withDatabaseConnection(async (client) =>
+    getPlaceDetailForUserWithClient({
       client,
       placeId,
-    })
-    const place = places[0]
-    if (!place) {
-      return null
-    }
-
-    const reviews = await loadReviewRows({
-      client,
-      placeIds: [place.id],
-    })
-
-    return buildPlaceSummary({
-      place,
-      reviews,
       viewerUserId,
-    })
-  })
+    }))
 
 const validateReviewDraft = (draft: PersistedReviewDraft) => {
   if (draft.rating_score < 1 || draft.rating_score > 5) {
@@ -384,7 +411,8 @@ export const persistPlaceRegistration = async ({
     const existingReview = existingReviewResult.rows[0] ?? null
 
     if (existingPlace && !confirmDuplicate) {
-      const place = await getPlaceDetailForUser({
+      const place = await getPlaceDetailForUserWithClient({
+        client,
         placeId: existingPlace.id,
         viewerUserId: userId,
       })
@@ -508,11 +536,15 @@ export const persistPlaceRegistration = async ({
       )
     }
 
-    const place = await getPlaceDetailForUser({
+    const place = await getPlaceDetailForUserWithClient({
+      client,
       placeId,
       viewerUserId: userId,
     })
-    const places = await listPlacesForUser(userId)
+    const places = await listPlacesForUserWithClient({
+      client,
+      viewerUserId: userId,
+    })
 
     if (!place) {
       return {
@@ -581,7 +613,8 @@ export const submitPersistedPlaceReview = async ({
 
     const existingReview = existingReviewResult.rows[0] ?? null
     if (existingReview && !allowOverwrite) {
-      const currentPlace = await getPlaceDetailForUser({
+      const currentPlace = await getPlaceDetailForUserWithClient({
+        client,
         placeId,
         viewerUserId: userId,
       })
@@ -627,7 +660,8 @@ export const submitPersistedPlaceReview = async ({
       )
     }
 
-    const nextPlace = await getPlaceDetailForUser({
+    const nextPlace = await getPlaceDetailForUserWithClient({
+      client,
       placeId,
       viewerUserId: userId,
     })

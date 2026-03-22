@@ -74,7 +74,7 @@ describe('/api/auth session routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     readSessionIdFromCookieHeaderMock.mockReturnValue('session-123')
-    serializeClearedAppSessionCookieMock.mockReturnValue('__Host-nurimap_session=')
+    serializeClearedAppSessionCookieMock.mockReturnValue('nurimap_session=')
     serializeClearedCsrfCookieMock.mockReturnValue('nurimap_csrf=')
     signOutAppSessionMock.mockResolvedValue({ status: 'success' })
   })
@@ -119,7 +119,7 @@ describe('/api/auth session routes', () => {
 
     expect(signOutAppSessionMock).toHaveBeenCalledWith('session-123')
     expect(state.headers?.['Set-Cookie']).toEqual([
-      '__Host-nurimap_session=',
+      'nurimap_session=',
       'nurimap_csrf=',
     ])
     expect(state.body).toEqual({ status: 'success' })
