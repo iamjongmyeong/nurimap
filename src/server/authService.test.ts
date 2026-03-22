@@ -125,10 +125,10 @@ describe('Sprint 18 otp auth request flow', () => {
     vi.unstubAllGlobals()
   })
 
-  it('returns bypass success for an allowlisted external email when bypass is enabled', async () => {
+  it('returns bypass success for an allowlisted external email only on a local loopback runtime', async () => {
     process.env.AUTH_BYPASS_ENABLED = 'true'
     process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
-    process.env.PUBLIC_APP_URL = 'https://nurimap.vercel.app'
+    process.env.PUBLIC_APP_URL = 'http://127.0.0.1:4173'
     generateLinkMock.mockResolvedValue({
       data: {
         properties: {
@@ -155,6 +155,39 @@ describe('Sprint 18 otp auth request flow', () => {
       '[ops] auth.request_link.bypass_login',
       expect.objectContaining({ email: expect.stringContaining('@example.com') }),
     )
+  })
+
+  it('hard-fails bypass-only requests outside a local loopback runtime even when the email is allowlisted', async () => {
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.vercel.app'
+
+    const result = await requestLoginOtp('bypass.user@example.com', { requireBypass: true })
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 'bypass_required',
+      message: '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.',
+    })
+    expect(generateLinkMock).not.toHaveBeenCalled()
+    expect(signInWithOtpMock).not.toHaveBeenCalled()
+  })
+
+  it('does not use bypass for an allowlisted external email outside a local loopback runtime', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.vercel.app'
+
+    const result = await requestLoginOtp('bypass.user@example.com')
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 'invalid_domain',
+      message: '누리미디어 구성원만 사용할 수 있어요.',
+    })
+    expect(generateLinkMock).not.toHaveBeenCalled()
+    expect(signInWithOtpMock).not.toHaveBeenCalled()
   })
 
   it('still blocks non-allowlisted external emails', async () => {
@@ -472,6 +505,7 @@ describe('Sprint 18 otp auth request flow', () => {
   })
 
   it('uses the verified user email when token-hash verify is called without an email body value', async () => {
+    process.env.PUBLIC_APP_URL = 'http://127.0.0.1:4173'
     let recordedInsertParams: unknown[] | null = null
     verifyOtpMock.mockResolvedValue({
       data: {
@@ -511,6 +545,23 @@ describe('Sprint 18 otp auth request flow', () => {
 
     expect(result.status).toBe('success')
     expect(recordedInsertParams?.[1]).toBe('bypass.user@example.com')
+  })
+
+  it('rejects token-hash verification outside a local loopback runtime', async () => {
+    process.env.PUBLIC_APP_URL = 'https://nurimap.vercel.app'
+
+    await expect(verifyLoginOtp({
+      email: '',
+      token: '',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })).resolves.toEqual({
+      status: 'error',
+      message: '이 코드는 사용할 수 없어요.',
+    })
+
+    expect(verifyOtpMock).not.toHaveBeenCalled()
+    expect(createAppSessionMock).not.toHaveBeenCalled()
   })
 
   it('returns a recoverable otp error when verification fails', async () => {
