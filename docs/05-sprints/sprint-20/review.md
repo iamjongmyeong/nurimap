@@ -40,6 +40,18 @@
 | preview / development | NOT READY | 2026-03-22 `vercel env ls preview/development` 기준 core backend env 없이 `PUBLIC_APP_URL`, bypass, Kakao, Resend만 존재 | Supabase/DB target과 env set을 먼저 구성 |
 | production | CONFIGURED / PROTECTED | 2026-03-22 `vercel env ls production` 기준 core Supabase/Postgres env 존재 | explicit approval 전까지 rollout/migration 보류 |
 
+## Env Matrix (presence only)
+
+| Key Group | local dev (`.env.local`) | test | preview / development | production | Notes |
+|---|---|---|---|---|---|
+| server DB target (`DATABASE_URL` or equivalent) | present | dedicated target 없음 | missing | present | runtime code는 `DATABASE_URL`/`POSTGRES_URL` 계열을 허용 |
+| dedicated test DB target (`TEST_DATABASE_URL` or equivalent) | missing | not configured | n/a | n/a | 현재는 reset 가능한 local DB reuse 모델 |
+| Supabase server target (`SUPABASE_URL`, `SUPABASE_SECRET_KEY`) | present | local reuse | missing | present | preview/development rollout blocker |
+| public Supabase runtime (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) | present | local reuse | missing | present | 브라우저 bootstrap에 필요 |
+| app public origin (`PUBLIC_APP_URL`) | present | local reuse | present | present | auth redirect / link wrapper 기준 |
+| bypass (`AUTH_BYPASS_ENABLED`, `AUTH_BYPASS_EMAILS`) | present | local reuse | present | present | 기본 posture는 disabled여야 하지만 현재 env는 존재 |
+| local auto-login (`VITE_LOCAL_AUTO_LOGIN*`) | present | local-only | n/a | n/a | local QA 편의용, browser OTP evidence를 가릴 수 있음 |
+
 # Remote Rollout Gate
 
 - 아래가 모두 충족되기 전에는 remote dev/test rollout을 시작하지 않는다.
