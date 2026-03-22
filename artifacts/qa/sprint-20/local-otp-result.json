@@ -1,0 +1,6 @@
+{
+  "email": "qa***53@nurimedia.co.kr",
+  "messageId": "HWhNggqiMYcnrzm5EVS7nj",
+  "screenshot": "artifacts/qa/sprint-20/local-otp-name-entry-success.png",
+  "otp_source": "local Mailpit API (code consumed during test; not retained)"
+}

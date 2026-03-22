@@ -13,10 +13,10 @@
 - local Supabase migration을 적용하고 local DB에서 browse empty state -> place create -> detail -> overwrite 흐름을 확인했다.
 - `make dev`를 integrated local runtime entrypoint로, `make agentation`을 같은 runtime + Agentation entrypoint로 정리했다.
 - `make check`와 Playwright browser pass를 실행해 local verification evidence를 `artifacts/qa/sprint-20/`에 저장했다.
+- local Mailpit 기반 OTP request -> verify -> name entry browser evidence를 추가 확보했다.
 
 # Not Completed
 
-- explicit email OTP request/verify UI의 별도 browser evidence
 - Preview deploy/UI smoke evidence 확보
 - dedicated test target 승격 여부 재검토
 - 사용자 직접 QA handoff 종료
@@ -27,7 +27,6 @@
 - Preview는 현재 slice에서 deploy/UI separation check로 유지하고, real backend-integrated Preview는 future trigger가 생길 때만 별도 slice로 연다.
 - `test`는 당분간 reset 가능한 local DB reuse 모델로 유지하고, remote dev/test rollout이 안정화되면 dedicated `TEST_DATABASE_URL` / separate target 승격을 재검토한다.
 - Preview smoke는 시도했지만 Vercel Hobby function limit blocker가 발생했다. 이 blocker를 해소할지, 현재 sprint에서는 blocker로 기록한 채 넘길지 결정한다.
-- 필요하면 local auto-login bypass를 끈 browser run으로 email OTP request/verify path를 추가 증빙한다.
 - 사용자에게 auth UX, empty-state browse, overwrite 체감 확인을 handoff한다.
 - local evidence 정리 후 push 여부를 결정한다.
 

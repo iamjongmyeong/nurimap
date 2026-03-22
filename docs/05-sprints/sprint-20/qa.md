@@ -38,6 +38,7 @@
   - browser automation: Playwright inline runner (`node --input-type=module`) 실행 후 결과를 `artifacts/qa/sprint-20/playwright-results.json`에 저장했다.
   - preview smoke 시도: `pnpm exec vercel deploy --yes`
 - 확인한 시나리오:
+  - local OTP request -> Mailpit 수신 -> OTP verify -> name entry -> authenticated shell 진입
   - `390x844` mobile에서 local auto-login bypass로 authenticated shell 진입
   - clean DB 기준 empty-state browse 확인
   - 직접 장소 등록 후 detail 진입 + 초기 리뷰 표시 확인
@@ -51,12 +52,14 @@
   - PASS — local Supabase + integrated runtime 기준 핵심 browse/detail/create/overwrite/session persistence 흐름이 통과했다.
   - BLOCKED — Preview deploy/UI smoke는 `No more than 12 Serverless Functions can be added to a Deployment on the Hobby plan` 에러로 수행하지 못했다.
 - 스크린샷 경로:
+  - `artifacts/qa/sprint-20/local-otp-name-entry-success.png`
   - `artifacts/qa/sprint-20/mobile-empty-state.png`
   - `artifacts/qa/sprint-20/mobile-detail-after-create.png`
   - `artifacts/qa/sprint-20/mobile-detail-after-overwrite.png`
   - `artifacts/qa/sprint-20/desktop-revisit-with-session.png`
   - `artifacts/qa/sprint-20/desktop-after-relogin.png`
   - 상세 결과: `artifacts/qa/sprint-20/playwright-results.json`
+  - OTP result summary: `artifacts/qa/sprint-20/local-otp-result.json`
   - Preview blocker log: `artifacts/qa/sprint-20/preview-deploy-blocker.txt`
 
 ## User QA Required
@@ -77,7 +80,7 @@
 # Issues Found
 
 - local integrated runtime 기준 blocker는 발견하지 못했다.
-- 이번 Playwright pass는 `.env.local`의 local auto-login bypass를 사용했기 때문에, 일반 email OTP 입력/검증 UI 자체의 브라우저 증빙은 별도 실행이 필요하다.
+- 일반 email OTP 입력/검증 UI는 local Mailpit 기반으로 별도 브라우저 증빙을 확보했다.
 - 2026-03-22 `vercel env ls` 확인 결과, core Supabase/Postgres env(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `POSTGRES_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)는 현재 Production에만 있고 Preview / Development에는 없다.
 - 현재 합의된 전략에서는 Preview를 backend-integrated runtime으로 쓰지 않으므로, 위 env 부재는 즉시 blocker가 아니라 **Preview role을 UI/deploy separation으로 제한해야 한다는 근거**로 해석한다.
 - 현재 코드 레벨에서는 `test` 전용 DB URL 분기를 지원하지만(`TEST_DATABASE_URL` 계열), local `.env.local`에는 아직 dedicated test target이 없다. 현재 단기 운영 모델은 reset 가능한 local DB를 isolated run에서 재사용하는 방식이다.
@@ -87,12 +90,11 @@
 
 # QA Verdict
 
-- IN PROGRESS — local integrated runtime 검증은 통과했고 단기 `test` 운영 모델도 정리됐지만, explicit email OTP UX evidence / Preview deploy smoke / 사용자 QA가 아직 남아 있다.
+- IN PROGRESS — local integrated runtime 검증과 local OTP UI evidence는 확보됐지만, Preview deploy smoke blocker와 사용자 QA가 아직 남아 있다.
 
 # Follow-ups
 
 - 현재 local execution evidence를 기준으로 사용자 QA handoff와 push / rollout 판단을 이어간다.
 - `test`는 당분간 reset 가능한 local DB 재사용 모델로 유지하고, remote dev/test rollout이 안정화되면 dedicated `TEST_DATABASE_URL` / separate target 승격을 재검토한다.
-- 필요하면 local auto-login bypass를 끈 별도 browser pass로 email OTP request/verify UI를 추가 검증한다.
 - Preview deploy/UI smoke blocker를 기준으로, Vercel Hobby function limit을 우회할지(플랜/구성 변경) 아니면 현재 slice에서는 Preview evidence를 blocker로 기록한 채 종료할지 결정한다.
 - Preview에서 real backend verification이 꼭 필요해지는 시점이 오면, 그때 별도 non-production backend target 도입을 새로운 slice로 계획한다.
