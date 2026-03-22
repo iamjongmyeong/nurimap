@@ -59,10 +59,15 @@
   - auth UX 유지 여부
   - empty-state browse + 첫 등록 흐름
   - review overwrite 체감
+- 사용자 수행 절차:
+  1. `make dev`로 integrated local runtime을 실행한다.
+  2. 앱이 자동 로그인되면 browse/list 진입 흐름이 이전과 비교해 어색하지 않은지 확인한다.
+  3. 빈 목록 상태에서 장소를 하나 등록하고, detail / 새로고침 / 직접 재진입 흐름이 자연스러운지 확인한다.
+  4. 같은 장소에 다시 평가를 남겨 overwrite confirm과 최종 detail 결과가 기대와 맞는지 확인한다.
 - 기대 결과:
   - backend cutover 이후에도 핵심 흐름이 끊기지 않는다.
 - 상태:
-  - pending — local automated/browser evidence는 확보됐고, 이제 실제 사용자 체감 확인만 남았다.
+  - ready for handoff — local automated/browser evidence는 확보됐고, 이제 실제 사용자 체감 확인만 남았다.
 
 # Issues Found
 
