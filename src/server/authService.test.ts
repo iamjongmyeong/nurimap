@@ -586,7 +586,7 @@ describe('Sprint 18 otp auth request flow', () => {
 
   it('loads an authenticated session user from the opaque app session id', async () => {
     findActiveAppSessionByIdMock.mockResolvedValue({
-      id: 'session-123',
+      id: 'db-session-uuid',
       user_id: 'user-1',
       csrf_token_hash: 'hashed',
       expires_at: '2026-06-20T00:00:00.000Z',

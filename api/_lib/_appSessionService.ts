@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 
 import type { PoolClient } from 'pg'
 
@@ -10,6 +10,7 @@ export const APP_SESSION_COOKIE_NAME = process.env.NODE_ENV === 'production'
 export const APP_CSRF_COOKIE_NAME = 'nurimap_csrf'
 export const APP_CSRF_HEADER_NAME = 'x-nurimap-csrf-token'
 export const APP_SESSION_MAX_AGE_SECONDS = 90 * 24 * 60 * 60
+const APP_SESSION_TOKEN_BYTE_LENGTH = 32
 
 export type AppSessionRecord = {
   id: string
@@ -32,7 +33,7 @@ export const hashOpaqueToken = (value: string) =>
   createHash('sha256').update(value).digest('hex')
 
 export const createAppSessionTokens = () => ({
-  sessionId: randomUUID(),
+  sessionId: randomBytes(APP_SESSION_TOKEN_BYTE_LENGTH).toString('base64url'),
   csrfToken: randomBytes(32).toString('base64url'),
 })
 
@@ -140,6 +141,42 @@ export const isValidCsrfTokenPair = ({
 }
 
 const mapAppSessionRow = (row: AppSessionRecord): AppSessionRecord => row
+const APP_SESSION_RETURNING_COLUMNS = `
+  id,
+  user_id,
+  csrf_token_hash,
+  expires_at,
+  revoked_at,
+  created_at,
+  updated_at,
+  last_seen_at
+`
+
+// Compatibility bridge: prefer hashed token lookup, but continue to honor
+// legacy UUID row-id cookies until those sessions expire or are revoked.
+const ACTIVE_APP_SESSION_LOOKUP_SQL = `
+  select id
+  from public.app_sessions
+  where (session_token_hash = $1 or id::text = $2)
+    and revoked_at is null
+    and expires_at > timezone('utc'::text, now())
+  order by case when session_token_hash = $1 then 0 else 1 end
+  limit 1
+`
+
+const REVOCABLE_APP_SESSION_LOOKUP_SQL = `
+  select id
+  from public.app_sessions
+  where (session_token_hash = $1 or id::text = $2)
+    and revoked_at is null
+  order by case when session_token_hash = $1 then 0 else 1 end
+  limit 1
+`
+
+const getAppSessionLookupParameters = (sessionId: string) => [
+  hashOpaqueToken(sessionId),
+  sessionId,
+]
 
 export const createAppSession = async ({
   client,
@@ -156,7 +193,6 @@ export const createAppSession = async ({
 }) => {
   const expiresAt = getAppSessionExpiresAt(now)
   const parameters = [
-    sessionId,
     userId,
     hashOpaqueToken(sessionId),
     hashOpaqueToken(csrfToken),
@@ -168,23 +204,15 @@ export const createAppSession = async ({
     const { rows } = await targetClient.query<AppSessionRecord>(
       `
         insert into public.app_sessions (
-          id,
           user_id,
           session_token_hash,
           csrf_token_hash,
           expires_at,
           last_seen_at
         )
-        values ($1, $2, $3, $4, $5, $6)
+        values ($1, $2, $3, $4, $5)
         returning
-          id,
-          user_id,
-          csrf_token_hash,
-          expires_at,
-          revoked_at,
-          created_at,
-          updated_at,
-          last_seen_at
+          ${APP_SESSION_RETURNING_COLUMNS}
       `,
       parameters,
     )
@@ -207,24 +235,18 @@ export const findActiveAppSessionById = async ({
   sessionId: string
 }) => {
   const query = async (targetClient: PoolClient) => {
+    const lookupParameters = getAppSessionLookupParameters(sessionId)
     const { rows } = await targetClient.query<AppSessionRecord>(
       `
+        with matched_session as (
+          ${ACTIVE_APP_SESSION_LOOKUP_SQL}
+        )
         select
-          id,
-          user_id,
-          csrf_token_hash,
-          expires_at,
-          revoked_at,
-          created_at,
-          updated_at,
-          last_seen_at
+          ${APP_SESSION_RETURNING_COLUMNS}
         from public.app_sessions
-        where id = $1
-          and revoked_at is null
-          and expires_at > timezone('utc'::text, now())
-        limit 1
+        where id = (select id from matched_session)
       `,
-      [sessionId],
+      lookupParameters,
     )
 
     return rows[0] ? mapAppSessionRow(rows[0]) : null
@@ -247,24 +269,19 @@ export const touchAppSession = async ({
   sessionId: string
 }) => {
   const update = async (targetClient: PoolClient) => {
+    const lookupParameters = getAppSessionLookupParameters(sessionId)
     const { rows } = await targetClient.query<AppSessionRecord>(
       `
+        with matched_session as (
+          ${ACTIVE_APP_SESSION_LOOKUP_SQL}
+        )
         update public.app_sessions
-        set last_seen_at = $2
-        where id = $1
-          and revoked_at is null
-          and expires_at > timezone('utc'::text, now())
+        set last_seen_at = $3
+        where id = (select id from matched_session)
         returning
-          id,
-          user_id,
-          csrf_token_hash,
-          expires_at,
-          revoked_at,
-          created_at,
-          updated_at,
-          last_seen_at
+          ${APP_SESSION_RETURNING_COLUMNS}
       `,
-      [sessionId, now.toISOString()],
+      [...lookupParameters, now.toISOString()],
     )
 
     return rows[0] ? mapAppSessionRow(rows[0]) : null
@@ -287,23 +304,19 @@ export const revokeAppSession = async ({
   sessionId: string
 }) => {
   const revoke = async (targetClient: PoolClient) => {
+    const lookupParameters = getAppSessionLookupParameters(sessionId)
     const { rows } = await targetClient.query<AppSessionRecord>(
       `
+        with matched_session as (
+          ${REVOCABLE_APP_SESSION_LOOKUP_SQL}
+        )
         update public.app_sessions
-        set revoked_at = $2
-        where id = $1
-          and revoked_at is null
+        set revoked_at = $3
+        where id = (select id from matched_session)
         returning
-          id,
-          user_id,
-          csrf_token_hash,
-          expires_at,
-          revoked_at,
-          created_at,
-          updated_at,
-          last_seen_at
+          ${APP_SESSION_RETURNING_COLUMNS}
       `,
-      [sessionId, now.toISOString()],
+      [...lookupParameters, now.toISOString()],
     )
 
     return rows[0] ? mapAppSessionRow(rows[0]) : null

@@ -586,7 +586,7 @@ export const getAuthenticatedSession = async (sessionId: string | null): Promise
 
   return {
     status: 'authenticated',
-    sessionId: session.id,
+    sessionId,
     user,
   }
 }

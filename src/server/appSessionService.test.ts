@@ -1,30 +1,32 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   APP_CSRF_COOKIE_NAME,
   APP_CSRF_HEADER_NAME,
   APP_SESSION_COOKIE_NAME,
   APP_SESSION_MAX_AGE_SECONDS,
+  createAppSession,
   createAppSessionTokens,
+  findActiveAppSessionById,
   getAppSessionExpiresAt,
   hashOpaqueToken,
   isValidCsrfTokenPair,
   readCsrfTokenFromCookieHeader,
   readCsrfTokenFromHeaders,
   readSessionIdFromCookieHeader,
+  revokeAppSession,
   serializeAppSessionCookie,
   serializeClearedCsrfCookie,
   serializeClearedAppSessionCookie,
   serializeCsrfCookie,
+  touchAppSession,
 } from './appSessionService'
 
 describe('appSessionService foundation', () => {
   it('creates opaque session and csrf tokens', () => {
     const tokens = createAppSessionTokens()
 
-    expect(tokens.sessionId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-    )
+    expect(tokens.sessionId).toMatch(/^[A-Za-z0-9_-]{40,}$/)
     expect(tokens.csrfToken.length).toBeGreaterThan(20)
   })
 
@@ -96,5 +98,78 @@ describe('appSessionService foundation', () => {
   it('computes a 90-day absolute session expiry', () => {
     const now = new Date('2026-03-22T00:00:00.000Z')
     expect(getAppSessionExpiresAt(now).toISOString()).toBe('2026-06-20T00:00:00.000Z')
+  })
+
+  it('stores new sessions behind a surrogate row id and hashed token lookup', async () => {
+    const queryMock = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: 'db-session-1',
+          user_id: 'user-1',
+          csrf_token_hash: 'hashed-csrf',
+          expires_at: '2026-06-20T00:00:00.000Z',
+          revoked_at: null,
+          created_at: '2026-03-22T00:00:00.000Z',
+          updated_at: '2026-03-22T00:00:00.000Z',
+          last_seen_at: '2026-03-22T00:00:00.000Z',
+        },
+      ],
+    })
+    const now = new Date('2026-03-22T00:00:00.000Z')
+
+    await createAppSession({
+      client: { query: queryMock } as never,
+      csrfToken: 'csrf-123',
+      now,
+      sessionId: 'opaque-session-token',
+      userId: 'user-1',
+    })
+
+    const [sql, parameters] = queryMock.mock.calls[0] as [string, unknown[]]
+    const normalizedSql = sql.replace(/\s+/g, ' ').trim()
+
+    expect(normalizedSql).toContain(
+      'insert into public.app_sessions ( user_id, session_token_hash, csrf_token_hash, expires_at, last_seen_at ) values ($1, $2, $3, $4, $5)',
+    )
+    expect(parameters).toEqual([
+      'user-1',
+      hashOpaqueToken('opaque-session-token'),
+      hashOpaqueToken('csrf-123'),
+      '2026-06-20T00:00:00.000Z',
+      '2026-03-22T00:00:00.000Z',
+    ])
+  })
+
+  it('uses hash-first lookup with legacy row-id compatibility for read touch and revoke', async () => {
+    const queryMock = vi.fn().mockResolvedValue({ rows: [] })
+    const client = { query: queryMock } as never
+    const now = new Date('2026-03-22T00:00:00.000Z')
+
+    await findActiveAppSessionById({ client, sessionId: 'opaque-session-token' })
+    await touchAppSession({ client, now, sessionId: 'opaque-session-token' })
+    await revokeAppSession({ client, now, sessionId: 'opaque-session-token' })
+
+    const lookupHash = hashOpaqueToken('opaque-session-token')
+    const [findSql, findParams] = queryMock.mock.calls[0] as [string, unknown[]]
+    const [touchSql, touchParams] = queryMock.mock.calls[1] as [string, unknown[]]
+    const [revokeSql, revokeParams] = queryMock.mock.calls[2] as [string, unknown[]]
+
+    expect(findSql.replace(/\s+/g, ' ')).toContain(
+      'where (session_token_hash = $1 or id::text = $2)',
+    )
+    expect(findSql.replace(/\s+/g, ' ')).toContain(
+      'order by case when session_token_hash = $1 then 0 else 1 end',
+    )
+    expect(findParams).toEqual([lookupHash, 'opaque-session-token'])
+
+    expect(touchSql.replace(/\s+/g, ' ')).toContain(
+      'where id = (select id from matched_session)',
+    )
+    expect(touchParams).toEqual([lookupHash, 'opaque-session-token', '2026-03-22T00:00:00.000Z'])
+
+    expect(revokeSql.replace(/\s+/g, ' ')).toContain(
+      'where id = (select id from matched_session)',
+    )
+    expect(revokeParams).toEqual([lookupHash, 'opaque-session-token', '2026-03-22T00:00:00.000Z'])
   })
 })
