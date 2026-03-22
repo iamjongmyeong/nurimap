@@ -1,16 +1,26 @@
 # Verification Scope
 
 - Sprint 20의 real-data migration에서 docs/runtime lock, auth cookie cutover, place/review persistence, recommendation regression guard를 검증한다.
-- 구현의 상세 acceptance criteria와 test matrix는 `.omx/plans/test-spec-supabase-place-auth-real-data-migration.md`를 SSOT로 사용한다.
+- 구현의 상세 acceptance criteria와 test matrix는 `.omx/plans/test-spec-supabase-place-auth-real-data-migration.md`, `.omx/plans/test-spec-sprint-20-vercel-function-limit-resolution.md`를 SSOT로 사용한다.
 
 # Automated Checks Result
 
 - 실행 명령:
   - `supabase status`
+  - `git diff --check`
+  - `pnpm exec vitest run src/server/apiAuthSessionRoutes.test.ts src/server/apiAuthVerifyOtp.test.ts src/server/apiPlaceEntryRoute.test.ts src/server/apiPlaceListRoute.test.ts src/server/apiPlaceReviewRoute.test.ts`
   - `make check`
+  - `pnpm exec vercel deploy --yes`
+  - `pnpm exec vercel curl / --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
+  - `pnpm exec vercel curl /places/smoke-place --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
+  - `pnpm exec vercel curl /assets/index-BDwYyS21.js --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes -- --head`
 - 결과:
   - PASS — local Supabase가 실행 중이며 local API / DB endpoint가 정상 노출됐다.
+  - PASS — `git diff --check` 통과
+  - PASS — moved API route tests 5 files / 8 tests 통과
   - PASS — `make check` → `vitest` 25 files / 178 tests 통과, `pnpm lint` 통과, `pnpm build` 통과
+  - PASS — `pnpm exec vercel deploy --yes` 성공, Preview URL 발급 완료
+  - PASS — authenticated `vercel curl` smoke에서 `/`, `/places/smoke-place`, `/assets/index-BDwYyS21.js`가 정상 응답했다.
 
 # Manual QA Result
 
@@ -31,12 +41,17 @@
 ## Browser Automation QA Evidence
 - 실행 목적:
   - integrated local runtime에서 auth/session/bootstrap, empty browse, place create, refresh persistence, detail revisit, overwrite flow를 실제 브라우저로 검증한다.
-  - Preview deploy/UI separation smoke(`vercel deploy`) 가능 여부를 확인한다.
+  - Preview deploy/UI separation smoke(`vercel deploy`) 가능 여부를 확인하고, deploy 성공 시 `/`, `/places/:placeId`, static asset boot를 확인한다.
 - 실행 명령 또는 스크립트:
   - local DB 준비: `node --input-type=module` + `pg`로 `public.place_reviews`, `public.places`를 비워 clean DB 상태를 만들었다.
   - runtime: `make dev`
   - browser automation: Playwright inline runner (`node --input-type=module`) 실행 후 결과를 `artifacts/qa/sprint-20/playwright-results.json`에 저장했다.
-  - preview smoke 시도: `pnpm exec vercel deploy --yes`
+  - Preview 구조 수정 후 inventory 기록: `find api -maxdepth 3 -type f | sort` 결과를 before/after artifact로 저장했다.
+  - preview deploy 재시도: `pnpm exec vercel deploy --yes`
+  - Preview smoke 1차 확인: direct `curl` / Playwright로 anonymous 접근 시 Vercel deployment protection login wall(401)을 확인했다.
+  - Preview smoke 2차 확인: `pnpm exec vercel curl / --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
+  - Preview smoke 3차 확인: `pnpm exec vercel curl /places/smoke-place --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
+  - Preview smoke 4차 확인: `pnpm exec vercel curl /assets/index-BDwYyS21.js --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes -- --head`
 - 확인한 시나리오:
   - local OTP request -> Mailpit 수신 -> OTP verify -> name entry -> authenticated shell 진입
   - `390x844` mobile에서 local auto-login bypass로 authenticated shell 진입
@@ -47,10 +62,16 @@
   - 같은 장소 재등록 시 overwrite confirm 표시 및 review text 보존 확인
   - `1280x900` desktop에서 existing session cookie revisit 확인
   - desktop logout -> auth screen 복귀 -> reload 후 local auto-login relogin 확인
-  - Preview deploy 시도는 Vercel Hobby plan의 serverless function limit에서 차단됨
+  - Preview deploy 재시도 후 실제 Preview URL 발급 확인
+  - direct anonymous 접근 시 Preview URL의 `/` 및 `/places/preview-smoke`가 Vercel 로그인 페이지(401)로 보호되는지 확인
+  - authenticated `vercel curl` 경로로 Preview URL의 `/`가 SPA HTML(`누리맵`, built asset reference 포함)을 반환하는지 확인
+  - authenticated `vercel curl` 경로로 `/places/smoke-place`가 rewrite 후 동일한 SPA HTML을 반환하는지 확인
+  - authenticated `vercel curl` 경로로 built JS asset(`/assets/index-BDwYyS21.js`)이 HTTP 200으로 내려오는지 확인
 - 판정:
   - PASS — local Supabase + integrated runtime 기준 핵심 browse/detail/create/overwrite/session persistence 흐름이 통과했다.
-  - BLOCKED — Preview deploy/UI smoke는 `No more than 12 Serverless Functions can be added to a Deployment on the Hobby plan` 에러로 수행하지 못했다.
+  - PASS — API test files를 `api/` 밖으로 이동하고 `.vercelignore`를 추가한 뒤 Preview deployment가 성공했다.
+  - PASS — authenticated `vercel curl` smoke 기준으로 `/`, `/places/smoke-place`, static asset boot가 모두 확인됐다.
+  - NOTE — direct anonymous 접근은 여전히 Vercel deployment protection login wall(HTTP 401)로 보호된다. 이는 현재 protection posture이며, 이번 slice의 deploy/UI separation smoke 자체를 막지는 않았다.
 - 스크린샷 경로:
   - `artifacts/qa/sprint-20/local-otp-name-entry-success.png`
   - `artifacts/qa/sprint-20/mobile-empty-state.png`
@@ -60,7 +81,14 @@
   - `artifacts/qa/sprint-20/desktop-after-relogin.png`
   - 상세 결과: `artifacts/qa/sprint-20/playwright-results.json`
   - OTP result summary: `artifacts/qa/sprint-20/local-otp-result.json`
-  - Preview blocker log: `artifacts/qa/sprint-20/preview-deploy-blocker.txt`
+  - API inventory before fix: `artifacts/qa/sprint-20/api-inventory-before.txt`
+  - API inventory after fix: `artifacts/qa/sprint-20/api-inventory-after.txt`
+  - `.vercelignore` snapshot: `artifacts/qa/sprint-20/vercelignore-after.txt`
+  - Preview deploy log: `artifacts/qa/sprint-20/preview-deploy-latest.txt`
+  - Preview smoke result: `artifacts/qa/sprint-20/preview-smoke-results.json`
+  - Preview smoke summary (authenticated): `artifacts/qa/sprint-20/preview-smoke-summary-main.txt`
+  - Preview screenshots: `artifacts/qa/sprint-20/preview-root.png`, `artifacts/qa/sprint-20/preview-place-rewrite.png`
+  - Historical blocker log: `artifacts/qa/sprint-20/preview-deploy-blocker.txt`
 
 ## User QA Required
 - 사용자 확인 항목:
@@ -84,17 +112,19 @@
 - 2026-03-22 `vercel env ls` 확인 결과, core Supabase/Postgres env(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `POSTGRES_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)는 현재 Production에만 있고 Preview / Development에는 없다.
 - 현재 합의된 전략에서는 Preview를 backend-integrated runtime으로 쓰지 않으므로, 위 env 부재는 즉시 blocker가 아니라 **Preview role을 UI/deploy separation으로 제한해야 한다는 근거**로 해석한다.
 - 현재 코드 레벨에서는 `test` 전용 DB URL 분기를 지원하지만(`TEST_DATABASE_URL` 계열), local `.env.local`에는 아직 dedicated test target이 없다. 현재 단기 운영 모델은 reset 가능한 local DB를 isolated run에서 재사용하는 방식이다.
-- Preview smoke를 실제로 시도했지만, Vercel Hobby plan의 serverless function limit(12 functions) 때문에 preview deployment 자체가 차단됐다.
-- 따라서 Preview deploy/UI smoke는 “증빙 미수집”이 아니라 **구체적 플랫폼 blocker가 확인된 상태**다.
+- Preview smoke를 다시 시도한 결과, Vercel Hobby plan의 12-function blocker는 구조 수정으로 해소됐다.
+- direct anonymous 접근은 Vercel deployment protection login wall(HTTP 401)로 보호되지만, authenticated `vercel curl` smoke로는 `/`, `/places/smoke-place`, static asset boot를 확인할 수 있었다.
+- Vercel deployment build log에는 `api/_lib/_authService.ts`의 `@supabase/supabase-js` 타입 export 관련 메시지가 출력되지만, local `tsc --noEmit` / project diagnostics는 0 errors이고 deployment도 성공했다. 현재는 non-blocking follow-up 관찰 항목으로 둔다.
 - 현재 판단 기준으로 push는 여전히 보수적으로 본다. 다만 그 이유는 “Preview에 backend env가 없어서”가 아니라, deploy impact 확인과 사용자 QA가 아직 닫히지 않았기 때문이다.
 
 # QA Verdict
 
-- IN PROGRESS — local integrated runtime 검증과 local OTP UI evidence는 확보됐지만, Preview deploy smoke blocker와 사용자 QA가 아직 남아 있다.
+- READY FOR HANDOFF — local integrated runtime 검증, structural Preview fix, Preview deployment 성공, authenticated Preview smoke evidence까지 확보됐다. 남은 sprint-level 항목은 사용자 QA와 push 판단이다.
 
 # Follow-ups
 
 - 현재 local execution evidence를 기준으로 사용자 QA handoff와 push / rollout 판단을 이어간다.
 - `test`는 당분간 reset 가능한 local DB 재사용 모델로 유지하고, remote dev/test rollout이 안정화되면 dedicated `TEST_DATABASE_URL` / separate target 승격을 재검토한다.
-- Preview deploy/UI smoke blocker를 기준으로, Vercel Hobby function limit을 우회할지(플랜/구성 변경) 아니면 현재 slice에서는 Preview evidence를 blocker로 기록한 채 종료할지 결정한다.
+- Preview deploy blocker는 해소됐고 authenticated smoke 절차도 확보됐으므로, 다음 판단은 Preview를 계속 auth-protected smoke로 유지할지, 별도 public smoke path까지 열 필요가 있는지 결정하는 것이다.
+- Vercel build log에 보이는 `api/_lib/_authService.ts` 타입 export 메시지가 실제 deploy blocker로 승격되는지 모니터링한다.
 - Preview에서 real backend verification이 꼭 필요해지는 시점이 오면, 그때 별도 non-production backend target 도입을 새로운 slice로 계획한다.

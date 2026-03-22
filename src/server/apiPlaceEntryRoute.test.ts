@@ -21,11 +21,11 @@ const {
   readSessionIdFromCookieHeaderMock: vi.fn(),
 }))
 
-vi.mock('./_lib/_authService.js', () => ({
+vi.mock('../../api/_lib/_authService.js', () => ({
   getAuthenticatedSession: getAuthenticatedSessionMock,
 }))
 
-vi.mock('./_lib/_appSessionService.js', () => ({
+vi.mock('../../api/_lib/_appSessionService.js', () => ({
   findActiveAppSessionById: findActiveAppSessionByIdMock,
   isValidCsrfTokenPair: isValidCsrfTokenPairMock,
   readCsrfTokenFromCookieHeader: readCsrfTokenFromCookieHeaderMock,
@@ -33,15 +33,15 @@ vi.mock('./_lib/_appSessionService.js', () => ({
   readSessionIdFromCookieHeader: readSessionIdFromCookieHeaderMock,
 }))
 
-vi.mock('./_lib/_placeEntryService.js', () => ({
+vi.mock('../../api/_lib/_placeEntryService.js', () => ({
   preparePlaceEntryFromDraft: preparePlaceEntryFromDraftMock,
 }))
 
-vi.mock('./_lib/_placeDataService.js', () => ({
+vi.mock('../../api/_lib/_placeDataService.js', () => ({
   persistPlaceRegistration: persistPlaceRegistrationMock,
 }))
 
-import handler from './place-entry.js'
+import handler from '../../api/place-entry.js'
 
 const createResponse = () => {
   const state: { body?: unknown; statusCode?: number } = {}

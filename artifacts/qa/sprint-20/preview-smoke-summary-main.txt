@@ -1,0 +1,6 @@
+preview_url=https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app
+verification_path=authenticated_vercel_curl
+root_result=PASS (SPA HTML returned, title 누리맵, asset references present)
+place_route_result=PASS (SPA HTML returned for /places/smoke-place rewrite)
+asset_result=PASS (GET/HEAD for /assets/index-BDwYyS21.js returned HTTP 200)
+anonymous_access_note=Preview remains Vercel-auth protected for direct anonymous curl, but authenticated smoke is possible via `vercel curl`.

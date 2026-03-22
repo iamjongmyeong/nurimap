@@ -1,0 +1,12 @@
+# Test files should never be uploaded as functions
+**/*.test.*
+
+# Generated/local artifacts
+artifacts/
+coverage/
+dist/
+playwright-report/
+.tmp-home/
+.omx/
+.vercel/
+*.log

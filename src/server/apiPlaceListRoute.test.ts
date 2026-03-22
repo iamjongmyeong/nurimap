@@ -7,19 +7,19 @@ const { getAuthenticatedSessionMock, listPlacesForUserMock, readSessionIdFromCoo
   readSessionIdFromCookieHeaderMock: vi.fn(),
 }))
 
-vi.mock('./_lib/_authService.js', () => ({
+vi.mock('../../api/_lib/_authService.js', () => ({
   getAuthenticatedSession: getAuthenticatedSessionMock,
 }))
 
-vi.mock('./_lib/_appSessionService.js', () => ({
+vi.mock('../../api/_lib/_appSessionService.js', () => ({
   readSessionIdFromCookieHeader: readSessionIdFromCookieHeaderMock,
 }))
 
-vi.mock('./_lib/_placeDataService.js', () => ({
+vi.mock('../../api/_lib/_placeDataService.js', () => ({
   listPlacesForUser: listPlacesForUserMock,
 }))
 
-import handler from './place-list.js'
+import handler from '../../api/place-list.js'
 
 const createResponse = () => {
   const state: { body?: unknown; statusCode?: number } = {}

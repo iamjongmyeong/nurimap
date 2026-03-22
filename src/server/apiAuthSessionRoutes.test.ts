@@ -25,13 +25,13 @@ const {
   signOutAppSessionMock: vi.fn(),
 }))
 
-vi.mock('../_lib/_authService.js', () => ({
+vi.mock('../../api/_lib/_authService.js', () => ({
   getAuthenticatedSession: getAuthenticatedSessionMock,
   saveAuthenticatedUserName: saveAuthenticatedUserNameMock,
   signOutAppSession: signOutAppSessionMock,
 }))
 
-vi.mock('../_lib/_appSessionService.js', () => ({
+vi.mock('../../api/_lib/_appSessionService.js', () => ({
   APP_CSRF_HEADER_NAME: 'x-nurimap-csrf-token',
   findActiveAppSessionById: findActiveAppSessionByIdMock,
   isValidCsrfTokenPair: isValidCsrfTokenPairMock,
@@ -42,9 +42,9 @@ vi.mock('../_lib/_appSessionService.js', () => ({
   serializeClearedCsrfCookie: serializeClearedCsrfCookieMock,
 }))
 
-import logoutHandler from './logout.js'
-import profileHandler from './profile.js'
-import sessionHandler from './session.js'
+import logoutHandler from '../../api/auth/logout.js'
+import profileHandler from '../../api/auth/profile.js'
+import sessionHandler from '../../api/auth/session.js'
 
 const createResponse = () => {
   const state: { body?: unknown; headers?: Record<string, unknown>; statusCode?: number } = {}

@@ -11,17 +11,17 @@ const {
   serializeCsrfCookieMock: vi.fn(),
 }))
 
-vi.mock('../_lib/_authService.js', () => ({
+vi.mock('../../api/_lib/_authService.js', () => ({
   verifyLoginOtp: verifyLoginOtpMock,
 }))
 
-vi.mock('../_lib/_appSessionService.js', () => ({
+vi.mock('../../api/_lib/_appSessionService.js', () => ({
   APP_CSRF_HEADER_NAME: 'x-nurimap-csrf-token',
   serializeAppSessionCookie: serializeAppSessionCookieMock,
   serializeCsrfCookie: serializeCsrfCookieMock,
 }))
 
-import handler from './verify-otp.js'
+import handler from '../../api/auth/verify-otp.js'
 
 const createResponse = () => {
   const state: { body?: unknown; headers?: Record<string, unknown>; statusCode?: number } = {}

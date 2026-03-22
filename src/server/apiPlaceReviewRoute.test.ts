@@ -19,11 +19,11 @@ const {
   submitPersistedPlaceReviewMock: vi.fn(),
 }))
 
-vi.mock('./_lib/_authService.js', () => ({
+vi.mock('../../api/_lib/_authService.js', () => ({
   getAuthenticatedSession: getAuthenticatedSessionMock,
 }))
 
-vi.mock('./_lib/_appSessionService.js', () => ({
+vi.mock('../../api/_lib/_appSessionService.js', () => ({
   findActiveAppSessionById: findActiveAppSessionByIdMock,
   isValidCsrfTokenPair: isValidCsrfTokenPairMock,
   readCsrfTokenFromCookieHeader: readCsrfTokenFromCookieHeaderMock,
@@ -31,11 +31,11 @@ vi.mock('./_lib/_appSessionService.js', () => ({
   readSessionIdFromCookieHeader: readSessionIdFromCookieHeaderMock,
 }))
 
-vi.mock('./_lib/_placeDataService.js', () => ({
+vi.mock('../../api/_lib/_placeDataService.js', () => ({
   submitPersistedPlaceReview: submitPersistedPlaceReviewMock,
 }))
 
-import handler from './place-review.js'
+import handler from '../../api/place-review.js'
 
 const createResponse = () => {
   const state: { body?: unknown; statusCode?: number } = {}

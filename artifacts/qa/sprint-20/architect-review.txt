@@ -1,0 +1,12 @@
+**Summary**
+The change is a narrow deployment-surface cleanup plus sprint-doc sync. It removes accidental test files from `api/`, adds a deploy ignore for test files, and updates Sprint 20 docs to say the Vercel function-limit blocker is resolved while the auth-protected preview smoke policy and user QA remain open.
+
+**Key Findings**
+- No blocking issues found. `api/` no longer contains route test files, `.vercelignore` excludes `**/*.test.*` from Vercel uploads at `.vercelignore:1` and `.vercelignore:2`, and the relocated tests still point at the same runtime handlers in `src/server/apiAuthSessionRoutes.test.ts:45` and `src/server/apiPlaceListRoute.test.ts:22`, so the fix stays outside the runtime API contract.
+- Sprint docs now reflect the new blocker status and remaining limits. `docs/05-sprints/sprint-20/qa.md:49`, `docs/05-sprints/sprint-20/qa.md:72`, `docs/05-sprints/sprint-20/qa.md:115`, and `docs/05-sprints/sprint-20/qa.md:128` record the structural fix, successful preview deploy, auth-protected smoke posture, and the remaining public-vs-protected policy decision. The matching status is in `docs/05-sprints/sprint-20/review.md:17`, `docs/05-sprints/sprint-20/review.md:42`, `docs/05-sprints/sprint-20/review.md:65`, and `docs/05-sprints/sprint-20/review.md:101`.
+
+**Trade-offs**
+- The fix is minimal for runtime behavior, but `.vercelignore` is broader than the exact `api/` cleanup because it suppresses every `*.test.*` file from deployment.
+- The docs accurately capture the protected-smoke posture, but that leaves a deliberate follow-up decision about whether anonymous preview access is needed.
+
+APPROVE
