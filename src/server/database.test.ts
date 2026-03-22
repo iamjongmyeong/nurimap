@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   __resetDatabasePoolForTests,
   resolveDatabaseConnectionString,
+  resolveDatabaseSslConfig,
   shouldUseDatabaseSsl,
 } from './database'
 
@@ -34,5 +35,16 @@ describe('database foundation', () => {
 
   it('enables ssl for non-local hosts', () => {
     expect(shouldUseDatabaseSsl('postgres://postgres:postgres@db.example.com:5432/postgres')).toBe(true)
+  })
+
+  it('uses verified ssl for non-local hosts', () => {
+    expect(resolveDatabaseSslConfig('postgres://postgres:postgres@db.example.com:5432/postgres')).toEqual({
+      rejectUnauthorized: true,
+    })
+  })
+
+  it('keeps localhost-style connections plaintext', () => {
+    expect(resolveDatabaseSslConfig('postgres://postgres:postgres@127.0.0.1:54322/postgres')).toBeUndefined()
+    expect(resolveDatabaseSslConfig('postgres://postgres:postgres@localhost:54322/postgres')).toBeUndefined()
   })
 })
