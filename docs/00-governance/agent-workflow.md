@@ -63,6 +63,12 @@
 - SDK, framework, API를 사용할 때는 먼저 공식 문서를 확인한다.
 - 프론트엔드 구현은 spec에 다른 지시가 없으면 Vite + React + Tailwind CSS를 따른다. 별도 UI 라이브러리 baseline은 source of truth가 명시할 때만 추가한다.
 - frontend state가 필요하면 React-oriented library로 Zustand를 사용할 수 있다.
+- backend / data integration 작업은 기본적으로 **Frontend -> Backend -> Supabase** 계약을 따른다. source of truth가 명시적으로 바뀌지 않는 한 frontend가 Supabase에 직접 연결하거나 frontend에 Supabase client/runtime contract를 다시 도입하지 않는다.
+- Supabase는 backend에서만 사용한다. server-only credential/service-role-capable credential을 기준으로 연결하고, RLS는 필요 시 defense-in-depth로만 사용한다. 제품의 인증/인가/business rule을 RLS에 primary source of truth로 위임하지 않는다.
+- 인증, 인가, business logic, mutable data write 규칙은 backend가 소유한다. AI Agent는 frontend helper나 client state에 server-owned rule을 복제하기보다 backend API contract를 기준으로 구현한다.
+- schema 변경은 migration file로만 수행한다. dashboard 수동 변경이나 ad-hoc SQL을 canonical 변경 경로로 사용하지 않는다.
+- 여러 단계가 묶인 write/auth flow는 backend transaction을 기본으로 한다. RPC는 source of truth가 요구하거나 transaction/API boundary보다 명확한 이점이 있을 때만 예외적으로 검토한다.
+- backend code는 provider 교체 가능성을 남기는 방향으로 작성한다. Supabase-specific detail은 adapter/service boundary 안에 가두고, domain type이나 frontend contract에 provider-specific shape를 직접 새기지 않는다.
 - UI 작업에서 사용자 제공 screenshot / Figma / annotated capture가 있으면 그것을 visual source of truth로 사용하고, 자율적 디자인 해석은 하지 않는다.
 - UI fidelity가 중요한데 screenshot reference가 없으면, 비자명한 시각 변경 전에 사용자에게 desktop/mobile screenshot 제공을 먼저 요청한다.
 - screenshot이 제공되면 `/prompts:vision`으로 레이아웃/spacing/text/icon 요구를 먼저 분석하고, 구현 결과 비교가 필요하면 `$visual-verdict`를 사용한다.
