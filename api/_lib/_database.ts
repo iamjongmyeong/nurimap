@@ -42,15 +42,18 @@ export const shouldUseDatabaseSsl = (connectionString: string) => {
   }
 }
 
+export const resolveDatabaseSslConfig = (connectionString: string): PoolConfig['ssl'] =>
+  shouldUseDatabaseSsl(connectionString)
+    ? { rejectUnauthorized: true }
+    : undefined
+
 const buildPoolConfig = (): PoolConfig => {
   const connectionString = resolveDatabaseConnectionString()
 
   return {
     connectionString,
     max: Number(process.env.DB_POOL_MAX ?? 1),
-    ssl: shouldUseDatabaseSsl(connectionString)
-      ? { rejectUnauthorized: false }
-      : undefined,
+    ssl: resolveDatabaseSslConfig(connectionString),
   }
 }
 
