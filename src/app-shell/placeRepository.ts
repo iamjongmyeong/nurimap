@@ -81,19 +81,6 @@ export type ReviewSubmissionResult =
       message: typeof REVIEW_SAVE_FAILED_MESSAGE
     }
 
-export type RecommendationToggleResult =
-  | {
-      status: 'toggled'
-      place: PlaceSummary
-      places: PlaceSummary[]
-    }
-  | {
-      status: 'error'
-      place: PlaceSummary | null
-      places: PlaceSummary[]
-      message: string
-    }
-
 const roundAverage = (value: number) => Math.round(value * 10) / 10
 
 const normalizeDuplicateValue = (value: string | null | undefined) =>
@@ -227,8 +214,6 @@ const buildCreatedPlace = ({
     average_rating: draft.rating_score,
     review_count: 1,
     added_by_name: CURRENT_USER_NAME,
-    recommendation_count: 0,
-    my_recommendation_active: false,
     my_review: review,
     reviews: [review],
   }
@@ -261,7 +246,6 @@ const buildMergedPlace = ({
       nextRating: draft.rating_score,
     }),
     review_count: existingPlace.review_count + 1,
-    my_recommendation_active: existingPlace.my_recommendation_active,
     my_review: review,
     reviews: mergedReviews,
   }
@@ -592,38 +576,3 @@ export const submitReviewForPlace = ({
   }
 }
 
-export const toggleRecommendationForPlace = ({
-  placeId,
-  places,
-}: {
-  placeId: string
-  places: PlaceSummary[]
-}): RecommendationToggleResult => {
-  const targetPlace = places.find((place) => place.id === placeId) ?? null
-
-  if (!targetPlace) {
-    return {
-      status: 'error',
-      place: null,
-      places,
-      message: '추천 상태를 변경하지 못했어요. 다시 시도해 주세요.',
-    }
-  }
-
-  const nextRecommendationActive = !targetPlace.my_recommendation_active
-  const nextRecommendationCount = nextRecommendationActive
-    ? targetPlace.recommendation_count + 1
-    : Math.max(0, targetPlace.recommendation_count - 1)
-
-  const nextPlace: PlaceSummary = {
-    ...targetPlace,
-    recommendation_count: nextRecommendationCount,
-    my_recommendation_active: nextRecommendationActive,
-  }
-
-  return {
-    status: 'toggled',
-    place: nextPlace,
-    places: places.map((place) => (place.id === targetPlace.id ? nextPlace : place)),
-  }
-}

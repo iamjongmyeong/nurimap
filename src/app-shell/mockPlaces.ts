@@ -19,8 +19,6 @@ export const MOCK_PLACES: PlaceSummary[] = [
     average_rating: 4.7,
     review_count: 12,
     added_by_name: '김누리',
-    recommendation_count: 9,
-    my_recommendation_active: true,
     my_review: {
       id: 'review-mine-1',
       author_name: '내 리뷰',
@@ -58,8 +56,6 @@ export const MOCK_PLACES: PlaceSummary[] = [
     average_rating: 4.3,
     review_count: 8,
     added_by_name: '이합정',
-    recommendation_count: 5,
-    my_recommendation_active: false,
     my_review: null,
     reviews: [
       {
@@ -91,8 +87,6 @@ export const MOCK_PLACES: PlaceSummary[] = [
     average_rating: 4.1,
     review_count: 5,
     added_by_name: '정점심',
-    recommendation_count: 2,
-    my_recommendation_active: false,
     my_review: null,
     reviews: [
       {
@@ -115,8 +109,6 @@ export const MOCK_PLACES: PlaceSummary[] = [
     average_rating: 3.8,
     review_count: 2,
     added_by_name: '무좌표',
-    recommendation_count: 1,
-    my_recommendation_active: false,
     my_review: null,
     reviews: [],
   },
@@ -133,8 +125,6 @@ export const MOCK_PLACES: PlaceSummary[] = [
     average_rating: 3.9,
     review_count: 3,
     added_by_name: '오류검증',
-    recommendation_count: 0,
-    my_recommendation_active: false,
     my_review: null,
     reviews: [
       {

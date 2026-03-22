@@ -4,7 +4,6 @@ import {
   createInitialPlaces,
   preparePlaceRegistration,
   registerOrMergePlace,
-  toggleRecommendationForPlace,
   submitReviewForPlace,
   validateRegistrationDraft,
   validateReviewDraft,
@@ -327,31 +326,4 @@ describe('Plan 06 place repository', () => {
     ).toBe('별점은 1점에서 5점 사이여야 해요.')
   })
 
-  it('adds a recommendation when my recommendation is inactive', () => {
-    const result = toggleRecommendationForPlace({
-      placeId: 'place-cafe-1',
-      places: createInitialPlaces(),
-    })
-
-    expect(result.status).toBe('toggled')
-    if (result.status !== 'toggled') {
-      throw new Error('expected toggled result')
-    }
-    expect(result.place.my_recommendation_active).toBe(true)
-    expect(result.place.recommendation_count).toBe(6)
-  })
-
-  it('removes a recommendation when my recommendation is already active', () => {
-    const result = toggleRecommendationForPlace({
-      placeId: 'place-restaurant-1',
-      places: createInitialPlaces(),
-    })
-
-    expect(result.status).toBe('toggled')
-    if (result.status !== 'toggled') {
-      throw new Error('expected toggled result')
-    }
-    expect(result.place.my_recommendation_active).toBe(false)
-    expect(result.place.recommendation_count).toBe(8)
-  })
 })

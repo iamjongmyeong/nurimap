@@ -24,8 +24,6 @@ export type PlaceSummary = {
   average_rating: number
   review_count: number
   added_by_name: string
-  recommendation_count: number
-  my_recommendation_active: boolean
   my_review: MyReviewSummary
   reviews: ReviewSummary[]
 }

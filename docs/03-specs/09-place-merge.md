@@ -27,7 +27,6 @@
   - 요청 사용자가 같은 place에 review가 있는 상태에서 중복이 발생하면, 확인 후 입력한 평가/후기로 기존 review를 덮어쓸 수 있다.
   - 이때 `review_content`가 비어 있으면 기존 후기 내용은 유지하고 `rating_score`만 갱신한다.
   - `place_type`, `zeropay_status`도 같은 확인 흐름에서 함께 반영한다.
-  - recommendation은 사용자별 단일 상태를 유지한다.
 
 ## Acceptance Criteria
 - 같은 canonical duplicate key는 place 1건으로 유지된다.
@@ -59,7 +58,7 @@
 - 중복 place 병합
 - 최신 사용자 확인값 우선 반영
 - `needs_verification`보다 확정 상태 우선
-- 별점/리뷰/추천 누적 처리
+- 별점/리뷰 누적 처리
 - 병합 후 review uniqueness 유지
 - 중복 장소 확인 흐름 표시
 - 중복 장소 확인 `확인` 처리

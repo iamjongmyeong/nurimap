@@ -42,11 +42,9 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('detail-review-list')).toHaveTextContent('박지도')
     expect(screen.queryByTestId('detail-review-content-review-2')).not.toBeInTheDocument()
     expect(detail).not.toHaveTextContent('네이버 지도 이동')
-    expect(detail).not.toHaveTextContent('추천 수')
     expect(detail).not.toHaveTextContent('내 리뷰')
     expect(screen.queryByTestId('detail-review-compose')).not.toBeInTheDocument()
     expect(screen.queryByTestId('detail-my-review')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('detail-recommendation-control')).not.toBeInTheDocument()
     expect(screen.queryByTestId('detail-naver-link')).not.toBeInTheDocument()
   })
 
@@ -320,8 +318,6 @@ describe('Sprint 16 place detail refresh', () => {
       average_rating: 0,
       review_count: 0,
       added_by_name: '테스트 등록자',
-      recommendation_count: 0,
-      my_recommendation_active: false,
       my_review: null,
       reviews: [],
     }

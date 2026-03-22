@@ -103,7 +103,7 @@
 - UI/레이아웃: 관련 thin contract, 관련 architecture runtime 문서, 필요 시 external screenshot/Figma handoff
 - 데이터/등록: 관련 submission 또는 입력 surface thin contract, 관련 domain/runtime 문서
 - 인증/보안: 관련 auth thin contract, 관련 security/runtime 문서
-- 리뷰/추천: 해당 surface를 소유하는 thin contract, 관련 domain/runtime 문서
+- 리뷰: 해당 surface를 소유하는 thin contract, 관련 domain/runtime 문서
 
 ### 4. Spec 중심 구현
 선택된 spec에서 아래 순서로 내용을 소비한다.

@@ -89,7 +89,6 @@ flowchart LR
 | `place_list_load` | `idle`, `loading`, `empty`, `ready`, `error` | 목록 화면 | 장소 목록 로딩 상태 |
 | `place_detail_load` | `idle`, `loading`, `ready`, `error` | 상세 화면 | 장소 상세 로딩 상태 |
 | `review_submit` | `idle`, `submitting`, `error` | 리뷰 작성 UI | 리뷰와 별점 저장 상태 |
-| `recommendation_toggle` | `idle`, `submitting`, `error` | 추천 버튼 | 추천 추가/취소 요청 상태 |
 
 상태 모델 원칙:
 - auth phase, navigation state, async substate는 서로 다른 층으로 분리한다.
@@ -109,7 +108,7 @@ flowchart LR
 | Browser App | auth surface 렌더링, route/store bridge, 이메일/OTP/이름 입력, 지도/목록/상세 렌더링, 세션 복원, 사용자 상호작용 |
 | App Server | OTP 요청 정책 enforcement, 입력 검증, geocoding 프록시, 중복 판정 보조, 민감한 API 호출, 서버 검증 |
 | Supabase Auth | 이메일 OTP 검증, 세션 발급 및 갱신 |
-| Supabase DB | place, review, recommendation, user 관련 데이터 저장 |
+| Supabase DB | place, review, user 관련 데이터 저장 |
 | Kakao Map SDK | 지도 렌더링, 마커 표시, 줌/팬 이벤트 |
 | Kakao Local / Geocoder | 주소를 좌표로 변환하는 geocoding |
 

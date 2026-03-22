@@ -11,7 +11,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 
 ## Protected Surface Policy
 - 전체 앱은 로그인 뒤에만 접근 가능하다.
-- `place` 등록, 리뷰 작성, 추천 같은 변경성 액션은 모두 인증된 사용자만 수행한다.
+- `place` 등록과 리뷰 작성 같은 변경성 액션은 모두 인증된 사용자만 수행한다.
 - 브라우저와 API는 같은 인증 기준을 적용한다.
 
 ## Authentication Policy
@@ -67,7 +67,7 @@ Supabase 설정 reference defaults:
 - `SESSIONS_SINGLE_PER_USER = false`
 
 ## Authorization Policy
-- place 등록, 리뷰 작성, 추천은 인증된 사용자만 수행한다.
+- place 등록과 리뷰 작성은 인증된 사용자만 수행한다.
 - 등록자와 리뷰 작성자 정보는 사용자 ID와 연결한다.
 - DB 레벨에서는 RLS를 전제로 한다.
 - 클라이언트에는 service role key를 노출하지 않는다.

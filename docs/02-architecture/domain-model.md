@@ -8,11 +8,9 @@
 - `location`은 좌표 또는 지도 위치 정보에만 사용한다.
 - `place_type`은 `restaurant | cafe`다.
 - `zeropay_status`는 `available | unavailable | needs_verification`다.
-- `recommendation`은 내부 도메인 용어다. UI에서는 `추천` 또는 `좋아요`로 표현할 수 있다.
 - 내부 집계 필드명은 `review_count`를 사용하고, UI에서는 필요할 때 `리뷰 수` 또는 `별점 수`로 표현할 수 있다.
 - viewer 기준 review 파생 필드명은 `my_review`를 사용한다.
 - viewer 기준 rating 파생 필드명은 `my_rating_score`를 사용한다.
-- viewer 기준 recommendation 상태 파생 필드명은 `my_recommendation_active`를 사용한다.
 
 ## Core Entities
 
@@ -65,21 +63,6 @@
 - 작성자와 작성일이 상세 화면에 보여야 한다.
 - review lifecycle의 세부 허용 범위(추가/수정/삭제 지원 여부)는 selected spec이 정한다.
 
-### Recommendation
-사용자의 place 추천 액션을 나타내는 엔터티다.
-
-대표 필드:
-- `id`
-- `place_id`
-- `user_id`
-- `created_at`
-
-핵심 규칙:
-- 로그인 사용자만 recommendation을 추가/취소할 수 있다.
-- place별 추천 수 집계가 가능해야 한다.
-- 한 사용자는 place마다 하나의 recommendation 상태만 가진다.
-- 같은 사용자가 추천을 다시 누르면 recommendation을 취소한다.
-
 ### User
 인증된 사내 사용자 엔터티다.
 
@@ -96,7 +79,7 @@
 - 이름은 필수 값이다.
 - 최초 로그인 후 이름이 비어 있으면 이름 입력을 완료해야 한다.
 - 이름은 단일 input field로 수집하고, 1글자 이상이면 유효하다.
-- place 등록자, 리뷰 작성자, 추천자 연결에 사용한다.
+- place 등록자와 리뷰 작성자 연결에 사용한다.
 
 ### LoginLink
 이메일 로그인에 사용하는 일회성 인증 링크 엔터티다.
@@ -138,14 +121,12 @@
 | User | Place | 한 사용자는 여러 place를 등록할 수 있다 |
 | Place | Review | 한 place에는 여러 review가 달릴 수 있다 |
 | User | Review | 한 사용자는 여러 review를 작성할 수 있지만, 같은 place에는 하나만 작성할 수 있다 |
-| Place | Recommendation | 한 place에는 여러 recommendation이 달릴 수 있다 |
-| User | Recommendation | 한 사용자는 여러 place를 추천할 수 있다 |
 
 ## Derived Views
 - Place List View
   - `name`, `average_rating`, `review_count`, `zeropay_status`
 - Place Detail View
-  - `name`, 주소, `place_type`, `average_rating`, `review_count`, `my_rating_score`, `my_review`, 등록자, `recommendation_count`, `my_recommendation_active`, review 목록
+  - `name`, 주소, `place_type`, `average_rating`, `review_count`, `my_rating_score`, `my_review`, 등록자, review 목록
   - review 목록 item: `author_name`, `created_at`, `rating_score`, `content`
 - Map Marker View
   - `latitude`, `longitude`, `place_type`, `name`
@@ -153,13 +134,10 @@
 ## Data Integrity Rules
 - `normalized_name + normalized_road_address`는 canonical duplicate 후보 키다.
 - review는 `(place_id, author_user_id)` 조합으로 하나만 허용한다.
-- recommendation은 `(place_id, user_id)` 조합으로 하나만 허용한다.
 - `review_count`는 리뷰 수와 별점 수를 대표하는 canonical 집계 필드로 사용한다.
 - `average_rating`은 review들의 `rating_score` 집계값으로만 계산한다.
-- `recommendation_count`는 active recommendation 상태 수만 집계한다.
 - `my_review`는 요청 사용자 기준 review 전체 또는 null이다.
 - `my_rating_score`는 요청 사용자 기준 review가 있으면 그 review의 `rating_score`를, 없으면 null을 나타낸다.
-- `my_recommendation_active`는 요청 사용자 기준 active recommendation 존재 여부를 나타낸다.
 - place commit 전에는 좌표를 확보해야 하며, 좌표 확보 절차는 [System Runtime](./system-runtime.md)의 runtime contract를 따른다.
 - `name`, 주소, 좌표는 최신 사용자 확인값을 우선한다.
 - `place_type`은 최신 사용자 입력값을 우선한다.
