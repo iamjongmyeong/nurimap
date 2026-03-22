@@ -152,6 +152,8 @@ const APP_SESSION_RETURNING_COLUMNS = `
   last_seen_at
 `
 
+// Compatibility bridge: prefer hashed token lookup, but continue to honor
+// legacy UUID row-id cookies until those sessions expire or are revoked.
 const ACTIVE_APP_SESSION_LOOKUP_SQL = `
   select id
   from public.app_sessions
