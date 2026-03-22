@@ -341,7 +341,7 @@ describe('Sprint 16 browse refresh', () => {
     setViewport(1280)
     window.kakao = {
       maps: {
-        load: (callback) => callback(),
+        load: (callback: () => void) => callback(),
       } as unknown as NonNullable<typeof window.kakao>['maps'],
     }
 

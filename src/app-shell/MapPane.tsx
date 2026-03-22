@@ -123,8 +123,10 @@ const useKakaoScript = () => {
   const [runtimeStatus, setRuntimeStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
   useEffect(() => {
-    if (hasKakaoLoader()) {
-      window.kakao.maps.load(() => {
+    const kakao = window.kakao
+
+    if (typeof kakao?.maps?.load === 'function') {
+      kakao.maps.load(() => {
         setRuntimeStatus(hasUsableKakaoRuntime() ? 'ready' : 'error')
       })
       return
@@ -137,12 +139,14 @@ const useKakaoScript = () => {
     const existingScript = document.querySelector<HTMLScriptElement>(KAKAO_SCRIPT_SELECTOR)
 
     const handleReady = () => {
-      if (!hasKakaoLoader()) {
+      const runtime = window.kakao
+
+      if (typeof runtime?.maps?.load !== 'function') {
         setRuntimeStatus('error')
         return
       }
 
-      window.kakao.maps.load(() => {
+      runtime.maps.load(() => {
         setRuntimeStatus(hasUsableKakaoRuntime() ? 'ready' : 'error')
       })
     }
