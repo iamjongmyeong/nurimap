@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { __resetPlaceLookupCaches, lookupPlaceFromRawUrl } from './placeLookupService'
+import {
+  __primePlaceLookupCachesForTests,
+  __getPlaceLookupCacheSizesForTests,
+  __resetPlaceLookupCaches,
+  lookupPlaceFromRawUrl,
+} from './placeLookupService'
 
 const originalFetch = globalThis.fetch
 const sprint13FavoriteUrl = 'https://map.naver.com/p/favorite/myPlace/folder/52f873516c87492794d35b0f62ebe0f1/place/1648359924?c=16.00,0,0,0,dh&at=a&placePath=/home?from=map&fromPanelNum=2&timestamp=202603122222&locale=ko&svcName=map_pcv5'
@@ -157,5 +162,42 @@ describe('Plan 05 place lookup service', () => {
     expect(first.status).toBe('success')
     expect(second.status).toBe('success')
     expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps lookup and geocode caches bounded', async () => {
+    for (let index = 0; index < 220; index += 1) {
+      __primePlaceLookupCachesForTests({
+        geocodeEntries: [
+          {
+            key: `road-${index}`,
+            value: { latitude: 37.55 + index / 10_000, longitude: 126.92 + index / 10_000 },
+          },
+        ],
+        lookupEntries: [
+          {
+            key: `canonical-${index}`,
+            value: {
+              status: 'success',
+              data: {
+                naver_place_id: String(index),
+                canonical_url: `https://map.naver.com/p/entry/place/${index}`,
+                name: `장소 ${index}`,
+                road_address: '서울 마포구 테스트로 1',
+                land_lot_address: null,
+                representative_address: '서울 마포구 테스트로 1',
+                latitude: 37.55,
+                longitude: 126.92,
+                coordinate_source: 'naver',
+              },
+            },
+          },
+        ],
+      })
+    }
+
+    expect(__getPlaceLookupCacheSizesForTests()).toEqual({
+      geocode: 200,
+      lookup: 200,
+    })
   })
 })

@@ -5,8 +5,51 @@ import type { PlaceLookupError, PlaceLookupResult, PlaceLookupSourceRecord, Plac
 
 const LOOKUP_FAILED_MESSAGE = '장소 정보를 가져오지 못했어요. 다시 시도해 주세요.'
 const COORDINATES_FAILED_MESSAGE = '좌표를 확인하지 못했어요. 다시 시도해 주세요.'
-const lookupResultCache = new Map<string, PlaceLookupResult>()
-const geocodeCache = new Map<string, { latitude: number; longitude: number } | null>()
+const PLACE_LOOKUP_CACHE_MAX_SIZE = 200
+const PLACE_LOOKUP_CACHE_TTL_MS = 5 * 60 * 1000
+const lookupResultCache = new Map<string, { cachedAt: number; value: PlaceLookupResult }>()
+const geocodeCache = new Map<string, { cachedAt: number; value: { latitude: number; longitude: number } | null }>()
+
+const readCachedValue = <T>(
+  cache: Map<string, { cachedAt: number; value: T }>,
+  key: string,
+  now = Date.now(),
+) => {
+  const cached = cache.get(key)
+  if (!cached) {
+    return null
+  }
+
+  if (now - cached.cachedAt > PLACE_LOOKUP_CACHE_TTL_MS) {
+    cache.delete(key)
+    return null
+  }
+
+  cache.delete(key)
+  cache.set(key, cached)
+  return cached.value
+}
+
+const writeCachedValue = <T>(
+  cache: Map<string, { cachedAt: number; value: T }>,
+  key: string,
+  value: T,
+  now = Date.now(),
+) => {
+  cache.delete(key)
+  cache.set(key, {
+    cachedAt: now,
+    value,
+  })
+
+  while (cache.size > PLACE_LOOKUP_CACHE_MAX_SIZE) {
+    const oldestKey = cache.keys().next().value
+    if (!oldestKey) {
+      return
+    }
+    cache.delete(oldestKey)
+  }
+}
 
 const resolveLookupUrl = async (rawUrl: string) => {
   const parsedUrl = new URL(rawUrl)
@@ -28,19 +71,20 @@ const resolveLookupUrl = async (rawUrl: string) => {
 }
 
 const geocodeAddress = async (address: string): Promise<{ latitude: number; longitude: number } | null> => {
-  if (geocodeCache.has(address)) {
-    return geocodeCache.get(address) ?? null
+  const cached = readCachedValue(geocodeCache, address)
+  if (cached !== null) {
+    return cached
   }
 
   if (GEOCODE_FIXTURES[address]) {
     const result = GEOCODE_FIXTURES[address]
-    geocodeCache.set(address, result)
+    writeCachedValue(geocodeCache, address, result)
     return result
   }
 
   const restApiKey = process.env.KAKAO_REST_API_KEY
   if (!restApiKey) {
-    geocodeCache.set(address, null)
+    writeCachedValue(geocodeCache, address, null)
     return null
   }
 
@@ -54,7 +98,7 @@ const geocodeAddress = async (address: string): Promise<{ latitude: number; long
   )
 
   if (!response.ok) {
-    geocodeCache.set(address, null)
+    writeCachedValue(geocodeCache, address, null)
     return null
   }
 
@@ -64,7 +108,7 @@ const geocodeAddress = async (address: string): Promise<{ latitude: number; long
   const firstDocument = data.documents?.[0]
 
   if (!firstDocument) {
-    geocodeCache.set(address, null)
+    writeCachedValue(geocodeCache, address, null)
     return null
   }
 
@@ -72,7 +116,7 @@ const geocodeAddress = async (address: string): Promise<{ latitude: number; long
     latitude: Number(firstDocument.y),
     longitude: Number(firstDocument.x),
   }
-  geocodeCache.set(address, result)
+  writeCachedValue(geocodeCache, address, result)
   return result
 }
 
@@ -110,8 +154,9 @@ const resolveCoordinates = async (record: PlaceLookupSourceRecord) => {
 
 export const lookupPlaceFromRawUrl = async (rawUrl: string): Promise<PlaceLookupResult> => {
   const normalized = normalizeNaverMapUrl(await resolveLookupUrl(rawUrl))
-  if (lookupResultCache.has(normalized.canonicalUrl)) {
-    return lookupResultCache.get(normalized.canonicalUrl) as PlaceLookupResult
+  const cachedResult = readCachedValue(lookupResultCache, normalized.canonicalUrl)
+  if (cachedResult) {
+    return cachedResult
   }
   const sourceRecord = PLACE_LOOKUP_FIXTURES[normalized.naverPlaceId]
 
@@ -155,11 +200,32 @@ export const lookupPlaceFromRawUrl = async (rawUrl: string): Promise<PlaceLookup
       coordinate_source: coordinates.coordinate_source,
     },
   }
-  lookupResultCache.set(normalized.canonicalUrl, result)
+  writeCachedValue(lookupResultCache, normalized.canonicalUrl, result)
   return result
 }
 
 export const __resetPlaceLookupCaches = () => {
   lookupResultCache.clear()
   geocodeCache.clear()
+}
+
+export const __getPlaceLookupCacheSizesForTests = () => ({
+  lookup: lookupResultCache.size,
+  geocode: geocodeCache.size,
+})
+
+export const __primePlaceLookupCachesForTests = ({
+  geocodeEntries = [],
+  lookupEntries = [],
+}: {
+  geocodeEntries?: Array<{ key: string; value: { latitude: number; longitude: number } | null }>
+  lookupEntries?: Array<{ key: string; value: PlaceLookupResult }>
+}) => {
+  for (const entry of geocodeEntries) {
+    writeCachedValue(geocodeCache, entry.key, entry.value)
+  }
+
+  for (const entry of lookupEntries) {
+    writeCachedValue(lookupResultCache, entry.key, entry.value)
+  }
 }

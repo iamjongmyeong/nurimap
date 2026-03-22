@@ -3,7 +3,41 @@ import type { PlaceLookupResult, PlaceLookupSuccess } from './placeLookupTypes'
 
 const COORDINATES_FAILED_MESSAGE = '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.'
 const INVALID_ENTRY_MESSAGE = '장소명과 주소를 다시 확인해 주세요.'
-const geocodeCache = new Map<string, { latitude: number; longitude: number } | null>()
+const PLACE_ENTRY_CACHE_MAX_SIZE = 200
+const PLACE_ENTRY_CACHE_TTL_MS = 5 * 60 * 1000
+const geocodeCache = new Map<string, { cachedAt: number; value: { latitude: number; longitude: number } | null }>()
+
+const readCachedValue = (address: string, now = Date.now()) => {
+  const cached = geocodeCache.get(address)
+  if (!cached) {
+    return null
+  }
+
+  if (now - cached.cachedAt > PLACE_ENTRY_CACHE_TTL_MS) {
+    geocodeCache.delete(address)
+    return null
+  }
+
+  geocodeCache.delete(address)
+  geocodeCache.set(address, cached)
+  return cached.value
+}
+
+const writeCachedValue = (address: string, value: { latitude: number; longitude: number } | null, now = Date.now()) => {
+  geocodeCache.delete(address)
+  geocodeCache.set(address, {
+    cachedAt: now,
+    value,
+  })
+
+  while (geocodeCache.size > PLACE_ENTRY_CACHE_MAX_SIZE) {
+    const oldestKey = geocodeCache.keys().next().value
+    if (!oldestKey) {
+      return
+    }
+    geocodeCache.delete(oldestKey)
+  }
+}
 
 const normalizeValue = (value: string) => value.trim().normalize('NFKC').toLowerCase().replace(/\s+/g, ' ')
 
@@ -33,19 +67,20 @@ const createSearchUrl = ({
 }) => `https://map.naver.com/p/search/${encodeURIComponent(`${name} ${roadAddress}`)}`
 
 const geocodeAddress = async (address: string): Promise<{ latitude: number; longitude: number } | null> => {
-  if (geocodeCache.has(address)) {
-    return geocodeCache.get(address) ?? null
+  const cached = readCachedValue(address)
+  if (cached !== null) {
+    return cached
   }
 
   if (GEOCODE_FIXTURES[address]) {
     const result = GEOCODE_FIXTURES[address]
-    geocodeCache.set(address, result)
+    writeCachedValue(address, result)
     return result
   }
 
   const restApiKey = process.env.KAKAO_REST_API_KEY
   if (!restApiKey) {
-    geocodeCache.set(address, null)
+    writeCachedValue(address, null)
     return null
   }
 
@@ -59,7 +94,7 @@ const geocodeAddress = async (address: string): Promise<{ latitude: number; long
   )
 
   if (!response.ok) {
-    geocodeCache.set(address, null)
+    writeCachedValue(address, null)
     return null
   }
 
@@ -69,7 +104,7 @@ const geocodeAddress = async (address: string): Promise<{ latitude: number; long
   const firstDocument = data.documents?.[0]
 
   if (!firstDocument) {
-    geocodeCache.set(address, null)
+    writeCachedValue(address, null)
     return null
   }
 
@@ -77,7 +112,7 @@ const geocodeAddress = async (address: string): Promise<{ latitude: number; long
     latitude: Number(firstDocument.y),
     longitude: Number(firstDocument.x),
   }
-  geocodeCache.set(address, result)
+  writeCachedValue(address, result)
   return result
 }
 
@@ -176,3 +211,5 @@ export const preparePlaceEntryFromDraft = async ({
 export const __resetPlaceEntryCaches = () => {
   geocodeCache.clear()
 }
+
+export const __getPlaceEntryCacheSizeForTests = () => geocodeCache.size

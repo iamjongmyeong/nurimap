@@ -9,6 +9,14 @@ import {
 import { getAuthenticatedSession } from './_lib/_authService.js'
 import { lookupPlaceFromRawUrl } from './_lib/_placeLookupService.js'
 import { NAVER_URL_ERROR_MESSAGE } from './_lib/_naverUrl.js'
+import { logPlaceLookupFailure } from './_lib/_opsLogger.js'
+import { checkUserScopedRateLimit } from './_lib/_requestRateLimit.js'
+
+const PLACE_LOOKUP_RATE_LIMIT_MESSAGE = '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.'
+const PLACE_LOOKUP_RATE_LIMIT = {
+  limit: 12,
+  windowMs: 60_000,
+} as const
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -38,6 +46,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const authSession = await getAuthenticatedSession(sessionId)
   if (authSession.status === 'missing') {
     res.status(401).json({ error: { code: 'unauthorized', message: 'Unauthorized' } })
+    return
+  }
+
+  const rateLimitResult = checkUserScopedRateLimit({
+    scope: 'place-lookup',
+    key: authSession.user.id,
+    limit: PLACE_LOOKUP_RATE_LIMIT.limit,
+    windowMs: PLACE_LOOKUP_RATE_LIMIT.windowMs,
+  })
+  if (!rateLimitResult.allowed) {
+    logPlaceLookupFailure({
+      code: 'rate_limited',
+      rawUrl: typeof req.body?.rawUrl === 'string' ? req.body.rawUrl : '',
+    })
+    res.status(429).json({
+      error: {
+        code: 'rate_limited',
+        message: PLACE_LOOKUP_RATE_LIMIT_MESSAGE,
+        retryAfterSeconds: rateLimitResult.retryAfterSeconds,
+      },
+    })
     return
   }
 

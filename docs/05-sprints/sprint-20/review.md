@@ -51,7 +51,7 @@
 | Supabase server target (`SUPABASE_URL`, `SUPABASE_SECRET_KEY`) | present | local reuse | missing | present | current slice에서는 Preview backend를 쓰지 않으므로 future expansion 시에만 필요 |
 | public Supabase runtime (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) | present | local reuse | missing | present | current slice의 Preview smoke에는 필수 아님; future backend-integrated Preview에서 필요 |
 | app public origin (`PUBLIC_APP_URL`) | present | local reuse | present | present | auth redirect / link wrapper 기준 |
-| bypass (`AUTH_BYPASS_ENABLED`, `AUTH_BYPASS_EMAILS`) | present | local reuse | present | present | 기본 posture는 disabled여야 하지만 현재 env는 존재 |
+| bypass (`AUTH_BYPASS_ENABLED`, `AUTH_BYPASS_EMAILS`) | present | local reuse | present | present | env는 존재할 수 있지만 runtime bypass success path는 local loopback에서만 허용 |
 | local auto-login (`VITE_LOCAL_AUTO_LOGIN*`) | present | local-only | n/a | n/a | local QA 편의용, browser OTP evidence를 가릴 수 있음 |
 
 ## Preview Role Decision
@@ -89,6 +89,7 @@
 - local bypass auto-login이 일반 email OTP UI regression을 가릴 수 있다.
 - Preview를 backend-integrated 환경처럼 오해하면, 현재 없는 backend env 때문에 잘못된 blocker 판단이나 과도한 인프라 작업으로 이어질 수 있다.
 - Preview deploy는 가능해졌고 protected smoke도 가능하지만, plain browser/curl만 보면 Vercel protection wall이 먼저 보여 future reviewers가 blocker를 오해할 수 있다.
+- bypass env가 남아 있어도 non-local runtime은 bypass를 거절하도록 hardened 되었으므로, env presence만으로 auth bypass risk를 판단하면 안 된다.
 - dedicated test target 없이 destructive verification을 늘리면 local validation과 test semantics가 섞일 수 있다. 현재는 reset 가능한 local DB reuse 범위로만 제한한다.
 - recommendation은 현재 제거 상태지만, 이후 follow-up에서 실수로 재도입될 위험은 계속 감시해야 한다.
 - Vercel build log에 `api/_lib/_authService.ts`의 타입 export 관련 메시지가 찍히지만 local diagnostics/deploy success와 충돌하지 않는다. 지금은 non-blocking 관찰 항목이지만, 향후 deploy fail로 승격되면 별도 slice로 추적해야 한다.

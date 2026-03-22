@@ -25,7 +25,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 허용 이메일 도메인은 `@nurimedia.co.kr` 하나다.
 - 클라이언트에서 1차 검증한다.
 - 서버와 인증 완료 후 사용자 정보에서도 다시 검증한다.
-- 단, 운영자가 환경변수로 명시한 bypass 이메일 allowlist는 테스트/운영 예외로 별도 허용할 수 있다.
+- 단, 운영자가 환경변수로 명시한 bypass 이메일 allowlist는 local dev / local QA에서만 예외적으로 허용할 수 있다. non-local runtime은 allowlist/env가 남아 있어도 bypass를 로그인 성공 경로로 사용하지 않는다.
 - bypass 이메일 목록 값 자체는 public repository에 커밋하지 않고 환경변수에서만 관리한다.
 
 ### Email OTP Policy
@@ -35,8 +35,8 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 로그인 이메일에는 서비스 식별 정보와 OTP 코드를 포함한다.
 - 새 OTP를 발급하면 이전 미사용 OTP도 즉시 무효화한다.
 - OTP는 한 번 성공적으로 사용하면 다시 사용할 수 없다.
-- `AUTH_BYPASS_ENABLED=true` 이고 이메일이 `AUTH_BYPASS_EMAILS` allowlist에 있으면 OTP 입력 없이 즉시 로그인할 수 있다.
-- bypass는 기본적으로 비활성화 상태를 유지하고, 필요한 환경에서만 명시적으로 켠다.
+- `AUTH_BYPASS_ENABLED=true` 이고 이메일이 `AUTH_BYPASS_EMAILS` allowlist에 있어도, bypass는 loopback/local origin에서만 OTP 입력 없는 로그인으로 허용한다.
+- bypass는 기본적으로 비활성화 상태를 유지하고, local dev / local QA에서만 명시적으로 켠다.
 
 기본 보호 수치:
 - 동일 이메일은 active cooldown cycle 안에서 최대 5회까지 대기 시간 없이 재요청할 수 있다.
@@ -73,7 +73,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
   - Supabase server target: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`
   - browser bootstrap/public origin: `PUBLIC_APP_URL`
 - browser에 노출 가능한 key는 public client/runtime key로 한정한다. 예: `NEXT_PUBLIC_SUPABASE_*`, `PUBLIC_KAKAO_MAP_APP_KEY`.
-- environment-specific bypass는 명시적으로 켜야 하며, 기본 posture는 disabled다. bypass를 켠 환경은 운영 로그와 QA handoff에서 구분 가능해야 한다.
+- bypass는 local dev 전용이다. preview/development/production에서 env가 남아 있더라도 runtime은 non-loopback bypass를 거절해야 하며, local bypass 사용은 운영 로그와 QA handoff에서 구분 가능해야 한다.
 
 ## Authorization Policy
 - place 등록과 리뷰 작성은 인증된 사용자만 수행한다.
@@ -91,7 +91,9 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 ## Map/API Abuse Prevention
 - 지도 이동 이벤트는 debounce/throttle로 제어한다.
 - 동일 정규화 주소 geocoding 결과는 캐시 우선 정책을 둔다.
-- place 등록 API는 rate limit을 적용한다.
+- place 등록 API와 place lookup API는 rate limit을 적용한다.
+- place lookup / geocoding 캐시는 bounded size + TTL 정책으로 유지해 무한 성장하지 않게 한다.
+- 현재 serverless runtime의 rate limiting / cache bounding은 in-memory best-effort 1차 방어로 운영한다. cross-instance 일관성이 필요해지면 shared persistence-backed guard로 승격한다.
 
 ## Operational Rules
 - 민감한 환경변수는 Vercel 환경변수와 서버 런타임에서만 사용한다.

@@ -115,6 +115,7 @@
 - Preview smoke를 다시 시도한 결과, Vercel Hobby plan의 12-function blocker는 구조 수정으로 해소됐다.
 - direct anonymous 접근은 Vercel deployment protection login wall(HTTP 401)로 보호되지만, authenticated `vercel curl` smoke로는 `/`, `/places/smoke-place`, static asset boot를 확인할 수 있었다.
 - Vercel deployment build log에는 `api/_lib/_authService.ts`의 `@supabase/supabase-js` 타입 export 관련 메시지가 출력되지만, local `tsc --noEmit` / project diagnostics는 0 errors이고 deployment도 성공했다. 현재는 non-blocking follow-up 관찰 항목으로 둔다.
+- security hardening 이후 remote DB connection은 인증서 검증을 끄지 않으며, bypass는 local loopback runtime에서만 허용되고, place-entry / place-lookup에는 best-effort in-memory abuse guard가 추가됐다.
 - 현재 판단 기준으로 push는 여전히 보수적으로 본다. 다만 그 이유는 “Preview에 backend env가 없어서”가 아니라, deploy impact 확인과 사용자 QA가 아직 닫히지 않았기 때문이다.
 
 # QA Verdict

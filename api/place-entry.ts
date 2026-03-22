@@ -10,8 +10,14 @@ import { getAuthenticatedSession } from './_lib/_authService.js'
 import { persistPlaceRegistration } from './_lib/_placeDataService.js'
 import { logPlaceEntryFailure } from './_lib/_opsLogger.js'
 import { preparePlaceEntryFromDraft } from './_lib/_placeEntryService.js'
+import { checkUserScopedRateLimit } from './_lib/_requestRateLimit.js'
 
 const GENERIC_PLACE_ENTRY_ERROR_MESSAGE = '등록하지 못했어요. 잠시 후 다시 시도해 주세요.'
+const PLACE_ENTRY_RATE_LIMIT_MESSAGE = '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.'
+const PLACE_ENTRY_RATE_LIMIT = {
+  limit: 6,
+  windowMs: 60_000,
+} as const
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -41,6 +47,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const authSession = await getAuthenticatedSession(sessionId)
   if (authSession.status === 'missing') {
     res.status(401).json({ error: { code: 'unauthorized', message: 'Unauthorized' } })
+    return
+  }
+
+  const rateLimitResult = checkUserScopedRateLimit({
+    scope: 'place-entry',
+    key: authSession.user.id,
+    limit: PLACE_ENTRY_RATE_LIMIT.limit,
+    windowMs: PLACE_ENTRY_RATE_LIMIT.windowMs,
+  })
+  if (!rateLimitResult.allowed) {
+    logPlaceEntryFailure({
+      code: 'rate_limited',
+      details: {
+        retry_after_seconds: rateLimitResult.retryAfterSeconds,
+        user_id: authSession.user.id,
+      },
+    })
+    res.status(429).json({
+      error: {
+        code: 'rate_limited',
+        message: PLACE_ENTRY_RATE_LIMIT_MESSAGE,
+        retryAfterSeconds: rateLimitResult.retryAfterSeconds,
+      },
+    })
     return
   }
 

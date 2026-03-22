@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { __resetPlaceEntryCaches, preparePlaceEntryFromDraft } from './placeEntryService'
+import {
+  __getPlaceEntryCacheSizeForTests,
+  __resetPlaceEntryCaches,
+  preparePlaceEntryFromDraft,
+} from './placeEntryService'
 
 describe('placeEntryService', () => {
   beforeEach(() => {
@@ -54,5 +58,17 @@ describe('placeEntryService', () => {
         message: '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.',
       },
     })
+  })
+
+  it('keeps the geocode cache bounded', async () => {
+    for (let index = 0; index < 220; index += 1) {
+      await preparePlaceEntryFromDraft({
+        name: `좌표 실패 장소 ${index}`,
+        roadAddress: `존재하지 않는 도로명 주소 ${index}`,
+        landLotAddress: null,
+      })
+    }
+
+    expect(__getPlaceEntryCacheSizeForTests()).toBeLessThanOrEqual(200)
   })
 })
