@@ -1,24 +1,34 @@
+# Environment files
 .env
 .env.*
+.env*.local
 !.env.example
 
+# OS / local tooling
 .DS_Store
+
+# Dependencies and build output
 node_modules/
 dist/
 coverage/
 
+# Codex repo config: ignore generated workspace files, keep shared config/prompts
 .codex/*
 !.codex/config.toml
 !.codex/prompts/
 !.codex/prompts/**
 
+# OMX runtime/generated artifacts
+.omx/state/
+.omx/context/
 .omx/logs/
-.omx/metrics.json
 .omx/notepad.md
 .omx/project-memory.json
-.omx/context/
-.omx/plans/
-.omx/state/
+.omx/metrics.json
 .omx/tmux-hook.json
+
+# Vercel local metadata
 .vercel
-.env*.local
+
+# Supabase local scratch files
+supabase/snippets/

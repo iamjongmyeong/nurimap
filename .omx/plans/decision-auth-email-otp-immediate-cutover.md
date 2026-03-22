@@ -1,0 +1,21 @@
+## 2026-03-18 Sprint 18 - Replace magic-link auth with email OTP as the canonical login contract
+- Context: Nurimap의 current auth contract는 Supabase magic link + app-managed nonce + `/auth/verify` verify entry를 중심으로 잡혀 있었다. Sprint 12와 Sprint 17 hardening으로 broken URL, stale verify query, premature consume 같은 문제를 줄였지만, route/query parsing, legacy verify support, `verify-link`/`consume-link`, nonce lifecycle, 메일 클라이언트/링크 스캐너 영향 같은 link-specific complexity는 계속 남아 있었다. 이번 작업은 혼자 진행하는 사이드 프로젝트 기준으로, dual support를 길게 유지하는 것보다 canonical contract를 단순화하는 편이 더 안전하다는 판단이 필요했다.
+- Options considered:
+  - Option A: magic link를 유지하고 추가 hardening만 계속한다.
+  - Option B: OTP를 feature flag 뒤에 추가하고 magic link와 dual support를 유지한다.
+  - Option C: email OTP로 즉시 컷오버하고, 기존 `/auth/verify`는 로그인 성공 경로가 아닌 fallback entry로만 남긴다.
+- Decision: Option C를 선택한다.
+- Rationale: solo side project에서는 auth mode를 두 개 유지하는 운영 비용과 문서/테스트 복잡도가 크다. magic link는 메일 클라이언트, link scanner, stale verify query, nonce consumption timing 같은 외부 요인에 더 민감하고, current codebase도 이 문제를 완화하기 위해 별도 wrapper/consume 경계를 이미 추가한 상태다. 반면 email OTP는 canonical 성공 경로를 `이메일 입력 -> OTP 요청 -> OTP 입력 -> verify`로 단순화할 수 있고, `/auth/verify`, nonce, `verify-link`/`consume-link`, dual support 같은 legacy surface를 걷어내며 source-of-truth와 runtime contract를 더 직접적으로 맞출 수 있다. 이번 Sprint는 deployed live email 확인을 `User QA Required` handoff로 남겨도 되므로, 구현/문서/테스트 기준의 단일 canonical contract를 우선 고정하는 편이 더 적절하다.
+- Impact: Sprint 18 source of truth는 `docs/03-specs/05-auth-email-login-link.md`의 OTP contract, `docs/01-product/user-flows/auth-and-name-entry.md`, `docs/04-design/auth-and-name-entry.md`, `docs/02-architecture/security-and-ops.md`, `docs/02-architecture/system-runtime.md`, `docs/05-sprints/sprint-18/*` 문서 세트가 담당한다. canonical request route는 `POST /api/auth/request-otp`로, 일반 verify는 client-side `verifyOtp({ email, token, type: 'email' })`로 정리한다. server-side resend/cooldown bookkeeping은 `app_metadata.nurimap_auth`에 남기되 nonce/token_hash lifecycle은 canonical state에서 제거한다. 기존 `/auth/verify`와 legacy root verify query는 더 이상 로그인 성공 경로가 아니며, 새 OTP 요청으로 복귀시키는 fallback entry로만 남길 수 있다.
+- Revisit trigger: live deployed 환경에서 OTP 메일 전달성/사용성 문제가 반복되거나, Supabase OTP contract 변화로 canonical verify path를 다시 server-mediated flow로 바꿔야 할 근거가 생기면 auth mode와 fallback strategy를 재검토한다.
+- Related docs:
+  - docs/03-specs/05-auth-email-login-link.md
+  - docs/01-product/user-flows/auth-and-name-entry.md
+  - docs/04-design/auth-and-name-entry.md
+  - docs/02-architecture/security-and-ops.md
+  - docs/02-architecture/system-runtime.md
+  - docs/05-sprints/sprint-18/planning.md
+  - docs/05-sprints/sprint-18/qa.md
+  - docs/05-sprints/sprint-18/review.md
+  - docs/06-history/decisions.md
+- Related commit: TBD
