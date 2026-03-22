@@ -18,14 +18,14 @@
 
 - remote dev/test target 확정 및 rollout
 - explicit email OTP request/verify UI의 별도 browser evidence
-- `test` 전용 target 또는 reset 전략 명확화
+- dedicated test target 승격 여부 재검토
 - 사용자 직접 QA handoff 종료
 - current local commits push 여부 결정 및 실행
 
 # Carry-over
 
 - preview/development 환경에 core Supabase/Postgres env를 채울지, 아니면 별도 remote dev/test target을 둘지 먼저 확정한다.
-- `test`는 당분간 reset 가능한 local DB reuse로 갈지, dedicated `TEST_DATABASE_URL` / separate target으로 승격할지 결정한다.
+- `test`는 당분간 reset 가능한 local DB reuse 모델로 유지하고, remote dev/test rollout이 안정화되면 dedicated `TEST_DATABASE_URL` / separate target 승격을 재검토한다.
 - target project / env / migration checklist를 확인한 뒤 remote dev/test rollout 여부를 결정한다.
 - 필요하면 local auto-login bypass를 끈 browser run으로 email OTP request/verify path를 추가 증빙한다.
 - 사용자에게 auth UX, empty-state browse, overwrite 체감 확인을 handoff한다.
@@ -36,7 +36,7 @@
 | Environment | Current Status | Evidence | Next Step |
 |---|---|---|---|
 | local dev | READY | local Supabase health, `make check`, Playwright local runtime QA 완료 | 현재 baseline 유지 |
-| test | PARTIAL | 코드가 `TEST_DATABASE_URL` 계열 분기를 지원하지만 local env에는 dedicated test target이 없음 | reset 가능한 local DB reuse 정책 또는 dedicated test target 중 하나로 고정 |
+| test | PARTIAL / CONTROLLED | 코드가 `TEST_DATABASE_URL` 계열 분기를 지원하지만 local env에는 dedicated test target이 없음 | 당분간 reset 가능한 local DB reuse 정책 유지, 추후 dedicated target 승격 재검토 |
 | preview / development | NOT READY | 2026-03-22 `vercel env ls preview/development` 기준 core backend env 없이 `PUBLIC_APP_URL`, bypass, Kakao, Resend만 존재 | Supabase/DB target과 env set을 먼저 구성 |
 | production | CONFIGURED / PROTECTED | 2026-03-22 `vercel env ls production` 기준 core Supabase/Postgres env 존재 | explicit approval 전까지 rollout/migration 보류 |
 
@@ -54,7 +54,7 @@
 
 - local bypass auto-login이 일반 email OTP UI regression을 가릴 수 있다.
 - preview/development에 core backend env가 없는 상태에서 rollout을 시도하면 실제로는 production만 유효 target이 되어 `dev / test / production` 분리가 흔들릴 수 있다.
-- `test` target을 명시하지 않은 채 destructive verification을 늘리면 local validation과 test semantics가 섞일 수 있다.
+- dedicated test target 없이 destructive verification을 늘리면 local validation과 test semantics가 섞일 수 있다. 현재는 reset 가능한 local DB reuse 범위로만 제한한다.
 - recommendation은 현재 제거 상태지만, 이후 follow-up에서 실수로 재도입될 위험은 계속 감시해야 한다.
 
 # Retrospective

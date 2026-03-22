@@ -70,17 +70,17 @@
 - 이번 Playwright pass는 `.env.local`의 local auto-login bypass를 사용했기 때문에, 일반 email OTP 입력/검증 UI 자체의 브라우저 증빙은 별도 실행이 필요하다.
 - 2026-03-22 `vercel env ls` 확인 결과, core Supabase/Postgres env(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `POSTGRES_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)는 현재 Production에만 있고 Preview / Development에는 없다.
 - 따라서 remote dev/test rollout은 아직 실행 준비가 끝난 상태가 아니다. 먼저 preview/development target과 env set을 명시적으로 채워야 한다.
-- 현재 코드 레벨에서는 `test` 전용 DB URL 분기를 지원하지만(`TEST_DATABASE_URL` 계열), local `.env.local`에는 아직 dedicated test target이 없다.
+- 현재 코드 레벨에서는 `test` 전용 DB URL 분기를 지원하지만(`TEST_DATABASE_URL` 계열), local `.env.local`에는 아직 dedicated test target이 없다. 현재 단기 운영 모델은 reset 가능한 local DB를 isolated run에서 재사용하는 방식이다.
 - remote dev/test rollout은 아직 수행하지 않았고, target project 확정 없이는 진행하지 않는다.
 
 # QA Verdict
 
-- IN PROGRESS — local integrated runtime 검증은 통과했지만, explicit email OTP UX evidence / 사용자 QA / `test` 전략 명확화 / remote env readiness 확인이 아직 남아 있다.
+- IN PROGRESS — local integrated runtime 검증은 통과했고 단기 `test` 운영 모델도 정리됐지만, explicit email OTP UX evidence / 사용자 QA / remote env readiness 확인이 아직 남아 있다.
 
 # Follow-ups
 
 - 현재 local execution evidence를 기준으로 사용자 QA handoff와 push / rollout 판단을 이어간다.
 - preview/development Vercel env에 core backend key set이 실제로 필요한지와, 어떤 Supabase/DB target을 쓸지 먼저 확정한다.
-- `test`는 당분간 reset 가능한 local DB 재사용 모델로 운영할지, 아니면 dedicated `TEST_DATABASE_URL` / separate target으로 승격할지 결정한다.
+- `test`는 당분간 reset 가능한 local DB 재사용 모델로 유지하고, remote dev/test rollout이 안정화되면 dedicated `TEST_DATABASE_URL` / separate target 승격을 재검토한다.
 - 필요하면 local auto-login bypass를 끈 별도 browser pass로 email OTP request/verify UI를 추가 검증한다.
 - remote dev/test rollout은 target project, env value, migration checklist를 명시적으로 확인한 뒤 별도 slice로 진행한다.
