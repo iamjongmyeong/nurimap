@@ -105,8 +105,10 @@ const getBypassEmails = () =>
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)
 
+const LOCAL_BYPASS_HOSTS = new Set(['127.0.0.1', '::1', 'localhost'])
+
 const isBypassLoginEmail = (email: string) => {
-  if (process.env.AUTH_BYPASS_ENABLED !== 'true') {
+  if (process.env.AUTH_BYPASS_ENABLED !== 'true' || !isLocalBypassRuntime()) {
     return false
   }
 
@@ -140,6 +142,20 @@ const getPublicAppUrl = () => {
     return normalizedUrl
   } catch {
     return null
+  }
+}
+
+const isLocalBypassRuntime = () => {
+  const publicAppUrl = getPublicAppUrl()
+  if (!publicAppUrl) {
+    return false
+  }
+
+  try {
+    const hostname = new URL(publicAppUrl).hostname.toLowerCase()
+    return LOCAL_BYPASS_HOSTS.has(hostname) || hostname.endsWith('.localhost')
+  } catch {
+    return false
   }
 }
 
@@ -441,6 +457,14 @@ export const verifyLoginOtp = async ({
   const auth = getAdminAuthClient()
   const normalizedEmail = email.trim().toLowerCase()
   const now = new Date()
+
+  if (tokenHash && !isLocalBypassRuntime()) {
+    return {
+      status: 'error',
+      message: OTP_VERIFY_FAILURE_MESSAGE,
+    }
+  }
+
   const verifyParams = tokenHash
     ? {
         token_hash: tokenHash,
