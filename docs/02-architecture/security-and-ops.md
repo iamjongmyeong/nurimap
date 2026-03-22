@@ -59,6 +59,20 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 다른 브라우저, 시크릿 창, 쿠키 삭제, 로그아웃 시에는 세션이 유지되지 않는다.
 - 앱 시작 시 session cookie가 있어도 `GET /api/auth/session` 또는 보호된 API 확인으로 유효성을 재검증한다.
 
+## Environment Separation Policy
+- canonical 환경 축은 `local dev / test / remote preview-development / production`이다.
+- 각 환경은 secret과 mutable data target을 명시적으로 구분해야 하며, 특히 `production`은 다른 환경과 DB write target을 공유하면 안 된다.
+- local dev는 local Supabase와 loopback origin을 사용한다. local runtime은 remote project를 암묵적으로 기본값으로 삼지 않는다.
+- `test`는 가능하면 전용 test DB 또는 전용 test Supabase target을 사용한다. 전용 target이 아직 없을 때만 reset 가능한 local DB를 짧은 범위의 isolated run에 재사용할 수 있다.
+- remote preview/development는 production과 분리된 backend target을 가져야 한다. core backend key/DB target이 비어 있으면 rollout-ready 환경으로 간주하지 않는다.
+- production은 production 전용 DB/Supabase/auth origin을 사용하고, destructive verification이나 migration은 explicit target confirmation 이후에만 수행한다.
+- rollout 전에 최소한 아래 server-side key set의 존재를 확인한다:
+  - DB target: `DATABASE_URL` 또는 동등한 server DB URL
+  - Supabase server target: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`
+  - browser bootstrap/public origin: `PUBLIC_APP_URL`
+- browser에 노출 가능한 key는 public client/runtime key로 한정한다. 예: `NEXT_PUBLIC_SUPABASE_*`, `PUBLIC_KAKAO_MAP_APP_KEY`.
+- environment-specific bypass는 명시적으로 켜야 하며, 기본 posture는 disabled다. bypass를 켠 환경은 운영 로그와 QA handoff에서 구분 가능해야 한다.
+
 ## Authorization Policy
 - place 등록과 리뷰 작성은 인증된 사용자만 수행한다.
 - 등록자와 리뷰 작성자 정보는 사용자 ID와 연결한다.
