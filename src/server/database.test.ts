@@ -4,6 +4,8 @@ import {
   __resetDatabasePoolForTests,
   resolveDatabaseConnectionString,
   resolveDatabaseSslConfig,
+  resolveDatabaseSslRootCert,
+  stripDatabaseSslConnectionOptions,
   shouldUseDatabaseSsl,
 } from './database'
 
@@ -28,6 +30,16 @@ describe('database foundation', () => {
     expect(resolveDatabaseConnectionString()).toBe('postgres://runtime-user:runtime-pass@db.example.com:5432/postgres')
   })
 
+  it('strips conflicting ssl query params before pg applies ssl config', () => {
+    expect(
+      stripDatabaseSslConnectionOptions(
+        'postgres://runtime-user:runtime-pass@db.example.com:5432/postgres?sslmode=require&sslrootcert=%2Ftmp%2Froot.crt&application_name=nurimap',
+      ),
+    ).toBe(
+      'postgres://runtime-user:runtime-pass@db.example.com:5432/postgres?application_name=nurimap',
+    )
+  })
+
   it('disables ssl for localhost-style connections', () => {
     expect(shouldUseDatabaseSsl('postgres://postgres:postgres@127.0.0.1:54322/postgres')).toBe(false)
     expect(shouldUseDatabaseSsl('postgres://postgres:postgres@localhost:54322/postgres')).toBe(false)
@@ -40,6 +52,33 @@ describe('database foundation', () => {
   it('uses verified ssl for non-local hosts', () => {
     expect(resolveDatabaseSslConfig('postgres://postgres:postgres@db.example.com:5432/postgres')).toEqual({
       rejectUnauthorized: true,
+    })
+  })
+
+  it('adds a configured root cert to verified ssl for non-local hosts', () => {
+    vi.stubEnv(
+      'DATABASE_SSL_ROOT_CERT',
+      '-----BEGIN CERTIFICATE-----\\nline-two\\n-----END CERTIFICATE-----',
+    )
+
+    expect(resolveDatabaseSslRootCert()).toBe(
+      '-----BEGIN CERTIFICATE-----\nline-two\n-----END CERTIFICATE-----',
+    )
+    expect(resolveDatabaseSslConfig('postgres://postgres:postgres@db.example.com:5432/postgres')).toEqual({
+      rejectUnauthorized: true,
+      ca: '-----BEGIN CERTIFICATE-----\nline-two\n-----END CERTIFICATE-----',
+    })
+  })
+
+  it('falls back to the supabase root cert env alias', () => {
+    vi.stubEnv(
+      'SUPABASE_DB_ROOT_CERT',
+      '-----BEGIN CERTIFICATE-----\\nlegacy-line\\n-----END CERTIFICATE-----',
+    )
+
+    expect(resolveDatabaseSslConfig('postgres://postgres:postgres@db.example.com:5432/postgres')).toEqual({
+      rejectUnauthorized: true,
+      ca: '-----BEGIN CERTIFICATE-----\nlegacy-line\n-----END CERTIFICATE-----',
     })
   })
 

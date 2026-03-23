@@ -74,6 +74,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - production은 production 전용 DB/Supabase/auth origin을 사용하고, destructive verification이나 migration은 explicit target confirmation 이후에만 수행한다.
 - backend-integrated verification을 수행하는 환경에서는 최소한 아래 server-side key set의 존재를 확인한다:
   - DB target: `DATABASE_URL` 또는 동등한 server DB URL
+  - verified remote DB TLS가 필요한 경우: `DATABASE_SSL_ROOT_CERT` (fallback alias: `SUPABASE_DB_ROOT_CERT`)
   - Supabase server target: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`
   - browser bootstrap/public origin: `PUBLIC_APP_URL`
 - browser에 노출 가능한 key는 public client/runtime key로 한정한다. 예: `NEXT_PUBLIC_SUPABASE_*`, `PUBLIC_KAKAO_MAP_APP_KEY`.

@@ -1,6 +1,7 @@
 import { Pool, type PoolClient, type PoolConfig } from 'pg'
 
 const LOCAL_DB_HOSTS = new Set(['127.0.0.1', 'localhost'])
+const SSL_CONNECTION_STRING_KEYS = ['sslcert', 'sslkey', 'sslrootcert', 'sslmode']
 
 let databasePool: Pool | null = null
 
@@ -8,6 +9,11 @@ const getString = (value: string | undefined) => {
   const trimmed = value?.trim()
   return trimmed ? trimmed : null
 }
+
+const normalizeDatabaseRootCert = (value: string) =>
+  value
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
 
 export const resolveDatabaseConnectionString = (env: NodeJS.ProcessEnv = process.env) => {
   const runtimeUrl = getString(env.DATABASE_URL)
@@ -42,18 +48,48 @@ export const shouldUseDatabaseSsl = (connectionString: string) => {
   }
 }
 
-export const resolveDatabaseSslConfig = (connectionString: string): PoolConfig['ssl'] =>
-  shouldUseDatabaseSsl(connectionString)
-    ? { rejectUnauthorized: true }
-    : undefined
+export const resolveDatabaseSslRootCert = (env: NodeJS.ProcessEnv = process.env) => {
+  const rootCert = getString(env.DATABASE_SSL_ROOT_CERT)
+    ?? getString(env.SUPABASE_DB_ROOT_CERT)
 
-const buildPoolConfig = (): PoolConfig => {
-  const connectionString = resolveDatabaseConnectionString()
+  return rootCert ? normalizeDatabaseRootCert(rootCert) : null
+}
+
+export const stripDatabaseSslConnectionOptions = (connectionString: string) => {
+  try {
+    const parsed = new URL(connectionString)
+
+    for (const key of SSL_CONNECTION_STRING_KEYS) {
+      parsed.searchParams.delete(key)
+    }
+
+    return parsed.toString()
+  } catch {
+    return connectionString
+  }
+}
+
+export const resolveDatabaseSslConfig = (
+  connectionString: string,
+  env: NodeJS.ProcessEnv = process.env,
+): PoolConfig['ssl'] => {
+  if (!shouldUseDatabaseSsl(connectionString)) {
+    return undefined
+  }
+
+  const rootCert = resolveDatabaseSslRootCert(env)
+  return rootCert
+    ? { rejectUnauthorized: true, ca: rootCert }
+    : { rejectUnauthorized: true }
+}
+
+const buildPoolConfig = (env: NodeJS.ProcessEnv = process.env): PoolConfig => {
+  const connectionString = stripDatabaseSslConnectionOptions(resolveDatabaseConnectionString(env))
 
   return {
     connectionString,
-    max: Number(process.env.DB_POOL_MAX ?? 1),
-    ssl: resolveDatabaseSslConfig(connectionString),
+    max: Number(env.DB_POOL_MAX ?? 1),
+    ssl: resolveDatabaseSslConfig(connectionString, env),
   }
 }
 
