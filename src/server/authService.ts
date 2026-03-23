@@ -101,21 +101,11 @@ type SupabaseUserRecord = {
   user_metadata?: Record<string, unknown>
 }
 
-type SupabaseAuthApi = {
-  admin: {
-    createUser: (...args: any[]) => Promise<{ data: { user: SupabaseUserRecord | null }; error: any }>
-    generateLink: (...args: any[]) => Promise<any>
-    listUsers: (...args: any[]) => Promise<{ data: { users: SupabaseUserRecord[] }; error: any }>
-    updateUserById: (...args: any[]) => Promise<{ error: any }>
-    signOut: (...args: any[]) => Promise<any>
-  }
-  getUser: (...args: any[]) => Promise<any>
-  signInWithOtp: (...args: any[]) => Promise<any>
-  verifyOtp: (...args: any[]) => Promise<any>
-}
+type SupabaseAdminAuthApi = ReturnType<typeof createSupabaseAdminClient>['auth']
+type SupabasePublicAuthApi = ReturnType<typeof createSupabaseAuthClient>['auth']
 
-const getAdminAuthClient = (): SupabaseAuthApi => createSupabaseAdminClient().auth as SupabaseAuthApi
-const getPublicAuthClient = (): SupabaseAuthApi => createSupabaseAuthClient().auth as SupabaseAuthApi
+const getAdminAuthClient = (): SupabaseAdminAuthApi => createSupabaseAdminClient().auth
+const getPublicAuthClient = (): SupabasePublicAuthApi => createSupabaseAuthClient().auth
 const isSendLoginOtpFailure = (
   result: SendLoginOtpResult,
 ): result is Extract<SendLoginOtpResult, { ok: false }> => !result.ok
