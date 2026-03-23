@@ -4,6 +4,7 @@
 - 구현의 상세 acceptance criteria와 test matrix는 `.omx/plans/test-spec-supabase-place-auth-real-data-migration.md`, `.omx/plans/test-spec-sprint-20-vercel-function-limit-resolution.md`를 SSOT로 사용한다.
 - 2026-03-23 auth hotfix slice에서는 local-only bypass 정책을 유지하면서 OTP 발송 회귀와 exact allowlist OTP 예외를 함께 검증한다.
 - browse 지도 surface에서는 level HUD / zoom button 비노출 contract가 현재 UI/docs와 일치하는지 함께 검증한다.
+- 2026-03-24 production auth recovery slice에서는 production login failure를 deploy alias, TLS/env, DB schema gate로 분리해 확인하고, recovery 뒤 실제 production login success까지 검증한다.
 
 # Automated Checks Result
 
@@ -22,6 +23,12 @@
   - `pnpm exec vercel curl /assets/index-BDwYyS21.js --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes -- --head`
   - `pnpm exec vitest run src/server/authService.test.ts src/server/apiAuthVerifyOtp.test.ts src/server/releaseHardening.test.ts`
   - `pnpm build`
+  - `pnpm build`
+  - `pnpm exec vercel inspect nurimap.jongmyeong.me`
+  - `pnpm exec vercel logs --environment production --query '/api/auth/verify-otp' --since 30m --no-follow --expand`
+  - `supabase link --project-ref yjshqlxvrrytjzwmzxdi --yes`
+  - `supabase db push --linked --dry-run --yes`
+  - `supabase db push --linked --yes`
 - 결과:
   - PASS — `src/app-shell/NurimapBrowse.test.tsx`, `src/app-shell/NurimapDetail.test.tsx` 2 files / 26 tests 통과
   - PASS — `src/server/authPolicy.test.ts`, `src/server/authService.test.ts` 2 files / 27 tests 통과
@@ -35,6 +42,10 @@
   - PASS — authenticated `vercel curl` smoke에서 `/`, `/places/smoke-place`, `/assets/index-BDwYyS21.js`가 정상 응답했다.
   - PASS — first-login OTP hardening slice에서 `src/server/authService.test.ts`, `src/server/apiAuthVerifyOtp.test.ts`, `src/server/releaseHardening.test.ts` 3 files / 31 tests 통과
   - PASS — first-login OTP hardening 반영 후 `pnpm build` 재통과
+  - PASS — 2026-03-24 production alias는 `nurimap-h5vb84834-jongmyeong-projects.vercel.app`(00:22:55 KST 생성)를 가리켰고, latest runtime blocker는 TLS chain failure에서 `relation "public.user_profiles" does not exist`로 좁혀졌다.
+  - PASS — `supabase db push --linked --dry-run --yes`가 pending migration으로 `20260322065245_phase1_place_auth_real_data_foundation.sql` 1개만 제시했다.
+  - PASS — `supabase db push --linked --yes`로 phase1 foundation migration을 exact linked project에 적용했다.
+  - PASS — migration 적용 뒤 사용자 재시도 기준 production login success를 확인했다.
 
 # Manual QA Result
 
@@ -143,6 +154,16 @@
 - Vercel deployment build log에는 `api/_lib/_authService.ts`의 `@supabase/supabase-js` 타입 export 관련 메시지가 출력되지만, local `tsc --noEmit` / project diagnostics는 0 errors이고 deployment도 성공했다. 현재는 non-blocking follow-up 관찰 항목으로 둔다.
 - security hardening 이후 remote DB connection은 인증서 검증을 끄지 않으며, bypass는 local loopback runtime에서만 허용되고, place-entry / place-lookup에는 best-effort in-memory abuse guard가 추가됐다.
 - 현재 판단 기준으로 push는 여전히 보수적으로 본다. 다만 그 이유는 “Preview에 backend env가 없어서”가 아니라, deploy impact 확인과 사용자 QA가 아직 닫히지 않았기 때문이다.
+- 2026-03-24 production login failure는 두 단계로 드러났다.
+  - 1차 blocker: `SELF_SIGNED_CERT_IN_CHAIN`
+  - 2차 blocker: `relation "public.user_profiles" does not exist`
+- 같은 incident에서 `GET /api/auth/verify-otp`의 `method_not_allowed`는 primary blocker가 아니라, POST failure 뒤에 관찰된 부수 symptom이었다.
+- 이번 incident는 production auth rollout에서 **코드 배포**, **runtime env**, **DB schema/migration**을 별도 gate로 확인해야 한다는 점을 드러냈다. 한 gate가 해결돼도 다음 gate blocker가 즉시 나타날 수 있다.
+- 최종 recovery path는 다음 순서였다.
+  1. `DATABASE_SSL_ROOT_CERT` runtime path 확인
+  2. TLS root-cert handling 코드 deploy
+  3. exact production project에 `20260322065245_phase1_place_auth_real_data_foundation.sql` 적용
+  4. production login 재시도 및 success 확인
 
 # QA Verdict
 
@@ -156,3 +177,5 @@
 - Preview deploy blocker는 해소됐고 authenticated smoke 절차도 확보됐으므로, 다음 판단은 Preview를 계속 auth-protected smoke로 유지할지, 별도 public smoke path까지 열 필요가 있는지 결정하는 것이다.
 - Vercel build log에 보이는 `api/_lib/_authService.ts` 타입 export 메시지가 실제 deploy blocker로 승격되는지 모니터링한다.
 - Preview에서 real backend verification이 꼭 필요해지는 시점이 오면, 그때 별도 non-production backend target 도입을 새로운 slice로 계획한다.
+- auth/login production rollout check에는 앞으로도 최소한 active alias 확인, latest `/api/auth/verify-otp` log 확인, auth-critical migration 상태 확인, post-login `/api/auth/session` smoke를 함께 묶어 실행한다.
+- server-only table이 `public` schema에 남는 동안에는 RLS / revoke 또는 private schema hardening을 follow-up rollout 대상으로 유지한다.

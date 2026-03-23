@@ -37,6 +37,7 @@
 - 가능한 범위에서 자동화 테스트를 작성하거나 기존 테스트를 확장했다.
 - 최소한 핵심 흐름이 깨지지 않음을 검증했다.
 - lint, type check, build, 실행 검증 중 해당 작업에 필요한 검증을 통과했다.
+- auth/login/session 변경인 경우, 완료 전 최소한 **active deployment, auth-critical env, auth-critical migration/schema, production smoke(`verify-otp` → `session`)**를 함께 확인했다.
 - 브라우저 상호작용 검증이 필요하면 기본적으로 Playwright (`playwright` command)를 사용한다. Playwright를 사용할 수 없거나 실행에 실패하면 PATH에서 사용할 수 있는 `agent-browser`를 다음 fallback으로 사용한다. 무엇을 사용했든 `qa.md`에 목적, 실행 명령 또는 사용 도구, 판정, 스크린샷 경로를 남긴다. 둘 다 사용할 수 없거나 실행에 실패하면 사용자에게 알리고, QA blocker와 남은 리스크를 남긴다.
 - 사용자 직접 QA가 필요한 항목은 `qa.md`에 수행 절차, 기대 결과, 상태(`pending`, `passed`, `blocked`)와 함께 남긴다.
 - 테스트를 생략한 경우 이유와 남은 리스크를 명확히 남긴다.

@@ -6,6 +6,7 @@
 - Preview deployment는 구조 수정 후 다시 성공했고, authenticated `vercel curl` smoke로 `/`, `/places/:placeId`, static asset boot까지 확인했다. 현재 남은 sprint-level 항목은 사용자 직접 QA와 push 판단이다.
 - browse 지도 surface에서는 별도 level HUD / zoom button을 제거해 지도 chrome을 더 단순하게 정리했다.
 - auth first-login slice에서는 첫 로그인 OTP 요청을 implicit signup 대신 server pre-provision + normal OTP delivery로 고정했고, verify 단계의 허용 이메일 경계를 다시 검사하도록 보강했다.
+- 2026-03-24 production auth recovery slice에서는 login failure 원인을 deploy alias, TLS/env, DB schema gate로 분리해 추적했고, root cert rollout + phase1 migration 적용 뒤 production login success를 확인했다.
 
 # Completed
 
@@ -24,13 +25,16 @@
 - 같은 slice에서 `verifyLoginOtp`는 verified email에 대해 허용 도메인 / explicit allowlist / local bypass 경계를 다시 확인한 뒤에만 app session을 발급하도록 보강했고, focused auth tests + build를 다시 green으로 맞췄다.
 - confirmation-enabled disposable local Supabase 실험으로, hosted `Confirm sign up` 템플릿을 `{{ .Token }}` 기반 OTP UX로 바꾸는 option 1이 current `verifyOtp({ email, token, type: 'email' })` 계약과 양립 가능함을 검증했다.
 - browse 지도 surface에서 level HUD / zoom button을 제거하고, 관련 map rendering/runtime 문서와 테스트를 함께 갱신했다.
+- TLS root-cert handling 수정(commit `078b57c`)을 production deploy에 반영하고, linked `supabase db push`로 `20260322065245_phase1_place_auth_real_data_foundation.sql`을 exact production project에 적용했다.
+- production incident 분석 결과, auth/login rollout은 코드 배포·runtime env·DB schema를 각각 별도 gate로 봐야 하며, 실제 blocker가 `SELF_SIGNED_CERT_IN_CHAIN` → `relation "public.user_profiles" does not exist` 순으로 이동했다.
+- 2026-03-24 production에서 user-confirmed login success를 확인했다.
 
 # Not Completed
 
 - Preview public-access policy 결정 여부
 - dedicated test target 승격 여부 재검토
 - 사용자 직접 QA handoff 종료
-- current local commits push 여부 결정 및 실행
+- public schema hardening migration rollout
 
 # Carry-over
 
@@ -38,7 +42,7 @@
 - `test`는 당분간 reset 가능한 local DB reuse 모델로 유지하고, remote dev/test rollout이 안정화되면 dedicated `TEST_DATABASE_URL` / separate target 승격을 재검토한다.
 - Preview deploy 자체는 이제 성공하고 authenticated smoke도 가능하지만, direct anonymous 접근은 Vercel 로그인 페이지(HTTP 401)로 보호된다. 다음 slice에서는 public smoke를 따로 열지, 현재의 protected smoke 절차를 release gate로 유지할지 결정해야 한다.
 - 사용자에게 auth UX, empty-state browse, overwrite 체감 확인을 handoff한다.
-- local evidence 정리 후 push 여부를 결정한다.
+- auth/session server-only tables에 대한 RLS / revoke 또는 private schema hardening rollout을 별도 후속 작업으로 마무리한다.
 - hosted Supabase confirmation template를 OTP UX로 맞추는 option 1은 follow-up rollout 후보로 남긴다. local confirmation-enabled matrix 결과는 `.omx/plans/result-option-1-confirmation-template-otp-ux-validation.md`를 따른다.
 
 # Environment Readiness Snapshot
@@ -48,7 +52,7 @@
 | local dev | READY | local Supabase health, `make check`, Playwright local runtime QA 완료 | 현재 baseline 유지 |
 | test | PARTIAL / CONTROLLED | 코드가 `TEST_DATABASE_URL` 계열 분기를 지원하지만 local env에는 dedicated test target이 없음 | 당분간 reset 가능한 local DB reuse 정책 유지, 추후 dedicated target 승격 재검토 |
 | preview / development | DEPLOYABLE / SMOKE VERIFIED (AUTH-PROTECTED) | 2026-03-22 structural fix 후 `pnpm exec vercel deploy --yes` 성공, `vercel curl /`, `vercel curl /places/smoke-place`, built asset 200 확인. direct anonymous 접근은 Vercel login wall(401)로 보호됨 | Preview smoke access policy 결정 (public vs protected-auth smoke) |
-| production | CONFIGURED / PROTECTED | 2026-03-22 `vercel env ls production` 기준 core Supabase/Postgres env 존재 | explicit approval 전까지 rollout/migration 보류 |
+| production | AUTH RECOVERY VERIFIED | 2026-03-24 TLS root-cert rollout, linked `supabase db push`, user-confirmed login success | auth hardening migration과 rollout gate 문서화 유지 |
 
 ## Env Matrix (presence only)
 
@@ -85,12 +89,11 @@
 
 # Current Decision
 
-- **Push:** deferred
-  - 이유: Preview backend readiness 여부와 무관하게, `main` push의 실제 deploy impact를 아직 안전하다고 확정하지 않았고 사용자 QA도 아직 닫히지 않았다.
-  - 추가 이유: Preview deploy/UI separation smoke는 확보됐지만, 현재 sprint 차원에서 사용자 QA handoff가 아직 닫히지 않았다.
+- **Push:** executed
+  - TLS root-cert handling fix commit `078b57c`를 `main`에 push했고, production alias는 2026-03-24 00:22:55 KST deployment를 가리켰다.
 - **Remote non-production backend rollout:** deferred
   - 이유: 현재 slice의 합의된 전략은 local-first canonical verification이며, remote backend-integrated Preview는 future trigger가 생길 때까지 요구하지 않는다.
-- **Current safe posture:** local verified baseline을 유지하고, Preview는 UI/deploy separation smoke로만 사용하며, 필요 시 이후 slice에서 remote backend integration을 다시 연다.
+- **Current safe posture:** local verified baseline + production auth recovery baseline을 유지하고, Preview는 UI/deploy separation smoke로만 사용하며, auth production rollout은 code/env/schema/smoke gate를 모두 확인한다.
 
 # Risks
 
@@ -111,3 +114,4 @@
 - Preview deploy를 실제로 시도해 보니, 전략 문제와 별개로 Vercel Hobby function limit이 별도 blocker라는 점이 드러났고, test files를 `api/` 밖으로 빼는 구조 수정으로 그 blocker를 해결할 수 있었다.
 - function-count blocker를 푼 뒤에는 deployability 자체보다 Preview access policy(anonymous vs protected) 가시성이 다음 병목이라는 점이 드러났고, `vercel curl`이 auth-protected preview smoke를 확인하는 실용적인 절차라는 것도 확인했다.
 - 이번 Sprint는 local runtime 완성도는 높아졌지만, remote rollout과 explicit Preview access policy 정리는 별도 slice로 남겨두는 편이 안전하다.
+- 2026-03-24 production auth incident를 겪고 나서, “배포가 됐다”와 “env가 맞다”와 “schema가 올라갔다”는 서로 독립된 사실이라는 점이 더 분명해졌다. 앞으로 auth/login recovery에서는 latest production logs를 보며 blocker가 어느 gate에 있는지 단계적으로 좁혀야 한다.

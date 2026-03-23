@@ -63,6 +63,21 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 다른 브라우저, 시크릿 창, 쿠키 삭제, 로그아웃 시에는 세션이 유지되지 않는다.
 - 앱 시작 시 session cookie가 있어도 `GET /api/auth/session` 또는 보호된 API 확인으로 유효성을 재검증한다.
 
+## Auth Rollout Readiness Policy
+- production의 auth/login/session 변경은 **배포 코드**, **런타임 환경변수**, **DB schema/migration**을 각각 독립된 rollout gate로 본다. 한 gate의 성공이 다른 gate의 성공을 의미하지 않는다.
+- production auth rollout은 최소한 아래를 모두 확인한 뒤에만 “로그인 문제 해결” 또는 “rollout 완료”로 판단한다.
+  - active production alias/deployment가 의도한 commit / build를 가리킨다.
+  - auth-critical env가 실제 runtime target에 맞게 준비돼 있다.
+    - `DATABASE_URL` 또는 동등한 DB target
+    - non-local strict TLS가 필요한 경우 `DATABASE_SSL_ROOT_CERT` (fallback alias: `SUPABASE_DB_ROOT_CERT`)
+    - `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `PUBLIC_APP_URL`
+  - auth/session bootstrap이 의존하는 auth-critical schema와 migration이 exact production DB target에 적용돼 있다.
+    - 예: `user_profiles`, `app_sessions`
+  - 같은 login path로 production smoke를 다시 검증한다.
+    - `POST /api/auth/verify-otp`
+    - 이어지는 `GET /api/auth/session`
+- production auth incident를 triage할 때는 latest production logs 기준으로 현재 blocker가 **transport/TLS**, **schema/migration**, **route/method**, **app logic** 중 어느 단계인지 먼저 분리한다.
+
 ## Environment Separation Policy
 - canonical 환경 축은 `local dev / test / remote preview-development / production`이다.
 - 각 환경은 secret과 mutable data target을 명시적으로 구분해야 하며, 특히 `production`은 다른 환경과 DB write target을 공유하면 안 된다.
@@ -84,7 +99,8 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - place 등록과 리뷰 작성은 인증된 사용자만 수행한다.
 - 등록자와 리뷰 작성자 정보는 사용자 ID와 연결한다.
 - backend authorization/business logic이 canonical enforcement다.
-- DB 레벨 RLS는 필요 시 defense-in-depth로만 사용할 수 있으며, 제품 규칙의 primary source of truth로 삼지 않는다.
+- DB 레벨 RLS는 필요 시 defense-in-depth로 사용할 수 있지만, **Supabase의 노출된 schema(`public` 등)에 server-only table을 둘 때는 RLS + explicit privilege revoke 또는 private schema 격리가 필수**다.
+- backend-owned auth/session/profile 같은 server-only persistence는 browser가 직접 접근 가능한 Supabase Data API surface에 그대로 노출하지 않는다.
 - 클라이언트에는 service role key를 노출하지 않는다.
 
 ## Search Engine Blocking
@@ -108,3 +124,5 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - OTP 요청 제한 초과와 잘못된/만료/무효화된 코드 사용은 별도 보안 이벤트로 기록한다.
 - bypass 로그인 사용, `request-otp` 수락/전달 실패는 운영 로그에서 구분 가능해야 한다.
 - 실제 bypass 이메일 값은 tracked code/docs/tests/examples에 직접 쓰지 않는다.
+- production migration 뒤에는 auth-critical table(`user_profiles`, `app_sessions` 등) 존재 여부와 verify-otp smoke를 함께 확인해 schema readiness를 검증한다.
+- auth/login 복구 작업 뒤에는 직전 blocker와 동일한 error signature가 사라졌는지, 그리고 다음 단계 blocker가 새로 드러났는지를 latest production log로 다시 확인한다.

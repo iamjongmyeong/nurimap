@@ -77,6 +77,16 @@
 - frontend UI review, UX audit, accessibility/design review에는 `web-design-guidelines`를 참고한다.
 - 관련 spec이 `docs/03-specs/`에 있으면 TDD 순서로 failing test -> 구현 -> 검증을 따른다.
 
+### Auth / Login Work
+- auth/login/session 변경은 코드 수정만으로 닫지 말고 **배포 코드 / 런타임 env / DB schema-migration / production smoke**를 별도 gate로 확인한다.
+- production auth incident를 볼 때는 latest production logs 기준으로 blocker가 **TLS/env**, **schema/migration**, **route/method**, **app logic** 중 어디 단계인지 먼저 분리한다.
+- production auth rollout 또는 recovery에는 최소한 아래를 함께 확인한다.
+  - active production alias/deployment
+  - auth-critical env (`DATABASE_URL`, 필요 시 `DATABASE_SSL_ROOT_CERT`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `PUBLIC_APP_URL`)
+  - auth-critical table / migration readiness (`user_profiles`, `app_sessions` 등)
+  - `POST /api/auth/verify-otp` 후 `GET /api/auth/session` smoke
+- server-only auth/session persistence를 Supabase `public` 같은 노출 schema에 둘 때는 RLS / privilege revoke 또는 private schema 격리를 함께 설계한다.
+
 ### QA / Docs
 - 브라우저 자동화나 페이지 inspection이 필요하면 아래 순서로 진행한다.
   - 1차: Playwright (`playwright` command)
