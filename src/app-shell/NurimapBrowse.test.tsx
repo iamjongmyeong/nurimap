@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
-import { MapPane } from './MapPane'
 import { MOCK_PLACES } from './mockPlaces'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
 
@@ -25,6 +24,18 @@ const createBrowseFetchMock = () =>
       return new Response(JSON.stringify({
         status: 'success',
         places: MOCK_PLACES,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    if (url === '/api/auth/session') {
+      return new Response(JSON.stringify({
+        status: 'authenticated',
+        user: {
+          id: 'user-1',
+          email: 'tester@nurimedia.co.kr',
+          name: '테스트 사용자',
+        },
+        csrfHeaderName: 'x-nurimap-csrf-token',
       }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
 
@@ -276,47 +287,37 @@ describe('Sprint 16 browse refresh', () => {
     expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('누리 식당')
   })
 
-  it('renders the loading state in the list area', () => {
+  it('renders the unified loading state while browse data is still bootstrapping', () => {
     setViewport(1280)
     useAppShellStore.setState({ placeListLoad: 'loading' })
     render(<App />)
 
-    expect(screen.getByTestId('place-list-loading')).toBeInTheDocument()
+    expect(screen.getByTestId('browse-bootstrap-loading')).toHaveTextContent('데이터를 불러오는 중이에요.')
+    expect(screen.getByTestId('browse-bootstrap-loading')).toHaveTextContent('잠시만 기다려 주세요.')
+    expect(screen.queryByTestId('place-list-loading')).not.toBeInTheDocument()
   })
 
-  it('shows a placeholder loading state for the runtime Kakao map without fake markers', () => {
+  it('renders the unified loading state while the runtime Kakao map is still bootstrapping', async () => {
     vi.stubEnv('MODE', 'development')
     vi.stubEnv('PUBLIC_KAKAO_MAP_APP_KEY', 'test-kakao-key')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
     setViewport(1280)
-    render(
-      <MapPane
-        mapLevel={5}
-        onMapLevelChange={() => {}}
-        onMarkerSelect={() => {}}
-        places={useAppShellStore.getState().places}
-        selectedPlaceId={useAppShellStore.getState().selectedPlaceId}
-      />,
-    )
+    render(<App />)
 
-    expect(screen.getByTestId('map-loading-state')).toHaveTextContent('지도를 불러오는 중이에요.')
+    expect(await screen.findByTestId('browse-bootstrap-loading')).toHaveTextContent('데이터를 불러오는 중이에요.')
     expect(screen.queryByTestId('map-marker-place-restaurant-1')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '지도 확대' })).not.toBeInTheDocument()
   })
 
-  it('shows a retryable runtime Kakao map error state after the SDK script fails to load', async () => {
+  it('shows a retryable unified browse error state after the SDK script fails to load', async () => {
     vi.stubEnv('MODE', 'development')
     vi.stubEnv('PUBLIC_KAKAO_MAP_APP_KEY', 'test-kakao-key')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
     setViewport(1280)
     const user = userEvent.setup()
-    render(
-      <MapPane
-        mapLevel={5}
-        onMapLevelChange={() => {}}
-        onMarkerSelect={() => {}}
-        places={useAppShellStore.getState().places}
-        selectedPlaceId={useAppShellStore.getState().selectedPlaceId}
-      />,
-    )
+    render(<App />)
+
+    await screen.findByTestId('browse-bootstrap-loading')
 
     const script = document.querySelector<HTMLScriptElement>('script[data-kakao-map-sdk="true"]')
     expect(script).not.toBeNull()
@@ -325,19 +326,20 @@ describe('Sprint 16 browse refresh', () => {
       script?.dispatchEvent(new Event('error'))
     })
 
-    expect(screen.getByTestId('map-error-state')).toHaveTextContent('지도를 불러오지 못했어요.')
-    expect(screen.getByTestId('map-error-state')).toHaveTextContent('네트워크 상태를 확인한 뒤 다시 시도해주세요.')
+    expect(screen.getByTestId('browse-bootstrap-error')).toHaveTextContent('데이터를 불러오지 못했어요.')
+    expect(screen.getByTestId('browse-bootstrap-error')).toHaveTextContent('네트워크 상태를 확인한 뒤 다시 시도해주세요.')
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
     expect(screen.queryByTestId('map-marker-place-restaurant-1')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
 
-    expect(screen.getByTestId('map-loading-state')).toHaveTextContent('지도를 불러오는 중이에요.')
+    expect(screen.getByTestId('browse-bootstrap-loading')).toHaveTextContent('데이터를 불러오는 중이에요.')
   })
 
-  it('treats an incomplete kakao runtime as an error instead of trying to construct the map', async () => {
+  it('treats an incomplete kakao runtime as a unified browse error instead of trying to construct the map', async () => {
     vi.stubEnv('MODE', 'development')
     vi.stubEnv('PUBLIC_KAKAO_MAP_APP_KEY', 'test-kakao-key')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
     setViewport(1280)
     window.kakao = {
       maps: {
@@ -345,25 +347,19 @@ describe('Sprint 16 browse refresh', () => {
       } as unknown as NonNullable<typeof window.kakao>['maps'],
     }
 
-    render(
-      <MapPane
-        mapLevel={5}
-        onMapLevelChange={() => {}}
-        onMarkerSelect={() => {}}
-        places={useAppShellStore.getState().places}
-        selectedPlaceId={useAppShellStore.getState().selectedPlaceId}
-      />,
-    )
+    render(<App />)
 
-    expect(await screen.findByTestId('map-error-state')).toBeInTheDocument()
+    expect(await screen.findByTestId('browse-bootstrap-error')).toBeInTheDocument()
   })
 
-  it('renders the error state and retry action in the list area', () => {
+  it('renders the unified error state and retry action when the place list load fails', () => {
     setViewport(1280)
     useAppShellStore.setState({ placeListLoad: 'error' })
     render(<App />)
 
-    expect(screen.getByTestId('place-list-error')).toBeInTheDocument()
+    expect(screen.getByTestId('browse-bootstrap-error')).toHaveTextContent('데이터를 불러오지 못했어요.')
+    expect(screen.getByTestId('browse-bootstrap-error')).toHaveTextContent('네트워크 상태를 확인한 뒤 다시 시도해주세요.')
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
+    expect(screen.queryByTestId('place-list-error')).not.toBeInTheDocument()
   })
 })

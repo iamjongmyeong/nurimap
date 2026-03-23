@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { MapPane } from './MapPane'
+import { MapPane, useKakaoScript } from './MapPane'
 import { useAuth } from '../auth/authContext'
 import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
 import { createInitialReviewDraft, validateReviewDraft, type ReviewDraft } from './placeRepository'
@@ -69,6 +69,11 @@ const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const DETAIL_ROUTE_PREFIX = '/places/'
 const REVIEW_LIMIT = 500
 const ADD_RATING_TEXTAREA_MIN_HEIGHT = 88
+const BROWSE_BOOTSTRAP_LOADING_TITLE = '데이터를 불러오는 중이에요.'
+const BROWSE_BOOTSTRAP_LOADING_BODY = '잠시만 기다려 주세요.'
+const BROWSE_BOOTSTRAP_ERROR_TITLE = '데이터를 불러오지 못했어요.'
+const BROWSE_BOOTSTRAP_ERROR_BODY = '네트워크 상태를 확인한 뒤 다시 시도해주세요.'
+const BROWSE_BOOTSTRAP_RETRY_LABEL = '다시 시도'
 const STAR_PATH =
   'M11.9995 19.3643L6.46613 22.6977C6.22168 22.8532 5.96613 22.9199 5.69946 22.8977C5.4328 22.8754 5.19946 22.7865 4.99946 22.631C4.79946 22.4754 4.64391 22.2812 4.5328 22.0483C4.42168 21.8154 4.39946 21.5541 4.46613 21.2643L5.9328 14.9643L1.0328 10.731C0.810573 10.531 0.671906 10.303 0.616795 10.047C0.561684 9.79099 0.578129 9.54121 0.666129 9.29766C0.754129 9.0541 0.887462 8.8541 1.06613 8.69766C1.2448 8.54121 1.48924 8.44121 1.79946 8.39766L8.26613 7.83099L10.7661 1.89766C10.8772 1.63099 11.0497 1.43099 11.2835 1.29766C11.5172 1.16432 11.7559 1.09766 11.9995 1.09766C12.243 1.09766 12.4817 1.16432 12.7155 1.29766C12.9492 1.43099 13.1217 1.63099 13.2328 1.89766L15.7328 7.83099L22.1995 8.39766C22.5106 8.4421 22.755 8.5421 22.9328 8.69766C23.1106 8.85321 23.2439 9.05321 23.3328 9.29766C23.4217 9.5421 23.4386 9.79232 23.3835 10.0483C23.3284 10.3043 23.1892 10.5319 22.9661 10.731L18.0661 14.9643L19.5328 21.2643C19.5995 21.5532 19.5772 21.8145 19.4661 22.0483C19.355 22.2821 19.1995 22.4763 18.9995 22.631C18.7995 22.7857 18.5661 22.8745 18.2995 22.8977C18.0328 22.9208 17.7772 22.8541 17.5328 22.6977L11.9995 19.3643Z'
 const SECONDARY_BUTTON_CLASSES = 'inline-flex items-center justify-center rounded-full border border-[#d9d8e6] bg-white px-4 py-3 text-sm font-semibold text-[#222127] transition hover:border-[#c8c7d7] hover:bg-[#fafaff] disabled:cursor-not-allowed disabled:opacity-50'
@@ -87,23 +92,40 @@ const EmptyState = () => (
   </div>
 )
 
-const LoadingState = () => (
-  <div className="flex items-center gap-3 rounded-[28px] bg-white px-5 py-6 shadow-[0_20px_60px_rgba(40,47,88,0.08)]" data-testid="place-list-loading">
-    <span aria-hidden="true" className="ui-spinner ui-spinner-md text-[#5862fb]" />
-    <div>
-      <p className="text-sm font-semibold text-[#222127]">장소 목록을 불러오는 중이에요</p>
-      <p className="text-sm text-[#7e7b8b]">잠시만 기다려 주세요.</p>
+const BrowseBootstrapState = ({
+  mode,
+  onRetry,
+}: {
+  mode: 'error' | 'loading'
+  onRetry?: () => void
+}) => (
+  <div
+    className="flex min-h-screen w-full items-center justify-center bg-[#f7f6fb] px-6 py-10"
+    data-testid={mode === 'loading' ? 'browse-bootstrap-loading' : 'browse-bootstrap-error'}
+  >
+    <div className="w-full max-w-sm rounded-[32px] bg-white px-6 py-7 text-center shadow-[0_24px_72px_rgba(15,23,42,0.12)]">
+      {mode === 'loading' ? (
+        <>
+          <div className="flex justify-center">
+            <span aria-hidden="true" className="ui-spinner ui-spinner-lg text-[#5862fb]" />
+          </div>
+          <p className="mt-4 text-base font-semibold text-slate-800">{BROWSE_BOOTSTRAP_LOADING_TITLE}</p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{BROWSE_BOOTSTRAP_LOADING_BODY}</p>
+        </>
+      ) : (
+        <>
+          <p className="text-base font-semibold text-slate-800">{BROWSE_BOOTSTRAP_ERROR_TITLE}</p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{BROWSE_BOOTSTRAP_ERROR_BODY}</p>
+          <button
+            className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#5862fb] px-6 text-sm font-semibold text-white transition hover:bg-[#4953f1]"
+            onClick={onRetry}
+            type="button"
+          >
+            {BROWSE_BOOTSTRAP_RETRY_LABEL}
+          </button>
+        </>
+      )}
     </div>
-  </div>
-)
-
-const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="rounded-[28px] bg-white px-5 py-6 shadow-[0_20px_60px_rgba(40,47,88,0.08)]" data-testid="place-list-error">
-    <p className="text-sm font-semibold text-[#e53935]">장소 목록을 불러오지 못했어요</p>
-    <p className="mt-2 text-sm text-[#7e7b8b]">기본 에러 상태는 유지하고, 재시도만 제공해요.</p>
-    <button className={`${SECONDARY_BUTTON_CLASSES} mt-4`} onClick={onRetry} type="button">
-      다시 시도
-    </button>
   </div>
 )
 
@@ -347,21 +369,15 @@ const PlaceListPanel = ({
   places,
   selectedPlaceId,
   status,
-  onRetry,
   onSelect,
 }: {
   places: PlaceSummary[]
   selectedPlaceId: string | null
   status: PlaceListLoadState
-  onRetry: () => void
   onSelect: (placeId: string) => void
 }) => {
-  if (status === 'loading') {
-    return <LoadingState />
-  }
-
-  if (status === 'error') {
-    return <ErrorState onRetry={onRetry} />
+  if (status !== 'ready' && status !== 'empty') {
+    return null
   }
 
   if (status === 'empty' || places.length === 0) {
@@ -761,7 +777,6 @@ const DesktopBrowseSidebar = ({
   const { signOut } = useAuth()
   const openPlaceAdd = useAppShellStore((state) => state.openPlaceAdd)
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
-  const retryPlaceList = useAppShellStore((state) => state.retryPlaceList)
   const handleSignOut = () => {
     if (!window.confirm(LOGOUT_CONFIRM_MESSAGE)) {
       return
@@ -775,7 +790,6 @@ const DesktopBrowseSidebar = ({
 
       <div className="-mx-6 flex-1 overflow-auto">
         <PlaceListPanel
-          onRetry={retryPlaceList}
           onSelect={onOpenPlaceDetail}
           places={placeListLoad === 'ready' ? places : []}
           selectedPlaceId={selectedPlaceId}
@@ -933,7 +947,6 @@ const MobileListPage = ({
 }) => {
   const { signOut } = useAuth()
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
-  const retryPlaceList = useAppShellStore((state) => state.retryPlaceList)
   const handleSignOut = () => {
     if (!window.confirm(LOGOUT_CONFIRM_MESSAGE)) {
       return
@@ -961,7 +974,6 @@ const MobileListPage = ({
       </div>
       <div className="flex-1 overflow-auto bg-white">
         <PlaceListPanel
-          onRetry={retryPlaceList}
           onSelect={onOpenPlaceDetail}
           places={placeListLoad === 'ready' ? places : []}
           selectedPlaceId={selectedPlaceId}
@@ -1159,6 +1171,7 @@ export const NurimapAppShell = () => {
   const submitPlaceReview = useAppShellStore((state) => state.submitPlaceReview)
   const mapLevel = useAppShellStore((state) => state.mapLevel)
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
+  const { retry: retryMapRuntime, status: mapRuntimeStatus } = useKakaoScript()
   const { csrfHeaderName, csrfToken } = useAuth()
   const mapPlaces = places.filter(hasCoordinates)
   const routePlaceId = getPlaceIdFromPathname(pathname)
@@ -1294,6 +1307,49 @@ export const NurimapAppShell = () => {
     }
 
     return result
+  }
+
+  const isBrowseSurface = effectiveNavigationState === 'map_browse' || effectiveNavigationState === 'mobile_place_list_open'
+  const hasBrowseBootstrapError =
+    placeListLoad === 'error'
+    || mapRuntimeStatus === 'error'
+    || mapRuntimeStatus === 'unavailable'
+  const isBrowseBootstrapLoading =
+    !hasBrowseBootstrapError
+    && (placeListLoad === 'idle' || placeListLoad === 'loading' || mapRuntimeStatus === 'loading')
+
+  const handleRetryBrowseBootstrap = async () => {
+    if (mapRuntimeStatus === 'error' || mapRuntimeStatus === 'unavailable') {
+      retryMapRuntime()
+    }
+
+    if (placeListLoad === 'error') {
+      await loadPlaces()
+    }
+  }
+
+  if (isBrowseSurface && isBrowseBootstrapLoading) {
+    return isDesktop ? (
+      <main className="hidden md:flex" data-testid="desktop-shell">
+        <BrowseBootstrapState mode="loading" />
+      </main>
+    ) : (
+      <main className="relative min-h-screen overflow-hidden bg-white md:hidden" data-testid="mobile-shell">
+        <BrowseBootstrapState mode="loading" />
+      </main>
+    )
+  }
+
+  if (isBrowseSurface && hasBrowseBootstrapError) {
+    return isDesktop ? (
+      <main className="hidden md:flex" data-testid="desktop-shell">
+        <BrowseBootstrapState mode="error" onRetry={() => { void handleRetryBrowseBootstrap() }} />
+      </main>
+    ) : (
+      <main className="relative min-h-screen overflow-hidden bg-white md:hidden" data-testid="mobile-shell">
+        <BrowseBootstrapState mode="error" onRetry={() => { void handleRetryBrowseBootstrap() }} />
+      </main>
+    )
   }
 
   return isDesktop ? (

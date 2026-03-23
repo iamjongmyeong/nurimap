@@ -54,7 +54,7 @@ declare global {
   }
 }
 
-type KakaoScriptStatus = 'fallback' | 'loading' | 'ready' | 'unavailable' | 'error'
+export type KakaoScriptStatus = 'fallback' | 'loading' | 'ready' | 'unavailable' | 'error'
 
 const LEVEL_LABEL_THRESHOLD = 5
 const MAP_MIN_LEVEL = 1
@@ -113,7 +113,7 @@ const toMarkerImageSource = (placeType: PlaceType) => {
   `)}`
 }
 
-const useKakaoScript = () => {
+export const useKakaoScript = () => {
   const appKey = import.meta.env.PUBLIC_KAKAO_MAP_APP_KEY
   const isTestMode = import.meta.env.MODE === 'test'
   const [retryKey, setRetryKey] = useState(0)
