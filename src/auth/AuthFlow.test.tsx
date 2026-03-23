@@ -159,6 +159,7 @@ describe('Sprint 18 OTP auth flow', () => {
 
     expect(await screen.findByText('로그인 코드를 보냈어요.')).toBeInTheDocument()
     expect(screen.getByTestId('auth-requested-email')).toHaveTextContent('tester@nurimedia.co.kr로')
+    expect(screen.getByTestId('auth-requested-email')).toHaveClass('auth-plain-email')
     expect(screen.getByText('5분 안에 입력해 주세요.')).toBeInTheDocument()
     expect(screen.getByLabelText('인증 코드')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '인증' })).toBeInTheDocument()
@@ -176,6 +177,7 @@ describe('Sprint 18 OTP auth flow', () => {
     render(<App />)
 
     expect(screen.getByTestId('auth-requested-email')).toHaveTextContent('tester@nurimedia.co.kr로')
+    expect(screen.getByTestId('auth-requested-email')).toHaveClass('auth-plain-email')
     expect(screen.getByText('로그인 코드를 보냈어요.')).toBeInTheDocument()
     expect(screen.getByText('5분 안에 입력해 주세요.')).toBeInTheDocument()
   })

@@ -165,6 +165,26 @@ button {
     sans-serif;
 }
 
+.auth-plain-email,
+.auth-plain-email a,
+.auth-plain-email a[href^="mailto:"],
+.auth-plain-email a[href^="x-apple-data-detectors:"],
+.auth-plain-email [x-apple-data-detectors] {
+  color: inherit !important;
+  text-decoration: none !important;
+  font: inherit !important;
+  line-height: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.auth-plain-email a,
+.auth-plain-email a[href^="mailto:"],
+.auth-plain-email a[href^="x-apple-data-detectors:"],
+.auth-plain-email [x-apple-data-detectors] {
+  pointer-events: none !important;
+  cursor: text !important;
+}
+
 .ui-spinner {
   display: inline-block;
   border-style: solid;

@@ -287,7 +287,7 @@ const OtpShell = ({
         <AuthBrand />
         <div className="flex max-w-[320px] flex-col items-center gap-3 text-center">
           <p className="w-full text-base font-medium leading-7 text-zinc-900">
-            <span className="block break-all" data-testid="auth-requested-email">
+            <span className="auth-plain-email block break-all" data-testid="auth-requested-email">
               {email}로
             </span>
             <span className="block">로그인 코드를 보냈어요.</span>
