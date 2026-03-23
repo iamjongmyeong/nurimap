@@ -2,7 +2,12 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { AuthProvider } from './AuthProvider'
-import { AUTH_BOOTSTRAP_TIMEOUT_MS, AUTH_REQUEST_TIMEOUT_MS, OTP_ENTRY_FAILURE_MESSAGE } from './authVerification'
+import {
+  AUTH_BOOTSTRAP_TIMEOUT_MS,
+  AUTH_REQUEST_TIMEOUT_MS,
+  GENERIC_AUTH_FAILURE_MESSAGE,
+  OTP_ENTRY_FAILURE_MESSAGE,
+} from './authVerification'
 import { resetTestAuthState, setTestAuthState } from './testAuthState'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -401,13 +406,14 @@ describe('Sprint 18 OTP auth flow', () => {
       phase: 'auth_failure',
       user: null,
       message: null,
-      failureReason: '인증에 실패했어요. 새 코드를 받아주세요.',
+      failureReason: GENERIC_AUTH_FAILURE_MESSAGE,
     })
     const user = userEvent.setup()
     render(<App />)
 
     expect(screen.getByTestId('auth-failure-screen')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '새 코드 받기' }))
+    expect(screen.getByTestId('auth-failure-body')).toHaveTextContent(GENERIC_AUTH_FAILURE_MESSAGE)
+    await user.click(screen.getByRole('button', { name: '새로운 코드 받기' }))
 
     expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
   })

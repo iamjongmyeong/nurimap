@@ -32,20 +32,6 @@ const authBrandTextStyle = {
   fontFamily: '"BM Jua", Pretendard, system-ui, sans-serif',
 } as const
 
-const LEGACY_FAILURE_MESSAGES = {
-  expired: '로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.',
-  invalidated: '로그인 링크가 만료됐어요.\n새 로그인 링크를 받아주세요.',
-  used: '이미 사용한 링크예요.\n새 로그인 링크를 받아주세요.',
-} as const
-
-const resolveFailureReasonMessage = (reason: string | null | undefined) => {
-  if (!reason) {
-    return GENERIC_AUTH_FAILURE_MESSAGE
-  }
-
-  return LEGACY_FAILURE_MESSAGES[reason as keyof typeof LEGACY_FAILURE_MESSAGES] ?? reason
-}
-
 const getStoredSessionAgeExceeded = () => {
   const storedValue = window.localStorage.getItem(SESSION_STARTED_AT_KEY)
   if (!storedValue) {
@@ -100,7 +86,7 @@ const getDevAuthOverride = () => {
       phase: 'auth_failure' as const,
       user: null,
       message: null,
-      failureReason: params.get('auth_test_reason') ?? 'expired',
+      failureReason: GENERIC_AUTH_FAILURE_MESSAGE,
     }
   }
 
@@ -384,7 +370,7 @@ const AuthFailureScreen = ({
             onClick={onRetry}
             type="button"
           >
-            새 코드 받기
+            새로운 코드 받기
           </button>
           <button
             className="cursor-pointer text-center text-[14px] font-normal leading-5 text-neutral-500"
@@ -925,7 +911,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const resolvedPhase = isTestMode ? effectiveTestState.phase : phase
   const rawMessage = message ?? (isTestMode ? effectiveTestState.message : null)
   const rawFailureReason = failureReason ?? (isTestMode ? effectiveTestState.failureReason : null)
-  const resolvedFailureReason = resolveFailureReasonMessage(rawFailureReason)
+  const resolvedFailureReason = rawFailureReason ?? GENERIC_AUTH_FAILURE_MESSAGE
   const resolvedEmail = requestedEmail ?? (email || (isTestMode ? effectiveTestState.user?.email ?? '' : ''))
   const resolvedAccessToken = isTestMode && effectiveTestState.phase === 'authenticated' ? 'test-access-token' : accessToken
 
