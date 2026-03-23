@@ -4,6 +4,7 @@
 - 구현의 상세 acceptance criteria와 test matrix는 `.omx/plans/test-spec-supabase-place-auth-real-data-migration.md`, `.omx/plans/test-spec-sprint-20-vercel-function-limit-resolution.md`를 SSOT로 사용한다.
 - 2026-03-23 auth hotfix slice에서는 local-only bypass 정책을 유지하면서 OTP 발송 회귀와 exact allowlist OTP 예외를 함께 검증한다.
 - browse 지도 surface에서는 level HUD / zoom button 비노출 contract가 현재 UI/docs와 일치하는지 함께 검증한다.
+- 2026-03-23 marker visual refresh slice에서는 사용자 추가 장소 marker / label이 Figma handoff node `61:18`의 핵심 시각 언어와 맞는지 함께 검증한다.
 - 2026-03-24 production auth recovery slice에서는 production login failure를 deploy alias, TLS/env, DB schema gate로 분리해 확인하고, recovery 뒤 실제 production login success까지 검증한다.
 
 # Automated Checks Result
@@ -23,6 +24,7 @@
   - `pnpm exec vercel curl /assets/index-BDwYyS21.js --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes -- --head`
   - `pnpm exec vitest run src/server/authService.test.ts src/server/apiAuthVerifyOtp.test.ts src/server/releaseHardening.test.ts`
   - `pnpm build`
+  - `pnpm exec vitest run src/app-shell/NurimapBrowse.test.tsx src/app-shell/PlaceRegistrationFlow.test.tsx`
   - `pnpm build`
   - `pnpm exec vercel inspect nurimap.jongmyeong.me`
   - `pnpm exec vercel logs --environment production --query '/api/auth/verify-otp' --since 30m --no-follow --expand`
@@ -42,6 +44,8 @@
   - PASS — authenticated `vercel curl` smoke에서 `/`, `/places/smoke-place`, `/assets/index-BDwYyS21.js`가 정상 응답했다.
   - PASS — first-login OTP hardening slice에서 `src/server/authService.test.ts`, `src/server/apiAuthVerifyOtp.test.ts`, `src/server/releaseHardening.test.ts` 3 files / 31 tests 통과
   - PASS — first-login OTP hardening 반영 후 `pnpm build` 재통과
+  - PASS — marker visual refresh slice에서 `src/app-shell/NurimapBrowse.test.tsx`, `src/app-shell/PlaceRegistrationFlow.test.tsx` 2 files / 33 tests 통과
+  - PASS — marker visual refresh 반영 후 `pnpm build` 재통과
   - PASS — 2026-03-24 production alias는 `nurimap-h5vb84834-jongmyeong-projects.vercel.app`(00:22:55 KST 생성)를 가리켰고, latest runtime blocker는 TLS chain failure에서 `relation "public.user_profiles" does not exist`로 좁혀졌다.
   - PASS — `supabase db push --linked --dry-run --yes`가 pending migration으로 `20260322065245_phase1_place_auth_real_data_foundation.sql` 1개만 제시했다.
   - PASS — `supabase db push --linked --yes`로 phase1 foundation migration을 exact linked project에 적용했다.
@@ -57,6 +61,7 @@
   - duplicate place / review overwrite 규칙이 backend persistence 경계 안에서 유지되는지 확인했다.
   - recommendation runtime이 재도입되지 않았는지 현재 verified surface 기준으로 점검했다.
   - browse 지도 surface에서 level HUD / zoom button 비노출 구현과 live docs가 일치하는지 확인했다.
+  - Figma node `61:18` thumbnail과 marker preview artifact를 비교해 사용자 추가 장소 marker / label visual language를 점검했다.
 - 결과:
   - PASS — auth bootstrap은 backend-owned session cookie + CSRF contract로 동작한다.
   - PASS — production/dev runtime path에서 frontend direct Supabase session listener는 제거된 상태다.
@@ -64,11 +69,13 @@
   - PASS — duplicate place / overwrite review semantics는 backend API 응답(`confirm_required`, `updated`)으로 유지된다.
   - PASS — 이번에 검증한 local runtime surface에서는 recommendation UI/action 재도입이 보이지 않았다.
   - PASS — browse 지도 surface는 별도 level HUD / zoom button 없이 유지되고, map level state는 기존 browse/detail 동작과 함께 유지된다.
+  - PASS — marker visual refresh는 24px concentric marker + 10px place-name label + 0.5px white stroke라는 Figma handoff 핵심 언어를 유지한다. 남는 차이는 type 색상 분기와 preview magnification 방식 수준이다.
 
 ## Browser Automation QA Evidence
 - 실행 목적:
   - integrated local runtime에서 auth/session/bootstrap, empty browse, place create, refresh persistence, detail revisit, overwrite flow를 실제 브라우저로 검증한다.
   - Preview deploy/UI separation smoke(`vercel deploy`) 가능 여부를 확인하고, deploy 성공 시 `/`, `/places/:placeId`, static asset boot를 확인한다.
+  - marker visual refresh slice에서는 reference thumbnail과 rendered marker preview를 비교해 visual fidelity를 빠르게 점검한다.
 - 실행 명령 또는 스크립트:
   - local DB 준비: `node --input-type=module` + `pg`로 `public.place_reviews`, `public.places`를 비워 clean DB 상태를 만들었다.
   - runtime: `make dev`
@@ -80,6 +87,7 @@
   - Preview smoke 3차 확인: `pnpm exec vercel curl /places/smoke-place --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
   - Preview smoke 4차 확인: `pnpm exec vercel curl /assets/index-BDwYyS21.js --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes -- --head`
   - local map chrome 확인: `pnpm exec vercel dev --local --listen 127.0.0.1:4174 --yes` 실행 후, Playwright inline runner로 `?auth_test_state=authenticated` + mocked `/api/place-list` + mocked Kakao runtime 조합에서 browse map shell을 캡처했다.
+  - marker visual preview: local HTML preview + Playwright screenshot으로 `artifacts/qa/sprint-20/map-user-added-marker-preview.png`를 생성하고, Figma thumbnail(`/tmp/nurimap-figma/node-61-18-thumb-1200.png`)과 비교했다.
 - 확인한 시나리오:
   - local OTP request -> Mailpit 수신 -> OTP verify -> name entry -> authenticated shell 진입
   - `390x844` mobile에서 local auto-login bypass로 authenticated shell 진입
@@ -96,11 +104,13 @@
   - authenticated `vercel curl` 경로로 `/places/smoke-place`가 rewrite 후 동일한 SPA HTML을 반환하는지 확인
   - authenticated `vercel curl` 경로로 built JS asset(`/assets/index-BDwYyS21.js`)이 HTTP 200으로 내려오는지 확인
   - local browser automation에서 desktop/mobile browse map shell에 `map-level`, `map-zoom-controls`, `지도 확대`, `지도 축소` UI가 노출되지 않는지 확인
+  - marker visual preview에서 동심원 marker와 outlined place-name label이 reference와 같은 방향인지 확인
 - 판정:
   - PASS — local Supabase + integrated runtime 기준 핵심 browse/detail/create/overwrite/session persistence 흐름이 통과했다.
   - PASS — API test files를 `api/` 밖으로 이동하고 `.vercelignore`를 추가한 뒤 Preview deployment가 성공했다.
   - PASS — authenticated `vercel curl` smoke 기준으로 `/`, `/places/smoke-place`, static asset boot가 모두 확인됐다.
   - PASS — local mocked-runtime browser check에서 browse map shell에 level HUD / zoom button이 보이지 않았다.
+  - PASS — marker visual preview는 Figma reference 대비 core motif(24px marker, white outer ring, orange inner ring, white center dot, 10px label with 0.5px white stroke)가 일치했다.
   - NOTE — direct anonymous 접근은 여전히 Vercel deployment protection login wall(HTTP 401)로 보호된다. 이는 현재 protection posture이며, 이번 slice의 deploy/UI separation smoke 자체를 막지는 않았다.
 - 스크린샷 경로:
   - `artifacts/qa/sprint-20/local-otp-name-entry-success.png`
@@ -120,6 +130,7 @@
   - Preview screenshots: `artifacts/qa/sprint-20/preview-root.png`, `artifacts/qa/sprint-20/preview-place-rewrite.png`
   - Map chrome check: `artifacts/qa/sprint-20/map-no-zoom-controls-desktop-mocked-runtime.png`, `artifacts/qa/sprint-20/map-no-zoom-controls-mobile-mocked-runtime.png`
   - Map chrome check result: `artifacts/qa/sprint-20/map-no-zoom-controls-mocked-runtime-check.json`
+  - Marker visual preview: `artifacts/qa/sprint-20/map-user-added-marker-preview.html`, `artifacts/qa/sprint-20/map-user-added-marker-preview.png`
   - Historical blocker log: `artifacts/qa/sprint-20/preview-deploy-blocker.txt`
 
 ## User QA Required

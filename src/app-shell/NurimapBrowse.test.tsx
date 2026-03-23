@@ -119,6 +119,75 @@ describe('Sprint 16 browse refresh', () => {
 
     expect(screen.getByTestId('map-marker-place-restaurant-1')).toHaveAttribute('data-marker-type', 'restaurant')
     expect(screen.getByTestId('map-marker-place-cafe-1')).toHaveAttribute('data-marker-type', 'cafe')
+    expect(screen.getByTestId('map-marker-place-restaurant-1')).toHaveAttribute('data-marker-variant', 'user-added')
+  })
+
+  it('renders outlined user-added place labels for visible map markers', () => {
+    setViewport(1280)
+    render(<App />)
+
+    const label = screen.getByTestId('map-label-place-restaurant-1')
+
+    expect(label).toHaveTextContent('누리 식당')
+    expect(label).toHaveStyle({
+      color: 'rgb(88, 98, 251)',
+      fontSize: '12px',
+      fontWeight: '500',
+      lineHeight: '100%',
+    })
+    expect(label).toHaveStyle('-webkit-text-stroke: 2px #FFFFFF')
+  })
+
+  it('scales marker and label up at closer zoom levels', () => {
+    setViewport(1280)
+    useAppShellStore.setState({ mapLevel: 1 })
+    render(<App />)
+
+    expect(screen.getByTestId('map-marker-glyph-place-restaurant-1')).toHaveStyle({
+      height: '48px',
+      width: '48px',
+    })
+    expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle({
+      color: 'rgb(88, 98, 251)',
+      fontSize: '14px',
+      fontWeight: '500',
+    })
+    expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle('-webkit-text-stroke: 3px #FFFFFF')
+    expect(screen.getByTestId('map-label-anchor-place-restaurant-1')).toHaveStyle({
+      top: '20px',
+    })
+  })
+
+  it('shows marker only at level 4', () => {
+    setViewport(1280)
+    useAppShellStore.setState({ mapLevel: 4 })
+    render(<App />)
+
+    expect(screen.getByTestId('map-marker-place-restaurant-1')).toBeInTheDocument()
+    expect(screen.getByTestId('map-marker-glyph-place-restaurant-1')).toHaveStyle({
+      height: '28px',
+      width: '28px',
+    })
+    expect(screen.queryByTestId('map-label-place-restaurant-1')).not.toBeInTheDocument()
+  })
+
+  it('applies the intermediate level 3 marker and overlap sizing from the zoom table', () => {
+    setViewport(1280)
+    useAppShellStore.setState({ mapLevel: 3 })
+    render(<App />)
+
+    expect(screen.getByTestId('map-marker-glyph-place-restaurant-1')).toHaveStyle({
+      height: '32px',
+      width: '32px',
+    })
+    expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle({
+      fontSize: '12px',
+      fontWeight: '500',
+    })
+    expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle('-webkit-text-stroke: 2px #FFFFFF')
+    expect(screen.getByTestId('map-label-anchor-place-restaurant-1')).toHaveStyle({
+      top: '8px',
+    })
   })
 
   it('opens desktop detail inside the sidebar instead of a floating overlay when a map marker is selected', async () => {
@@ -138,19 +207,21 @@ describe('Sprint 16 browse refresh', () => {
     expect(useAppShellStore.getState().mapLevel).toBe(2)
   })
 
-  it('shows marker labels at level 5', () => {
+  it('hides markers and labels at level 5', () => {
     setViewport(1280)
     useAppShellStore.setState({ mapLevel: 5 })
     render(<App />)
 
-    expect(screen.getByTestId('map-label-place-restaurant-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('map-marker-place-restaurant-1')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-label-place-restaurant-1')).not.toBeInTheDocument()
   })
 
-  it('hides marker labels at level 6', () => {
+  it('hides markers and labels at level 6', () => {
     setViewport(1280)
     useAppShellStore.setState({ mapLevel: 6 })
     render(<App />)
 
+    expect(screen.queryByTestId('map-marker-place-restaurant-1')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-label-place-restaurant-1')).not.toBeInTheDocument()
   })
 

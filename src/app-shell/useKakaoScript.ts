@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useLayoutEffect, useState } from 'react'
 
 export type KakaoMapInstance = {
   getLevel: () => number
@@ -22,7 +22,7 @@ export type KakaoNamespace = {
     Marker: new (options: { image: unknown; map: KakaoMapInstance; position: unknown }) => KakaoMarkerInstance
     MarkerImage: new (source: string, size: unknown) => unknown
     Size: new (width: number, height: number) => unknown
-    CustomOverlay: new (options: { content: HTMLElement; map: KakaoMapInstance; position: unknown; yAnchor: number }) => KakaoOverlayInstance
+    CustomOverlay: new (options: { content: HTMLElement; map: KakaoMapInstance; position: unknown; xAnchor?: number; yAnchor?: number }) => KakaoOverlayInstance
     event: {
       addListener: (target: unknown, eventName: string, handler: () => void) => void
     }
@@ -65,7 +65,7 @@ export const useKakaoScript = () => {
   const canUseRuntime = hasLoader || (Boolean(appKey) && !isTestMode)
   const [runtimeStatus, setRuntimeStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const kakao = window.kakao
 
     if (typeof kakao?.maps?.load === 'function') {

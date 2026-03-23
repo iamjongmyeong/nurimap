@@ -14,6 +14,7 @@
 - recommendation 제거 상태 유지 및 재도입 방지
 - `dev / test / production` 분리 기준 정리
 - browse 지도 surface에서 level HUD / zoom button 비노출 정리
+- browse 지도 surface에서 사용자 추가 장소 marker / label visual refresh(Figma handoff 반영)
 
 # Out Of Scope
 
@@ -78,6 +79,7 @@
 - frontend direct Supabase usage가 제거된다.
 - place/review real-data flow가 동작한다.
 - recommendation이 재도입되지 않는다.
+- browse 지도의 사용자 추가 장소 marker / label이 current Figma handoff와 같은 시각 언어를 사용한다.
 - sprint 문서와 QA evidence가 현재 상태와 일치한다.
 
 # QA Plan
@@ -89,6 +91,7 @@
   - place/review real-data persistence
   - recommendation 재도입 방지
   - browse map surface에서 level HUD / zoom button 비노출
+  - browse map surface에서 사용자 추가 장소 marker / label visual refresh
   - migration safety (`dev` / `test`)
 - 실행 주체:
   - AI Agent
@@ -100,6 +103,7 @@
   - auth/session bootstrap contract 설명 가능 여부
   - duplicate place/review overwrite semantics 보존 여부
   - recommendation 제거 invariant 유지 여부
+  - browse 지도 marker / label이 Figma handoff의 핵심 visual language(동심원 marker + outlined place-name label)와 맞는지
 - 실행 주체:
   - AI Agent
 - 종료 기준:
@@ -109,6 +113,7 @@
 - 대상 시나리오:
   - local integrated runtime에서 auth/session bootstrap, empty browse, place create, detail revisit, overwrite flow
   - Preview deploy smoke: `/` bootstraps without crash, `/places/:placeId` rewrite works, static assets load
+  - marker / label visual slice는 component preview screenshot 기준으로 reference image와 비교한다.
 - 실행 주체:
   - AI Agent
 - 종료 기준:

@@ -5,6 +5,7 @@
 - 현재 local Supabase 기준으로 auth/session/place/review가 backend-owned runtime으로 동작하고, integrated `make dev` / `make agentation` 진입점도 정리됐다.
 - Preview deployment는 구조 수정 후 다시 성공했고, authenticated `vercel curl` smoke로 `/`, `/places/:placeId`, static asset boot까지 확인했다. 현재 남은 sprint-level 항목은 사용자 직접 QA와 push 판단이다.
 - browse 지도 surface에서는 별도 level HUD / zoom button을 제거해 지도 chrome을 더 단순하게 정리했다.
+- browse 지도 surface의 사용자 추가 장소 marker / label은 Figma handoff(node `61:18`) 기준으로 concentric marker + outlined name label 스타일로 새로 정리했다.
 - auth first-login slice에서는 첫 로그인 OTP 요청을 implicit signup 대신 server pre-provision + normal OTP delivery로 고정했고, verify 단계의 허용 이메일 경계를 다시 검사하도록 보강했다.
 - 2026-03-24 production auth recovery slice에서는 login failure 원인을 deploy alias, TLS/env, DB schema gate로 분리해 추적했고, root cert rollout + phase1 migration 적용 뒤 production login success를 확인했다.
 
@@ -25,6 +26,7 @@
 - 같은 slice에서 `verifyLoginOtp`는 verified email에 대해 허용 도메인 / explicit allowlist / local bypass 경계를 다시 확인한 뒤에만 app session을 발급하도록 보강했고, focused auth tests + build를 다시 green으로 맞췄다.
 - confirmation-enabled disposable local Supabase 실험으로, hosted `Confirm sign up` 템플릿을 `{{ .Token }}` 기반 OTP UX로 바꾸는 option 1이 current `verifyOtp({ email, token, type: 'email' })` 계약과 양립 가능함을 검증했다.
 - browse 지도 surface에서 level HUD / zoom button을 제거하고, 관련 map rendering/runtime 문서와 테스트를 함께 갱신했다.
+- browse 지도 surface에서 사용자 추가 장소 marker / label visual refresh를 반영하고, focused browse/registration tests와 marker preview artifact를 추가했다.
 - TLS root-cert handling 수정(commit `078b57c`)을 production deploy에 반영하고, linked `supabase db push`로 `20260322065245_phase1_place_auth_real_data_foundation.sql`을 exact production project에 적용했다.
 - production incident 분석 결과, auth/login rollout은 코드 배포·runtime env·DB schema를 각각 별도 gate로 봐야 하며, 실제 blocker가 `SELF_SIGNED_CERT_IN_CHAIN` → `relation "public.user_profiles" does not exist` 순으로 이동했다.
 - 2026-03-24 production에서 user-confirmed login success를 확인했다.
