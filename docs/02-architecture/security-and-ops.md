@@ -25,18 +25,22 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 허용 이메일 도메인은 `@nurimedia.co.kr` 하나다.
 - 클라이언트에서 1차 검증한다.
 - 서버와 인증 완료 후 사용자 정보에서도 다시 검증한다.
+- 단, 운영자가 환경변수 `AUTH_ALLOWED_EMAILS`로 명시한 exact 이메일은 허용 도메인이 아니어도 일반 OTP request 대상으로 예외 허용할 수 있다.
 - 단, 운영자가 환경변수로 명시한 bypass 이메일 allowlist는 local dev / local QA에서만 예외적으로 허용할 수 있다. non-local runtime은 allowlist/env가 남아 있어도 bypass를 로그인 성공 경로로 사용하지 않는다.
 - bypass 이메일 목록 값 자체는 public repository에 커밋하지 않고 환경변수에서만 관리한다.
+- exact allowlist 이메일 값도 public repository에 커밋하지 않고 환경변수에서만 관리한다.
 
 ### Email OTP Policy
 - 이메일 OTP 방식만 canonical 로그인 방식으로 지원한다.
 - 허용 도메인이 아니면 OTP 발송을 시도하지 않는다.
+- 단, `AUTH_ALLOWED_EMAILS` exact allowlist는 일반 OTP 발송 예외로 허용한다.
 - OTP는 발급 후 5분 동안만 유효하다.
 - 로그인 이메일에는 서비스 식별 정보와 OTP 코드를 포함한다.
 - 새 OTP를 발급하면 이전 미사용 OTP도 즉시 무효화한다.
 - OTP는 한 번 성공적으로 사용하면 다시 사용할 수 없다.
 - `AUTH_BYPASS_ENABLED=true` 이고 이메일이 `AUTH_BYPASS_EMAILS` allowlist에 있어도, bypass는 loopback/local origin에서만 OTP 입력 없는 로그인으로 허용한다.
 - bypass는 기본적으로 비활성화 상태를 유지하고, local dev / local QA에서만 명시적으로 켠다.
+- backend가 user-facing OTP를 중개하더라도 `signInWithOtp` / `verifyOtp` 같은 일반 auth method는 publishable/anon auth client를 사용하고, `auth.admin.*`만 service-role/admin client를 사용한다.
 
 기본 보호 수치:
 - 동일 이메일은 active cooldown cycle 안에서 최대 5회까지 대기 시간 없이 재요청할 수 있다.

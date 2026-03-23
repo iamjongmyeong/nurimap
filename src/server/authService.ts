@@ -1,11 +1,13 @@
 import {
   createEmptyLoginOtpState,
   evaluateRequestPolicy,
+  isExplicitlyAllowedEmail,
   isAllowedEmailDomain,
+  normalizeEmail,
+  parseAllowedEmails,
   recordVerifiedOtpState,
   type LoginOtpState,
 } from './authPolicy.js'
-import { AuthClient, type User } from '@supabase/supabase-js'
 import {
   createAppSession,
   createAppSessionTokens,
@@ -15,7 +17,7 @@ import {
 } from './appSessionService.js'
 import { withDatabaseConnection, withDatabaseTransaction } from './database.js'
 import { logAuthBypassLogin, logAuthRequestAccepted, logAuthRequestFailure } from './opsLogger.js'
-import { createSupabaseAdminClient } from './supabaseAdmin.js'
+import { createSupabaseAdminClient, createSupabaseAuthClient } from './supabaseAdmin.js'
 
 type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'delivery_failed' | 'bypass_required'
 type AuthVerifyType = 'magiclink' | 'signup' | 'invite'
@@ -92,18 +94,35 @@ type AuthSessionResult =
       status: 'missing'
     }
 
-type SupabaseAuthApi = Pick<InstanceType<typeof AuthClient>, 'admin' | 'getUser' | 'signInWithOtp' | 'verifyOtp'>
+type SupabaseUserRecord = {
+  id: string
+  email?: string | null
+  app_metadata?: Record<string, unknown>
+  user_metadata?: Record<string, unknown>
+}
+
+type SupabaseAuthApi = {
+  admin: {
+    generateLink: (...args: any[]) => Promise<any>
+    listUsers: (...args: any[]) => Promise<{ data: { users: SupabaseUserRecord[] }; error: any }>
+    updateUserById: (...args: any[]) => Promise<{ error: any }>
+    signOut: (...args: any[]) => Promise<any>
+  }
+  getUser: (...args: any[]) => Promise<any>
+  signInWithOtp: (...args: any[]) => Promise<any>
+  verifyOtp: (...args: any[]) => Promise<any>
+}
 
 const getAdminAuthClient = (): SupabaseAuthApi => createSupabaseAdminClient().auth as SupabaseAuthApi
+const getPublicAuthClient = (): SupabaseAuthApi => createSupabaseAuthClient().auth as SupabaseAuthApi
 const isSendLoginOtpFailure = (
   result: SendLoginOtpResult,
 ): result is Extract<SendLoginOtpResult, { ok: false }> => !result.ok
 
 const getBypassEmails = () =>
-  (process.env.AUTH_BYPASS_EMAILS ?? '')
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean)
+  parseAllowedEmails(process.env.AUTH_BYPASS_EMAILS ?? '')
+
+const getAllowedEmails = () => parseAllowedEmails(process.env.AUTH_ALLOWED_EMAILS ?? '')
 
 const LOCAL_BYPASS_HOSTS = new Set(['127.0.0.1', '::1', 'localhost'])
 
@@ -112,7 +131,7 @@ const isBypassLoginEmail = (email: string) => {
     return false
   }
 
-  return getBypassEmails().includes(email.trim().toLowerCase())
+  return getBypassEmails().includes(normalizeEmail(email))
 }
 
 const toVerificationType = (verificationType: string | undefined): AuthVerifyType =>
@@ -257,7 +276,7 @@ const findUserByEmail = async (email: string) => {
       throw error
     }
 
-    const matchedUser = data.users.find((user: User) => user.email?.toLowerCase() === email.toLowerCase())
+    const matchedUser = data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase())
     if (matchedUser) {
       return matchedUser
     }
@@ -311,7 +330,7 @@ const sendLoginOtp = async ({
   email: string
 }): Promise<SendLoginOtpResult> => {
   try {
-    const auth = getAdminAuthClient()
+    const auth = getPublicAuthClient()
     const { error } = await auth.signInWithOtp({
       email,
       options: {
@@ -345,7 +364,8 @@ const sendLoginOtp = async ({
 export const requestLoginOtp = async (email: string, options: RequestLoginOtpOptions = {}) => {
   const requestStartedAt = Date.now()
   const allowedDomain = process.env.AUTH_ALLOWED_EMAIL_DOMAIN ?? ''
-  const normalizedEmail = email.trim().toLowerCase()
+  const allowedEmails = getAllowedEmails()
+  const normalizedEmail = normalizeEmail(email)
   const publicAppUrl = getPublicAppUrl()
   const bypassLoginEmail = isBypassLoginEmail(normalizedEmail)
 
@@ -361,7 +381,7 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
     return await generateImmediateBypassPayload(normalizedEmail, publicAppUrl)
   }
 
-  if (!isAllowedEmailDomain(normalizedEmail, allowedDomain)) {
+  if (!isAllowedEmailDomain(normalizedEmail, allowedDomain) && !isExplicitlyAllowedEmail(normalizedEmail, allowedEmails)) {
     logAuthRequestFailure({ code: 'invalid_domain', email: normalizedEmail })
     return {
       status: 'error' as const,
@@ -454,8 +474,9 @@ export const verifyLoginOtp = async ({
   tokenHash?: string
   verificationType?: AuthVerifyType
 }): Promise<AuthVerifySuccess | AuthVerifyFailure> => {
-  const auth = getAdminAuthClient()
-  const normalizedEmail = email.trim().toLowerCase()
+  const auth = getPublicAuthClient()
+  const adminAuth = getAdminAuthClient()
+  const normalizedEmail = normalizeEmail(email)
   const now = new Date()
 
   if (tokenHash && !isLocalBypassRuntime()) {
@@ -520,7 +541,7 @@ export const verifyLoginOtp = async ({
   } catch (databaseError) {
     if (data.session?.access_token) {
       try {
-        await auth.admin.signOut(data.session.access_token)
+        await adminAuth.admin.signOut(data.session.access_token)
       } catch {
         // best-effort cleanup only
       }
@@ -539,14 +560,14 @@ export const verifyLoginOtp = async ({
   )
 
   return {
-      status: 'success',
-      csrfToken: tokens.csrfToken,
-      sessionId: tokens.sessionId,
-      user: {
-        id: verifiedUser.id,
-        email: persistedEmail,
-        name: resolvedName,
-      },
+    status: 'success',
+    csrfToken: tokens.csrfToken,
+    sessionId: tokens.sessionId,
+    user: {
+      id: verifiedUser.id,
+      email: persistedEmail,
+      name: resolvedName,
+    },
     nextPhase: resolvedName ? 'authenticated' : 'name_required',
   }
 }

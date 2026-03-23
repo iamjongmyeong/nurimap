@@ -4,7 +4,9 @@ import {
   AUTH_REQUEST_COOLDOWN_SECONDS,
   createEmptyLoginOtpState,
   evaluateRequestPolicy,
+  isExplicitlyAllowedEmail,
   isAllowedEmailDomain,
+  parseAllowedEmails,
   recordVerifiedOtpState,
 } from './authPolicy'
 
@@ -12,6 +14,13 @@ describe('Sprint 18 auth policy', () => {
   it('allows only the configured email domain', () => {
     expect(isAllowedEmailDomain('user@nurimedia.co.kr', 'nurimedia.co.kr')).toBe(true)
     expect(isAllowedEmailDomain('user@example.com', 'nurimedia.co.kr')).toBe(false)
+  })
+
+  it('allows an exact email from the explicit allowlist', () => {
+    const allowedEmails = parseAllowedEmails('allowed.user@example.com, allowed.named@example.com')
+
+    expect(isExplicitlyAllowedEmail('Allowed.User@example.com', allowedEmails)).toBe(true)
+    expect(isExplicitlyAllowedEmail('outside.user@example.com', allowedEmails)).toBe(false)
   })
 
   it('allows an otp resend burst up to 3 times before cooldown begins', () => {

@@ -16,8 +16,10 @@
 
 ## Functional Requirements
 - 허용 도메인은 `@nurimedia.co.kr` 하나다.
+- 운영자가 환경변수로 지정한 exact allowlist 이메일은 허용 도메인이 아니어도 일반 OTP 요청을 보낼 수 있다.
 - 운영자가 환경변수로 지정한 bypass 이메일은 OTP 입력 없이 바로 로그인할 수 있다.
 - 허용 도메인이 아니면 OTP를 발급하지 않는다.
+- exact allowlist 이메일은 bypass와 별개로 동작하며, non-local runtime에서도 일반 OTP 로그인 경로를 유지한다.
 - 허용 도메인이 아닌 이메일 입력은 로그인 화면에서 처리하고, 입력값은 유지한다.
 - 로그인 이메일에는 서비스 식별 정보와 6자리 OTP 코드가 포함되어야 한다.
 - OTP는 발급 후 5분 동안만 유효하다.
@@ -53,6 +55,7 @@
 - OTP가 6자리가 아니면 확인 버튼은 비활성화되거나 검증 요청을 보내지 않아야 한다.
 - 로그인 성공 시 같은 브라우저에서 최대 90일 세션을 유지한다.
 - bypass 이메일 목록 자체는 환경변수로만 관리하고 tracked source에는 직접 적지 않는다.
+- exact allowlist 이메일 목록도 환경변수로만 관리하고 tracked source에는 직접 적지 않는다.
 - 비로그인 사용자는 보호된 화면과 API에 접근할 수 없다.
 - 로그인 성공 후 사용자 이름이 비어 있으면 이름 입력 화면으로 보낸다.
 - 이름 입력은 단일 input field 하나로 받는다.
@@ -69,6 +72,7 @@
 ## Canonical Runtime / API Contract
 - canonical OTP request endpoint는 `POST /api/auth/request-otp`다.
 - request body는 `{ email: string, requireBypass?: boolean }`를 사용한다.
+- backend의 일반 OTP request/verify는 Supabase publishable/anon auth client를 사용하고, `auth.admin.*` 작업만 service-role/admin client를 사용한다.
 - 정상 OTP 발급 성공 응답은 `{ status: 'success', mode: 'otp', message: '인증 코드를 보냈어요.' }`다.
 - bypass 성공 응답은 `{ status: 'success', mode: 'bypass', message: '테스트 계정으로 바로 로그인합니다.', tokenHash: string, verificationType: 'magiclink' | 'signup' | 'invite' }`를 사용한다.
 - cooldown 응답은 `{ status: 'error', code: 'cooldown', message: string, retryAfterSeconds: number }`를 사용한다.
@@ -86,6 +90,7 @@
 
 ## Acceptance Criteria
 - 허용 도메인이 아닌 이메일은 OTP를 발급할 수 없다.
+- 운영자가 환경변수로 지정한 exact allowlist 이메일은 허용 도메인이 아니어도 OTP를 발급할 수 있다.
 - 허용 도메인이 아닌 이메일 입력 시 로그인 화면에 실패 상태가 보이고 입력 이메일이 유지된다.
 - OTP 요청 성공 후 같은 auth surface 안에서 입력 이메일을 포함한 OTP 입력 상태가 보인다.
 - 로그인 이메일에서 서비스 식별, 6자리 OTP 코드, 유효시간 안내를 확인할 수 있다.
@@ -99,6 +104,7 @@
 - OTP 확인 중 새로고침하거나 네트워크가 hang되어도 무한히 `verifying`에 머물지 않는다.
 - 로그인 성공 시 세션이 생성되고 재접속 시 복구된다.
 - 환경변수로 지정된 bypass 이메일은 OTP 입력 없이도 로그인된다.
+- non-local runtime에서도 exact allowlist 이메일은 bypass가 아니라 일반 OTP 경로로 인증할 수 있다.
 - 로그인 성공 후 이름이 비어 있으면 이름 입력 화면으로 이동한다.
 - 이름 input은 한 개이며, 빈 값은 허용되지 않는다.
 - 이름 input은 최대 10글자까지만 유지된다.
@@ -146,6 +152,7 @@
 ## Required Test Cases
 - 허용 도메인 이메일은 허용된다.
 - 다른 도메인은 거부된다.
+- exact allowlist 이메일은 허용 도메인이 아니어도 일반 OTP 요청이 된다.
 - 다른 도메인 입력 시 실패 상태와 입력 이메일 유지
 - OTP 요청 성공 후 같은 surface 안에서 이메일 표시 + OTP 입력 UI 표시
 - 로그인 이메일에 6자리 OTP와 서비스 식별/유효시간 안내 포함
@@ -159,6 +166,7 @@
 - OTP verify pending hang timeout 수렴 + generic failure 설명 표시
 - refresh / hard refresh 이후 terminal auth state 전환
 - bypass 이메일 즉시 로그인 성공
+- non-local runtime에서 exact allowlist 이메일은 bypass가 아니라 일반 OTP 경로를 사용
 - 보호 화면/API 차단
 - 이름 없는 사용자 이름 입력 화면 이동
 - 이름 있는 사용자 앱 진입
@@ -169,6 +177,7 @@
 ## Manual QA Checklist
 - 허용 도메인 이메일로 OTP 요청이 된다.
 - 허용 도메인이 아닌 이메일로 요청이 막히고 입력값이 유지된다.
+- exact allowlist 이메일은 허용 도메인이 아니어도 OTP 요청이 된다.
 - 로그인 메일에서 서비스 식별, 6자리 OTP, 유효시간 안내를 확인할 수 있다.
 - OTP 요청 성공 후 페이지 이동 없이 입력 이메일을 포함한 OTP 입력 상태가 보인다.
 - 올바른 OTP를 입력하면 로그인된다.
@@ -184,6 +193,7 @@
 - cooldown 실패 시 입력한 이메일이 유지된다.
 - 인증 실패 화면 또는 OTP 입력 화면에서 내부 reason code 대신 사람이 이해할 수 있는 설명이 보인다.
 - bypass 이메일은 같은 인증 액션에서 동작한다.
+- non-local runtime에서 exact allowlist 이메일은 bypass가 아니라 OTP 입력 화면으로 진입한다.
 - 이름이 없는 계정은 로그인 후 이름 입력 화면으로 이동한다.
 - 이름 input 하나만 보이고, 빈 값으로는 제출할 수 없다.
 - 이름 저장 중 진행 상태가 보인다.

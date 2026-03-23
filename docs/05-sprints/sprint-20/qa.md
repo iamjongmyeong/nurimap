@@ -2,10 +2,14 @@
 
 - Sprint 20의 real-data migration에서 docs/runtime lock, auth cookie cutover, place/review persistence, recommendation regression guard를 검증한다.
 - 구현의 상세 acceptance criteria와 test matrix는 `.omx/plans/test-spec-supabase-place-auth-real-data-migration.md`, `.omx/plans/test-spec-sprint-20-vercel-function-limit-resolution.md`를 SSOT로 사용한다.
+- 2026-03-23 auth hotfix slice에서는 local-only bypass 정책을 유지하면서 OTP 발송 회귀와 exact allowlist OTP 예외를 함께 검증한다.
 
 # Automated Checks Result
 
 - 실행 명령:
+  - `pnpm exec vitest run src/server/authPolicy.test.ts src/server/authService.test.ts`
+  - `pnpm exec vitest run src/server/apiAuthSessionRoutes.test.ts src/server/apiAuthVerifyOtp.test.ts src/server/releaseHardening.test.ts`
+  - `pnpm build`
   - `supabase status`
   - `git diff --check`
   - `pnpm exec vitest run src/server/apiAuthSessionRoutes.test.ts src/server/apiAuthVerifyOtp.test.ts src/server/apiPlaceEntryRoute.test.ts src/server/apiPlaceListRoute.test.ts src/server/apiPlaceReviewRoute.test.ts`
@@ -15,6 +19,9 @@
   - `pnpm exec vercel curl /places/smoke-place --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
   - `pnpm exec vercel curl /assets/index-BDwYyS21.js --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes -- --head`
 - 결과:
+  - PASS — `src/server/authPolicy.test.ts`, `src/server/authService.test.ts` 2 files / 27 tests 통과
+  - PASS — `src/server/apiAuthSessionRoutes.test.ts`, `src/server/apiAuthVerifyOtp.test.ts`, `src/server/releaseHardening.test.ts` 3 files / 10 tests 통과
+  - PASS — `pnpm build` 통과
   - PASS — local Supabase가 실행 중이며 local API / DB endpoint가 정상 노출됐다.
   - PASS — `git diff --check` 통과
   - PASS — moved API route tests 5 files / 8 tests 통과
@@ -109,6 +116,7 @@
 
 - local integrated runtime 기준 blocker는 발견하지 못했다.
 - 일반 email OTP 입력/검증 UI는 local Mailpit 기반으로 별도 브라우저 증빙을 확보했다.
+- 2026-03-23 기준 auth 회귀 복구 slice에서 일반 OTP request/verify는 publishable auth client로 분리되고, bypass와 별개인 `AUTH_ALLOWED_EMAILS` exact allowlist 정책이 추가됐다. non-local bypass 차단 정책은 유지한다.
 - 2026-03-22 `vercel env ls` 확인 결과, core Supabase/Postgres env(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `POSTGRES_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)는 현재 Production에만 있고 Preview / Development에는 없다.
 - 현재 합의된 전략에서는 Preview를 backend-integrated runtime으로 쓰지 않으므로, 위 env 부재는 즉시 blocker가 아니라 **Preview role을 UI/deploy separation으로 제한해야 한다는 근거**로 해석한다.
 - 현재 코드 레벨에서는 `test` 전용 DB URL 분기를 지원하지만(`TEST_DATABASE_URL` 계열), local `.env.local`에는 아직 dedicated test target이 없다. 현재 단기 운영 모델은 reset 가능한 local DB를 isolated run에서 재사용하는 방식이다.

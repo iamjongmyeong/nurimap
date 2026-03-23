@@ -17,6 +17,7 @@
 - Preview blocker resolution slice에서 `api/` 밖으로 API route tests 5개를 이동하고 `.vercelignore`를 추가해 deploy surface를 정리했다.
 - structural fix 이후 `pnpm exec vercel deploy --yes`가 성공했고, before/after API inventory, Preview smoke evidence, deploy log를 `artifacts/qa/sprint-20/`에 저장했다.
 - authenticated `pnpm exec vercel curl` smoke로 Preview root, `/places/smoke-place` rewrite, built JS asset 응답을 확인했다.
+- 2026-03-23 auth hotfix slice에서 일반 OTP request/verify를 publishable auth client 경로로 복구하고, bypass와 분리된 `AUTH_ALLOWED_EMAILS` exact allowlist 정책을 추가했다.
 
 # Not Completed
 

@@ -42,6 +42,10 @@ vi.mock('./supabaseAdmin.js', () => ({
         signOut: adminSignOutMock,
       },
       getUser: getUserMock,
+    },
+  }),
+  createSupabaseAuthClient: () => ({
+    auth: {
       signInWithOtp: signInWithOtpMock,
       verifyOtp: verifyOtpMock,
     },
@@ -201,6 +205,52 @@ describe('Sprint 18 otp auth request flow', () => {
       status: 'error',
       code: 'invalid_domain',
       message: '누리미디어 구성원만 사용할 수 있어요.',
+    })
+  })
+
+  it('sends otp for an exact email allowlisted outside the configured domain', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    process.env.AUTH_ALLOWED_EMAILS = 'allowed.user@example.com'
+
+    listUsersMock
+      .mockResolvedValueOnce({ data: { users: [] }, error: null })
+      .mockResolvedValueOnce({
+        data: {
+          users: [
+            {
+              id: 'user-allow-1',
+              email: 'allowed.user@example.com',
+              app_metadata: {},
+              user_metadata: {},
+            },
+          ],
+        },
+        error: null,
+      })
+
+    const result = await requestLoginOtp('allowed.user@example.com')
+
+    expect(result).toEqual({
+      status: 'success',
+      mode: 'otp',
+      message: '인증 코드를 보냈어요.',
+    })
+    expect(signInWithOtpMock).toHaveBeenCalledWith({
+      email: 'allowed.user@example.com',
+      options: {
+        shouldCreateUser: true,
+      },
+    })
+    expect(updateUserByIdMock).toHaveBeenCalledWith('user-allow-1', {
+      app_metadata: {
+        nurimap_auth: {
+          day_key: expect.any(String),
+          day_count: 1,
+          last_requested_at: expect.any(String),
+          last_verified_at: null,
+        },
+      },
+      user_metadata: {},
     })
   })
 

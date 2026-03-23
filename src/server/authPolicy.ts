@@ -15,10 +15,21 @@ export const createEmptyLoginOtpState = (): LoginOtpState => ({
   last_verified_at: null,
 })
 
+export const normalizeEmail = (email: string) => email.trim().toLowerCase()
+
 export const isAllowedEmailDomain = (email: string, allowedDomain: string) => {
-  const normalizedEmail = email.trim().toLowerCase()
+  const normalizedEmail = normalizeEmail(email)
   return normalizedEmail.endsWith(`@${allowedDomain.toLowerCase()}`)
 }
+
+export const parseAllowedEmails = (value: string) =>
+  value
+    .split(',')
+    .map(normalizeEmail)
+    .filter(Boolean)
+
+export const isExplicitlyAllowedEmail = (email: string, allowedEmails: readonly string[]) =>
+  allowedEmails.includes(normalizeEmail(email))
 
 export const getDayKey = (date: Date) => date.toISOString().slice(0, 10)
 
