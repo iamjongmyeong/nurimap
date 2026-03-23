@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   listUsersMock,
+  createUserMock,
   generateLinkMock,
   updateUserByIdMock,
   getUserMock,
@@ -17,6 +18,7 @@ const {
   touchAppSessionMock,
 } = vi.hoisted(() => ({
   listUsersMock: vi.fn(),
+  createUserMock: vi.fn(),
   generateLinkMock: vi.fn(),
   updateUserByIdMock: vi.fn(),
   getUserMock: vi.fn(),
@@ -36,6 +38,7 @@ vi.mock('./supabaseAdmin.js', () => ({
   createSupabaseAdminClient: () => ({
     auth: {
       admin: {
+        createUser: createUserMock,
         listUsers: listUsersMock,
         generateLink: generateLinkMock,
         updateUserById: updateUserByIdMock,
@@ -80,6 +83,7 @@ describe('Sprint 18 otp auth request flow', () => {
     process.env = { ...originalEnv }
     vi.restoreAllMocks()
     listUsersMock.mockReset()
+    createUserMock.mockReset()
     generateLinkMock.mockReset()
     updateUserByIdMock.mockReset()
     getUserMock.mockReset()
@@ -94,6 +98,7 @@ describe('Sprint 18 otp auth request flow', () => {
     revokeAppSessionMock.mockReset()
     touchAppSessionMock.mockReset()
     listUsersMock.mockResolvedValue({ data: { users: [] }, error: null })
+    createUserMock.mockResolvedValue({ data: { user: null }, error: null })
     updateUserByIdMock.mockResolvedValue({ error: null })
     signInWithOtpMock.mockResolvedValue({ data: { user: null, session: null }, error: null })
     verifyOtpMock.mockResolvedValue({ data: { user: null, session: null }, error: null })
@@ -212,21 +217,18 @@ describe('Sprint 18 otp auth request flow', () => {
     process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
     process.env.AUTH_ALLOWED_EMAILS = 'allowed.user@example.com'
 
-    listUsersMock
-      .mockResolvedValueOnce({ data: { users: [] }, error: null })
-      .mockResolvedValueOnce({
-        data: {
-          users: [
-            {
-              id: 'user-allow-1',
-              email: 'allowed.user@example.com',
-              app_metadata: {},
-              user_metadata: {},
-            },
-          ],
+    listUsersMock.mockResolvedValueOnce({ data: { users: [] }, error: null })
+    createUserMock.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: 'user-allow-1',
+          email: 'allowed.user@example.com',
+          app_metadata: {},
+          user_metadata: {},
         },
-        error: null,
-      })
+      },
+      error: null,
+    })
 
     const result = await requestLoginOtp('allowed.user@example.com')
 
@@ -235,10 +237,14 @@ describe('Sprint 18 otp auth request flow', () => {
       mode: 'otp',
       message: '인증 코드를 보냈어요.',
     })
+    expect(createUserMock).toHaveBeenCalledWith({
+      email: 'allowed.user@example.com',
+      email_confirm: true,
+    })
     expect(signInWithOtpMock).toHaveBeenCalledWith({
       email: 'allowed.user@example.com',
       options: {
-        shouldCreateUser: true,
+        shouldCreateUser: false,
       },
     })
     expect(updateUserByIdMock).toHaveBeenCalledWith('user-allow-1', {
@@ -316,10 +322,11 @@ describe('Sprint 18 otp auth request flow', () => {
       mode: 'otp',
       message: '인증 코드를 보냈어요.',
     })
+    expect(createUserMock).not.toHaveBeenCalled()
     expect(signInWithOtpMock).toHaveBeenCalledWith({
       email: 'tester@nurimedia.co.kr',
       options: {
-        shouldCreateUser: true,
+        shouldCreateUser: false,
       },
     })
     expect(updateUserByIdMock).toHaveBeenCalledWith('user-1', {
@@ -335,24 +342,21 @@ describe('Sprint 18 otp auth request flow', () => {
     })
   })
 
-  it('persists otp bookkeeping after supabase provisions a new allowed-domain user', async () => {
+  it('persists otp bookkeeping after the server provisions a new allowed-domain user', async () => {
     process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
 
-    listUsersMock
-      .mockResolvedValueOnce({ data: { users: [] }, error: null })
-      .mockResolvedValueOnce({
-        data: {
-          users: [
-            {
-              id: 'user-2',
-              email: 'new.user@nurimedia.co.kr',
-              app_metadata: {},
-              user_metadata: {},
-            },
-          ],
+    listUsersMock.mockResolvedValueOnce({ data: { users: [] }, error: null })
+    createUserMock.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: 'user-2',
+          email: 'new.user@nurimedia.co.kr',
+          app_metadata: {},
+          user_metadata: {},
         },
-        error: null,
-      })
+      },
+      error: null,
+    })
 
     const result = await requestLoginOtp('new.user@nurimedia.co.kr')
 
@@ -360,6 +364,16 @@ describe('Sprint 18 otp auth request flow', () => {
       status: 'success',
       mode: 'otp',
       message: '인증 코드를 보냈어요.',
+    })
+    expect(createUserMock).toHaveBeenCalledWith({
+      email: 'new.user@nurimedia.co.kr',
+      email_confirm: true,
+    })
+    expect(signInWithOtpMock).toHaveBeenCalledWith({
+      email: 'new.user@nurimedia.co.kr',
+      options: {
+        shouldCreateUser: false,
+      },
     })
     expect(updateUserByIdMock).toHaveBeenCalledWith('user-2', {
       app_metadata: {
@@ -372,6 +386,97 @@ describe('Sprint 18 otp auth request flow', () => {
       },
       user_metadata: {},
     })
+  })
+
+  it('falls back to a refetch when first-login provisioning races with another create', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+
+    listUsersMock
+      .mockResolvedValueOnce({ data: { users: [] }, error: null })
+      .mockResolvedValueOnce({
+        data: {
+          users: [
+            {
+              id: 'user-race-1',
+              email: 'race.user@nurimedia.co.kr',
+              app_metadata: {},
+              user_metadata: {},
+            },
+          ],
+        },
+        error: null,
+      })
+    createUserMock.mockResolvedValueOnce({
+      data: { user: null },
+      error: {
+        code: 'user_already_exists',
+        message: 'User already registered',
+      },
+    })
+
+    const result = await requestLoginOtp('race.user@nurimedia.co.kr')
+
+    expect(result).toEqual({
+      status: 'success',
+      mode: 'otp',
+      message: '인증 코드를 보냈어요.',
+    })
+    expect(createUserMock).toHaveBeenCalledWith({
+      email: 'race.user@nurimedia.co.kr',
+      email_confirm: true,
+    })
+    expect(signInWithOtpMock).toHaveBeenCalledWith({
+      email: 'race.user@nurimedia.co.kr',
+      options: {
+        shouldCreateUser: false,
+      },
+    })
+    expect(updateUserByIdMock).toHaveBeenCalledWith('user-race-1', {
+      app_metadata: {
+        nurimap_auth: {
+          day_key: expect.any(String),
+          day_count: 1,
+          last_requested_at: expect.any(String),
+          last_verified_at: null,
+        },
+      },
+      user_metadata: {},
+    })
+  })
+
+  it('returns the canonical delivery failure when provisioning fails with a non-duplicate error', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    createUserMock.mockResolvedValueOnce({
+      data: { user: null },
+      error: {
+        status: 500,
+        code: 'unexpected_failure',
+        message: 'provisioning exploded',
+      },
+    })
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const result = await requestLoginOtp('tester@nurimedia.co.kr')
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 'delivery_failed',
+      message: '인증 코드를 보내지 못했어요. 다시 시도해 주세요.',
+    })
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[ops] auth.request_link.delivery_failed',
+      expect.objectContaining({
+        email: expect.stringContaining('@nurimedia.co.kr'),
+        failure_stage: 'provision_user',
+        provider: 'supabase',
+        provider_status_code: 500,
+        provider_error_code: 'unexpected_failure',
+        provider_error_message: 'provisioning exploded',
+        total_ms: expect.any(Number),
+      }),
+    )
+    expect(signInWithOtpMock).not.toHaveBeenCalled()
+    expect(updateUserByIdMock).not.toHaveBeenCalled()
   })
 
   it('logs request acceptance timings after otp delivery is accepted', async () => {
@@ -415,6 +520,17 @@ describe('Sprint 18 otp auth request flow', () => {
 
   it('logs supabase otp delivery failures', async () => {
     process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    createUserMock.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: 'user-send-fail-1',
+          email: 'tester@nurimedia.co.kr',
+          app_metadata: {},
+          user_metadata: {},
+        },
+      },
+      error: null,
+    })
     signInWithOtpMock.mockResolvedValue({
       data: { user: null, session: null },
       error: {
@@ -508,6 +624,7 @@ describe('Sprint 18 otp auth request flow', () => {
   })
 
   it('verifies otp via backend and returns an opaque app session contract', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
     verifyOtpMock.mockResolvedValue({
       data: {
         user: {
@@ -554,8 +671,41 @@ describe('Sprint 18 otp auth request flow', () => {
     })
   })
 
+  it('rejects a verified user outside the allowed auth boundary and cleans up provider session', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-outside-1',
+          email: 'outside.user@example.com',
+          app_metadata: {},
+          user_metadata: {},
+        },
+        session: {
+          access_token: 'provider-access-token',
+        },
+      },
+      error: null,
+    })
+
+    const result = await verifyLoginOtp({
+      email: 'tester@nurimedia.co.kr',
+      token: '123456',
+    })
+
+    expect(result).toEqual({
+      status: 'error',
+      message: '이 코드는 사용할 수 없어요.',
+    })
+    expect(adminSignOutMock).toHaveBeenCalledWith('provider-access-token')
+    expect(createAppSessionMock).not.toHaveBeenCalled()
+    expect(updateUserByIdMock).not.toHaveBeenCalled()
+  })
+
   it('uses the verified user email when token-hash verify is called without an email body value', async () => {
     process.env.PUBLIC_APP_URL = 'http://127.0.0.1:4173'
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
     let recordedInsertParams: unknown[] | null = null
     verifyOtpMock.mockResolvedValue({
       data: {

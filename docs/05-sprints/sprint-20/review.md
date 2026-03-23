@@ -5,6 +5,7 @@
 - 현재 local Supabase 기준으로 auth/session/place/review가 backend-owned runtime으로 동작하고, integrated `make dev` / `make agentation` 진입점도 정리됐다.
 - Preview deployment는 구조 수정 후 다시 성공했고, authenticated `vercel curl` smoke로 `/`, `/places/:placeId`, static asset boot까지 확인했다. 현재 남은 sprint-level 항목은 사용자 직접 QA와 push 판단이다.
 - browse 지도 surface에서는 별도 level HUD / zoom button을 제거해 지도 chrome을 더 단순하게 정리했다.
+- auth first-login slice에서는 첫 로그인 OTP 요청을 implicit signup 대신 server pre-provision + normal OTP delivery로 고정했고, verify 단계의 허용 이메일 경계를 다시 검사하도록 보강했다.
 
 # Completed
 
@@ -19,6 +20,9 @@
 - structural fix 이후 `pnpm exec vercel deploy --yes`가 성공했고, before/after API inventory, Preview smoke evidence, deploy log를 `artifacts/qa/sprint-20/`에 저장했다.
 - authenticated `pnpm exec vercel curl` smoke로 Preview root, `/places/smoke-place` rewrite, built JS asset 응답을 확인했다.
 - 2026-03-23 auth hotfix slice에서 일반 OTP request/verify를 publishable auth client 경로로 복구하고, bypass와 분리된 `AUTH_ALLOWED_EMAILS` exact allowlist 정책을 추가했다.
+- 2026-03-23 auth hardening slice에서 first-login OTP는 `auth.admin.createUser` pre-provision 뒤 `signInWithOtp({ shouldCreateUser: false })`로 보내도록 바꾸고, provisioning failure를 canonical `delivery_failed` 응답으로 수렴시켰다.
+- 같은 slice에서 `verifyLoginOtp`는 verified email에 대해 허용 도메인 / explicit allowlist / local bypass 경계를 다시 확인한 뒤에만 app session을 발급하도록 보강했고, focused auth tests + build를 다시 green으로 맞췄다.
+- confirmation-enabled disposable local Supabase 실험으로, hosted `Confirm sign up` 템플릿을 `{{ .Token }}` 기반 OTP UX로 바꾸는 option 1이 current `verifyOtp({ email, token, type: 'email' })` 계약과 양립 가능함을 검증했다.
 - browse 지도 surface에서 level HUD / zoom button을 제거하고, 관련 map rendering/runtime 문서와 테스트를 함께 갱신했다.
 
 # Not Completed
@@ -35,6 +39,7 @@
 - Preview deploy 자체는 이제 성공하고 authenticated smoke도 가능하지만, direct anonymous 접근은 Vercel 로그인 페이지(HTTP 401)로 보호된다. 다음 slice에서는 public smoke를 따로 열지, 현재의 protected smoke 절차를 release gate로 유지할지 결정해야 한다.
 - 사용자에게 auth UX, empty-state browse, overwrite 체감 확인을 handoff한다.
 - local evidence 정리 후 push 여부를 결정한다.
+- hosted Supabase confirmation template를 OTP UX로 맞추는 option 1은 follow-up rollout 후보로 남긴다. local confirmation-enabled matrix 결과는 `.omx/plans/result-option-1-confirmation-template-otp-ux-validation.md`를 따른다.
 
 # Environment Readiness Snapshot
 
@@ -96,6 +101,7 @@
 - dedicated test target 없이 destructive verification을 늘리면 local validation과 test semantics가 섞일 수 있다. 현재는 reset 가능한 local DB reuse 범위로만 제한한다.
 - recommendation은 현재 제거 상태지만, 이후 follow-up에서 실수로 재도입될 위험은 계속 감시해야 한다.
 - Vercel build log에 `api/_lib/_authService.ts`의 타입 export 관련 메시지가 찍히지만 local diagnostics/deploy success와 충돌하지 않는다. 지금은 non-blocking 관찰 항목이지만, 향후 deploy fail로 승격되면 별도 slice로 추적해야 한다.
+- first-login workaround는 여전히 Supabase user를 `email_confirm: true`로 pre-provision하는 설계 제약을 갖고 있다. local validation 기준 option 1(template token화)이 viable하므로, actual hosted template rollout 이후에만 이 값을 `false`로 내리는 후속 변경을 검토한다.
 
 # Retrospective
 

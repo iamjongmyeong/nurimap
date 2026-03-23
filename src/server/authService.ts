@@ -103,6 +103,7 @@ type SupabaseUserRecord = {
 
 type SupabaseAuthApi = {
   admin: {
+    createUser: (...args: any[]) => Promise<{ data: { user: SupabaseUserRecord | null }; error: any }>
     generateLink: (...args: any[]) => Promise<any>
     listUsers: (...args: any[]) => Promise<{ data: { users: SupabaseUserRecord[] }; error: any }>
     updateUserById: (...args: any[]) => Promise<{ error: any }>
@@ -123,6 +124,15 @@ const getBypassEmails = () =>
   parseAllowedEmails(process.env.AUTH_BYPASS_EMAILS ?? '')
 
 const getAllowedEmails = () => parseAllowedEmails(process.env.AUTH_ALLOWED_EMAILS ?? '')
+
+const isEmailAllowedForAuth = (email: string) => {
+  const normalizedEmail = normalizeEmail(email)
+  return (
+    isAllowedEmailDomain(normalizedEmail, process.env.AUTH_ALLOWED_EMAIL_DOMAIN ?? '') ||
+    isExplicitlyAllowedEmail(normalizedEmail, getAllowedEmails()) ||
+    isBypassLoginEmail(normalizedEmail)
+  )
+}
 
 const LOCAL_BYPASS_HOSTS = new Set(['127.0.0.1', '::1', 'localhost'])
 
@@ -324,6 +334,43 @@ const updateUserAuthState = async (userId: string, nextState: LoginOtpState, use
   }
 }
 
+const isDuplicateUserError = (error: unknown) => {
+  const errorCode = getErrorCode(error)
+  if (errorCode === 'user_already_exists') {
+    return true
+  }
+
+  const errorMessage = getErrorMessage(error)?.toLowerCase() ?? ''
+  return errorMessage.includes('already exists') || errorMessage.includes('already registered')
+}
+
+const ensureOtpReadyUser = async (email: string, existingUser: SupabaseUserRecord | null) => {
+  if (existingUser) {
+    return existingUser
+  }
+
+  const auth = getAdminAuthClient()
+  const { data, error } = await auth.admin.createUser({
+    email,
+    email_confirm: true,
+  })
+
+  if (error) {
+    if (!isDuplicateUserError(error)) {
+      throw error
+    }
+
+    const duplicatedUser = await findUserByEmail(email)
+    if (duplicatedUser) {
+      return duplicatedUser
+    }
+
+    throw error
+  }
+
+  return data.user ?? (await findUserByEmail(email))
+}
+
 const sendLoginOtp = async ({
   email,
 }: {
@@ -334,7 +381,7 @@ const sendLoginOtp = async ({
     const { error } = await auth.signInWithOtp({
       email,
       options: {
-        shouldCreateUser: true,
+        shouldCreateUser: false,
       },
     })
 
@@ -408,6 +455,35 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
     } satisfies AuthRequestError
   }
 
+  const provisionUserStartedAt = Date.now()
+  let targetUser: SupabaseUserRecord | null
+  try {
+    targetUser = await ensureOtpReadyUser(normalizedEmail, existingUser)
+  } catch (error) {
+    const provisionUserMs = getDurationMs(provisionUserStartedAt)
+    return deliveryFailedResult(normalizedEmail, {
+      failure_stage: 'provision_user',
+      provider: 'supabase',
+      provider_status_code:
+        typeof (error as { status?: unknown })?.status === 'number' ? (error as { status: number }).status : null,
+      provider_error_code: getErrorCode(error),
+      provider_error_message: getErrorMessage(error),
+      find_user_ms: findUserMs,
+      provision_user_ms: provisionUserMs,
+      total_ms: getDurationMs(requestStartedAt),
+    })
+  }
+  const provisionUserMs = getDurationMs(provisionUserStartedAt)
+
+  if (!targetUser) {
+    return deliveryFailedResult(normalizedEmail, {
+      failure_stage: 'provision_user',
+      find_user_ms: findUserMs,
+      provision_user_ms: provisionUserMs,
+      total_ms: getDurationMs(requestStartedAt),
+    })
+  }
+
   const sendOtpStartedAt = Date.now()
   const deliveryResult = await sendLoginOtp({ email: normalizedEmail })
   const sendOtpMs = getDurationMs(sendOtpStartedAt)
@@ -420,21 +496,8 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
       provider_error_code: deliveryResult.providerErrorCode,
       provider_error_message: deliveryResult.providerErrorMessage,
       find_user_ms: findUserMs,
+      provision_user_ms: provisionUserMs,
       send_otp_ms: sendOtpMs,
-      total_ms: getDurationMs(requestStartedAt),
-    })
-  }
-
-  const persistedUserLookupStartedAt = Date.now()
-  const targetUser = existingUser ?? (await findUserByEmail(normalizedEmail))
-  const persistedUserLookupMs = getDurationMs(persistedUserLookupStartedAt)
-
-  if (!targetUser) {
-    return deliveryFailedResult(normalizedEmail, {
-      failure_stage: 'load_user_after_otp',
-      find_user_ms: findUserMs,
-      send_otp_ms: sendOtpMs,
-      persisted_user_lookup_ms: persistedUserLookupMs,
       total_ms: getDurationMs(requestStartedAt),
     })
   }
@@ -449,7 +512,7 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
     providerStatusCode: deliveryResult.statusCode,
     timings: {
       findUserMs,
-      generateLinkMs: persistedUserLookupMs,
+      generateLinkMs: provisionUserMs,
       persistStateMs,
       sendEmailMs: sendOtpMs,
       totalMs: getDurationMs(requestStartedAt),
@@ -507,6 +570,21 @@ export const verifyLoginOtp = async ({
 
   const verifiedUser = data.user
   const persistedEmail = (verifiedUser.email ?? normalizedEmail).trim().toLowerCase()
+  if (!isEmailAllowedForAuth(persistedEmail)) {
+    if (data.session?.access_token) {
+      try {
+        await adminAuth.admin.signOut(data.session.access_token)
+      } catch {
+        // best-effort cleanup only
+      }
+    }
+
+    return {
+      status: 'error',
+      message: OTP_VERIFY_FAILURE_MESSAGE,
+    }
+  }
+
   const resolvedName = getRequiredName(verifiedUser.user_metadata?.name)
   const tokens = createAppSessionTokens()
 

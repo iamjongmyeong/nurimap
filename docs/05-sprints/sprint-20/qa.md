@@ -20,6 +20,8 @@
   - `pnpm exec vercel curl / --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
   - `pnpm exec vercel curl /places/smoke-place --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
   - `pnpm exec vercel curl /assets/index-BDwYyS21.js --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes -- --head`
+  - `pnpm exec vitest run src/server/authService.test.ts src/server/apiAuthVerifyOtp.test.ts src/server/releaseHardening.test.ts`
+  - `pnpm build`
 - 결과:
   - PASS — `src/app-shell/NurimapBrowse.test.tsx`, `src/app-shell/NurimapDetail.test.tsx` 2 files / 26 tests 통과
   - PASS — `src/server/authPolicy.test.ts`, `src/server/authService.test.ts` 2 files / 27 tests 통과
@@ -31,6 +33,8 @@
   - PASS — `make check` → `vitest` 25 files / 178 tests 통과, `pnpm lint` 통과, `pnpm build` 통과
   - PASS — `pnpm exec vercel deploy --yes` 성공, Preview URL 발급 완료
   - PASS — authenticated `vercel curl` smoke에서 `/`, `/places/smoke-place`, `/assets/index-BDwYyS21.js`가 정상 응답했다.
+  - PASS — first-login OTP hardening slice에서 `src/server/authService.test.ts`, `src/server/apiAuthVerifyOtp.test.ts`, `src/server/releaseHardening.test.ts` 3 files / 31 tests 통과
+  - PASS — first-login OTP hardening 반영 후 `pnpm build` 재통과
 
 # Manual QA Result
 
@@ -128,6 +132,9 @@
 - local integrated runtime 기준 blocker는 발견하지 못했다.
 - 일반 email OTP 입력/검증 UI는 local Mailpit 기반으로 별도 브라우저 증빙을 확보했다.
 - 2026-03-23 기준 auth 회귀 복구 slice에서 일반 OTP request/verify는 publishable auth client로 분리되고, bypass와 별개인 `AUTH_ALLOWED_EMAILS` exact allowlist 정책이 추가됐다. non-local bypass 차단 정책은 유지한다.
+- 2026-03-23 추가 auth hardening slice에서 첫 로그인은 implicit signup에 기대지 않도록 server pre-provision + `shouldCreateUser: false` 경로로 고정했고, provisioning 실패는 canonical `delivery_failed` 응답으로 수렴하도록 맞췄다.
+- 같은 slice에서 `verifyLoginOtp`는 verified email이 허용 도메인 / explicit allowlist / local bypass 경계 안에 있는지 다시 확인한 뒤에만 app session을 만들도록 보강했다.
+- confirmation-enabled disposable local Supabase 검증 기준으로, hosted `Confirm sign up` 템플릿을 `{{ .Token }}` 기반 OTP 메일로 바꾸면 missing user / existing unconfirmed user도 현재 `verifyOtp({ email, token, type: 'email' })` 계약으로 성공할 수 있음을 확인했다. 결과는 `.omx/plans/result-option-1-confirmation-template-otp-ux-validation.md`에 정리했다.
 - 2026-03-22 `vercel env ls` 확인 결과, core Supabase/Postgres env(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `POSTGRES_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)는 현재 Production에만 있고 Preview / Development에는 없다.
 - 현재 합의된 전략에서는 Preview를 backend-integrated runtime으로 쓰지 않으므로, 위 env 부재는 즉시 blocker가 아니라 **Preview role을 UI/deploy separation으로 제한해야 한다는 근거**로 해석한다.
 - 현재 코드 레벨에서는 `test` 전용 DB URL 분기를 지원하지만(`TEST_DATABASE_URL` 계열), local `.env.local`에는 아직 dedicated test target이 없다. 현재 단기 운영 모델은 reset 가능한 local DB를 isolated run에서 재사용하는 방식이다.
@@ -144,6 +151,7 @@
 # Follow-ups
 
 - 현재 local execution evidence를 기준으로 사용자 QA handoff와 push / rollout 판단을 이어간다.
+- hosted Supabase `Confirm sign up` 템플릿을 `{{ .Token }}` 기반 OTP UX로 바꾸는 option 1은 local confirmation-enabled reproduction에서 PASS였으므로, 실제 dashboard 적용 전에는 production/non-local mailbox에서 한 번 더 확인한다.
 - `test`는 당분간 reset 가능한 local DB 재사용 모델로 유지하고, remote dev/test rollout이 안정화되면 dedicated `TEST_DATABASE_URL` / separate target 승격을 재검토한다.
 - Preview deploy blocker는 해소됐고 authenticated smoke 절차도 확보됐으므로, 다음 판단은 Preview를 계속 auth-protected smoke로 유지할지, 별도 public smoke path까지 열 필요가 있는지 결정하는 것이다.
 - Vercel build log에 보이는 `api/_lib/_authService.ts` 타입 export 메시지가 실제 deploy blocker로 승격되는지 모니터링한다.
