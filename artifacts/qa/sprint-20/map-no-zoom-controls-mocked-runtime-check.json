@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-03-23T12:46:57.052Z",
+  "checks": [
+    {
+      "target": "desktop",
+      "mapCanvasVisible": true,
+      "mapLevelCount": 0,
+      "zoomControlsCount": 0,
+      "zoomInButtons": 0,
+      "zoomOutButtons": 0,
+      "screenshotPath": "artifacts/qa/sprint-20/map-no-zoom-controls-desktop-mocked-runtime.png"
+    },
+    {
+      "target": "mobile",
+      "mapCanvasVisible": true,
+      "mapLevelCount": 0,
+      "zoomControlsCount": 0,
+      "zoomInButtons": 0,
+      "zoomOutButtons": 0,
+      "screenshotPath": "artifacts/qa/sprint-20/map-no-zoom-controls-mobile-mocked-runtime.png"
+    }
+  ]
+}

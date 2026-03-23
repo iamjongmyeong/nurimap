@@ -4,6 +4,7 @@
 - 구현 기준의 상세 SSOT는 `.omx/plans/plan-supabase-place-auth-real-data-migration-consensus.md`와 관련 PRD/test spec이며, Preview blocker 해소 실행은 `.omx/plans/plan-sprint-20-vercel-function-limit-consensus.md`를 따랐다.
 - 현재 local Supabase 기준으로 auth/session/place/review가 backend-owned runtime으로 동작하고, integrated `make dev` / `make agentation` 진입점도 정리됐다.
 - Preview deployment는 구조 수정 후 다시 성공했고, authenticated `vercel curl` smoke로 `/`, `/places/:placeId`, static asset boot까지 확인했다. 현재 남은 sprint-level 항목은 사용자 직접 QA와 push 판단이다.
+- browse 지도 surface에서는 별도 level HUD / zoom button을 제거해 지도 chrome을 더 단순하게 정리했다.
 
 # Completed
 
@@ -18,6 +19,7 @@
 - structural fix 이후 `pnpm exec vercel deploy --yes`가 성공했고, before/after API inventory, Preview smoke evidence, deploy log를 `artifacts/qa/sprint-20/`에 저장했다.
 - authenticated `pnpm exec vercel curl` smoke로 Preview root, `/places/smoke-place` rewrite, built JS asset 응답을 확인했다.
 - 2026-03-23 auth hotfix slice에서 일반 OTP request/verify를 publishable auth client 경로로 복구하고, bypass와 분리된 `AUTH_ALLOWED_EMAILS` exact allowlist 정책을 추가했다.
+- browse 지도 surface에서 level HUD / zoom button을 제거하고, 관련 map rendering/runtime 문서와 테스트를 함께 갱신했다.
 
 # Not Completed
 

@@ -7,7 +7,7 @@ Kakao Map 위에 place를 마커와 라벨로 렌더링하는 규칙과 runtime 
 - 지도 초기 중심
 - 마커 타입 분기
 - 라벨 표시 정책
-- 확대/축소 control
+- 확대/축소 상태 동기화와 지도 chrome 노출 정책
 - 마커 선택 동작
 - runtime loading/failure fallback
 
@@ -15,8 +15,8 @@ Kakao Map 위에 place를 마커와 라벨로 렌더링하는 규칙과 runtime 
 - 지도 초기 중심은 `37.558721, 126.924440`이다.
 - `place_type`에 따라 다른 마커 아이콘을 사용한다.
 - 라벨은 `level 1-5`에서 표시하고 `level 6`부터 숨긴다.
-- Kakao Maps JavaScript API의 공식 확대/축소 control을 지도 위에 노출한다.
-- 확대/축소 control 조작 결과는 내부 `mapLevel` 상태와 동기화되어야 한다.
+- 별도 level HUD와 확대/축소 control은 지도 위에 노출하지 않는다.
+- 지도 확대/축소 결과는 내부 `mapLevel` 상태와 동기화되어야 한다.
 - 지도에 표시되는 place는 모두 좌표를 가져야 한다.
 - 지도 마커를 선택하면 해당 place 선택 상태가 갱신되고 상세 화면과 연동된다.
 - runtime browser에서 Kakao SDK가 아직 준비되지 않았을 때는 fake-map처럼 오해될 수 있는 fallback이 아니라 명시적 loading state를 표시한다.
@@ -27,7 +27,8 @@ Kakao Map 위에 place를 마커와 라벨로 렌더링하는 규칙과 runtime 
 - 식당과 카페가 다른 마커로 보인다.
 - `level 5`에서는 라벨이 보인다.
 - `level 6`에서는 라벨이 숨겨진다.
-- 확대/축소 control이 보이고, 조작하면 `mapLevel`과 라벨 표시 상태가 함께 갱신된다.
+- 별도 level HUD와 확대/축소 control이 보이지 않는다.
+- 확대/축소 결과는 `mapLevel`과 라벨 표시 상태에 반영된다.
 - 지도 마커를 선택하면 해당 place 상세 흐름이 열린다.
 - Kakao SDK loading 중에는 사용자가 실제 지도로 오해하지 않는 명시적 진행 중 상태가 보이고, 가짜 마커/가짜 지도 화면은 보이지 않는다.
 - Kakao SDK failure/unavailable 상태에서는 현재 맥락을 유지한 채 원인 인지와 재시도 경로를 확인할 수 있다.
@@ -37,7 +38,7 @@ Kakao Map 위에 place를 마커와 라벨로 렌더링하는 규칙과 runtime 
 2. 마커 타입 분기 테스트를 작성한다.
 3. 지도 마커 선택 상세 연동 테스트를 작성한다.
 4. 라벨 임계값 테스트를 작성한다.
-5. 확대/축소 control 표시 및 상태 연동 테스트를 작성한다.
+5. level HUD / 확대축소 control 비노출 테스트를 작성한다.
 6. 좌표 없는 데이터 제외 테스트를 작성한다.
 7. 지도 loading placeholder 테스트를 작성한다.
 8. 지도 failure/unavailable retry UI 테스트를 작성한다.
@@ -50,7 +51,7 @@ Kakao Map 위에 place를 마커와 라벨로 렌더링하는 규칙과 runtime 
 - 지도 마커 선택 시 상세 연동
 - `level 5` 라벨 표시
 - `level 6` 라벨 숨김
-- 확대/축소 control 표시 및 상태 연동
+- level HUD / 확대축소 control 비노출
 - runtime loading 상태에서 명시적 진행 중 상태 표시
 - runtime failure/unavailable 상태에서 재시도 가능한 failure state 표시
 
@@ -59,7 +60,7 @@ Kakao Map 위에 place를 마커와 라벨로 렌더링하는 규칙과 runtime 
 - 마커 타입이 구분된다.
 - 지도 마커를 누르면 해당 place 상세 흐름으로 이동한다.
 - 확대/축소 시 라벨 표시가 바뀐다.
-- 확대/축소 버튼이 보이고 클릭으로 줌 단계가 바뀐다.
+- 별도 level HUD와 확대/축소 버튼이 보이지 않는다.
 - Kakao SDK 로딩 중에는 fake-map 같은 오해 가능한 화면 대신 명시적 진행 중 상태가 보이고, 가짜 마커/가짜 지도 화면은 보이지 않는다.
 - Kakao SDK 실패 시 현재 맥락을 잃지 않고 원인 인지와 재시도 경로를 확인할 수 있다.
 

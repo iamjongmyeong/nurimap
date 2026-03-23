@@ -179,7 +179,7 @@ describe('Sprint 16 place detail refresh', () => {
     await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
 
     expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
-    expect(screen.getByTestId('map-level')).toHaveTextContent('level 2')
+    expect(useAppShellStore.getState().mapLevel).toBe(2)
     expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-detail-panel'))
   })
 
@@ -323,7 +323,7 @@ describe('Sprint 16 place detail refresh', () => {
     expect(window.location.pathname).toBe('/')
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
     expect(useAppShellStore.getState().selectedPlaceId).toBe('place-restaurant-1')
-    expect(screen.getByTestId('map-level')).toHaveTextContent('level 2')
+    expect(useAppShellStore.getState().mapLevel).toBe(2)
     expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()
   })
@@ -345,7 +345,7 @@ describe('Sprint 16 place detail refresh', () => {
     expect(window.location.pathname).toBe('/')
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
     expect(useAppShellStore.getState().selectedPlaceId).toBe('place-cafe-1')
-    expect(screen.getByTestId('map-level')).toHaveTextContent('level 2')
+    expect(useAppShellStore.getState().mapLevel).toBe(2)
     expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()
   })
@@ -413,6 +413,6 @@ describe('Sprint 16 place detail refresh', () => {
     render(<App />)
 
     expect(screen.getByTestId('desktop-detail-panel')).toHaveTextContent('누리 식당')
-    expect(screen.getByTestId('map-level')).toHaveTextContent('level 2')
+    expect(useAppShellStore.getState().mapLevel).toBe(2)
   })
 })

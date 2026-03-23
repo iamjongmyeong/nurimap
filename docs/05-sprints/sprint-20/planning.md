@@ -13,6 +13,7 @@
 - place list/detail, place create, review create/overwrite의 real-data 전환
 - recommendation 제거 상태 유지 및 재도입 방지
 - `dev / test / production` 분리 기준 정리
+- browse 지도 surface에서 level HUD / zoom button 비노출 정리
 
 # Out Of Scope
 
@@ -24,6 +25,7 @@
 # Selected Specs
 
 - `docs/03-specs/01-app-shell-and-layout.md`
+- `docs/03-specs/02-map-rendering.md`
 - `docs/03-specs/03-list-browse.md`
 - `docs/03-specs/04-place-detail.md`
 - `docs/03-specs/05-auth-email-login-link.md`
@@ -86,6 +88,7 @@
   - backend auth cookie/session flow
   - place/review real-data persistence
   - recommendation 재도입 방지
+  - browse map surface에서 level HUD / zoom button 비노출
   - migration safety (`dev` / `test`)
 - 실행 주체:
   - AI Agent
@@ -118,6 +121,7 @@
   - auth UX가 이전과 비교해 어색하지 않은지
   - 빈 상태 browse와 첫 등록 흐름이 기대와 맞는지
   - review overwrite 동작이 의도대로 보이는지
+  - browse 지도에서 불필요한 level HUD / zoom button이 사라진 상태가 더 자연스러운지
 - 기대 결과:
   - backend cutover 이후에도 핵심 흐름이 끊기지 않는다.
 - handoff 조건:

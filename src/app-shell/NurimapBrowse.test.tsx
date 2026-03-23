@@ -83,7 +83,9 @@ describe('Sprint 16 browse refresh', () => {
     setViewport(1280)
     render(<App />)
 
-    expect(screen.getByTestId('map-level')).toHaveTextContent('level 3')
+    expect(useAppShellStore.getState().mapLevel).toBe(3)
+    expect(screen.queryByTestId('map-level')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-zoom-controls')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()
   })
@@ -133,7 +135,7 @@ describe('Sprint 16 browse refresh', () => {
     expect(detail).toHaveTextContent('양화로 카페')
     expect(detail.className).not.toContain('absolute')
     expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
-    expect(screen.getByTestId('map-level')).toHaveTextContent('level 2')
+    expect(useAppShellStore.getState().mapLevel).toBe(2)
   })
 
   it('shows marker labels at level 5', () => {
@@ -152,23 +154,14 @@ describe('Sprint 16 browse refresh', () => {
     expect(screen.queryByTestId('map-label-place-restaurant-1')).not.toBeInTheDocument()
   })
 
-  it('renders map zoom controls and keeps map level in sync while zooming', async () => {
+  it('hides map level chrome and zoom buttons from the map surface', () => {
     setViewport(1280)
-    const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.getByRole('button', { name: '지도 확대' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '지도 축소' })).toBeInTheDocument()
-    expect(screen.getByTestId('map-label-place-restaurant-1')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '지도 축소' }))
-
-    expect(screen.getByTestId('map-level')).toHaveTextContent('level 4')
-    expect(screen.getByTestId('map-label-place-restaurant-1')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '지도 확대' }))
-
-    expect(screen.getByTestId('map-level')).toHaveTextContent('level 3')
+    expect(screen.queryByTestId('map-level')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-zoom-controls')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '지도 확대' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '지도 축소' })).not.toBeInTheDocument()
     expect(screen.getByTestId('map-label-place-restaurant-1')).toBeInTheDocument()
     expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()

@@ -163,7 +163,7 @@ flowchart LR
 ### Rendering Rules
 - 지도에는 `latitude`, `longitude`를 가진 place만 표시한다.
 - `place_type`에 따라 다른 marker presentation을 사용한다.
-- Kakao 공식 zoom control을 노출하고, 앱 상태는 `zoom_changed` 이벤트와 `getLevel()` 기준으로 동기화한다.
+- 별도 level HUD / zoom control은 노출하지 않고, 앱 상태는 `zoom_changed` 이벤트와 `getLevel()` 기준으로 동기화한다.
 - 지도 이동/확대축소 이벤트는 과도한 API 재호출을 만들지 않도록 debounce 또는 throttle을 적용한다.
 - 지도 라벨은 기본적으로 `level 1-5`에서 표시하고 `level 6`부터 숨긴다.
 

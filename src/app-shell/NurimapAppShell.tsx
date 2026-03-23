@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { MapPane, useKakaoScript } from './MapPane'
+import { MapPane } from './MapPane'
 import { useAuth } from '../auth/authContext'
 import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
 import { createInitialReviewDraft, validateReviewDraft, type ReviewDraft } from './placeRepository'
@@ -10,6 +10,7 @@ import {
   type PlaceListLoadState,
 } from './appShellStore'
 import type { PlaceSummary, PlaceType, ZeropayStatus } from './types'
+import { useKakaoScript } from './useKakaoScript'
 import { useViewportMode } from './useViewportMode'
 
 type PlaceWithCoordinates = PlaceSummary & {

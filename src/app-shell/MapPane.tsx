@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { MAP_INITIAL_CENTER } from './mockPlaces'
 import type { PlaceSummary, PlaceType } from './types'
+import {
+  useKakaoScript,
+  type KakaoMapInstance,
+  type KakaoMarkerInstance,
+  type KakaoOverlayInstance,
+} from './useKakaoScript'
 
 type MapPaneProps = {
   places: PlaceSummary[]
@@ -10,56 +16,7 @@ type MapPaneProps = {
   onMarkerSelect: (placeId: string) => void
 }
 
-type KakaoMapInstance = {
-  addControl: (control: unknown, position: unknown) => void
-  getLevel: () => number
-  panTo: (latLng: unknown) => void
-  setLevel: (level: number) => void
-}
-
-type KakaoMarkerInstance = {
-  setMap: (map: KakaoMapInstance | null) => void
-}
-
-type KakaoOverlayInstance = {
-  setMap: (map: KakaoMapInstance | null) => void
-}
-
-type KakaoNamespace = {
-  maps: {
-    load: (callback: () => void) => void
-    Map: new (container: HTMLElement, options: { center: unknown; level: number }) => KakaoMapInstance
-    LatLng: new (latitude: number, longitude: number) => unknown
-    Marker: new (options: { image: unknown; map: KakaoMapInstance; position: unknown }) => KakaoMarkerInstance
-    MarkerImage: new (source: string, size: unknown) => unknown
-    Size: new (width: number, height: number) => unknown
-    ZoomControl: new () => unknown
-    ControlPosition: {
-      RIGHT: unknown
-    }
-    CustomOverlay: new (options: { content: HTMLElement; map: KakaoMapInstance; position: unknown; yAnchor: number }) => KakaoOverlayInstance
-    event: {
-      addListener: (target: unknown, eventName: string, handler: () => void) => void
-    }
-  }
-}
-
-declare global {
-  interface Window {
-    kakao?: KakaoNamespace
-  }
-
-  interface ImportMetaEnv {
-    readonly PUBLIC_KAKAO_MAP_APP_KEY?: string
-  }
-}
-
-export type KakaoScriptStatus = 'fallback' | 'loading' | 'ready' | 'unavailable' | 'error'
-
 const LEVEL_LABEL_THRESHOLD = 5
-const MAP_MIN_LEVEL = 1
-const MAP_MAX_LEVEL = 14
-const KAKAO_SCRIPT_SELECTOR = 'script[data-kakao-map-sdk="true"]'
 const MAP_LOADING_COPY = '지도를 불러오는 중이에요.'
 const MAP_FAILURE_TITLE = '지도를 불러오지 못했어요.'
 const MAP_FAILURE_BODY = '네트워크 상태를 확인한 뒤 다시 시도해주세요.'
@@ -88,20 +45,6 @@ const markerPalette: Record<PlaceType, { fill: string; stroke: string; label: st
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
-const hasUsableKakaoRuntime = () =>
-  typeof window.kakao?.maps?.load === 'function'
-  && typeof window.kakao?.maps?.Map === 'function'
-  && typeof window.kakao?.maps?.LatLng === 'function'
-  && typeof window.kakao?.maps?.Marker === 'function'
-  && typeof window.kakao?.maps?.MarkerImage === 'function'
-  && typeof window.kakao?.maps?.Size === 'function'
-  && typeof window.kakao?.maps?.ZoomControl === 'function'
-  && typeof window.kakao?.maps?.CustomOverlay === 'function'
-  && typeof window.kakao?.maps?.event?.addListener === 'function'
-
-const hasKakaoLoader = () =>
-  typeof window.kakao?.maps?.load === 'function'
-
 const toMarkerImageSource = (placeType: PlaceType) => {
   const palette = markerPalette[placeType]
 
@@ -113,139 +56,10 @@ const toMarkerImageSource = (placeType: PlaceType) => {
   `)}`
 }
 
-export const useKakaoScript = () => {
-  const appKey = import.meta.env.PUBLIC_KAKAO_MAP_APP_KEY
-  const isTestMode = import.meta.env.MODE === 'test'
-  const [retryKey, setRetryKey] = useState(0)
-  const hasExistingRuntime = hasUsableKakaoRuntime()
-  const hasLoader = hasKakaoLoader()
-  const canUseRuntime = hasLoader || (Boolean(appKey) && !isTestMode)
-  const [runtimeStatus, setRuntimeStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-
-  useEffect(() => {
-    const kakao = window.kakao
-
-    if (typeof kakao?.maps?.load === 'function') {
-      kakao.maps.load(() => {
-        setRuntimeStatus(hasUsableKakaoRuntime() ? 'ready' : 'error')
-      })
-      return
-    }
-
-    if (isTestMode || !canUseRuntime) {
-      return
-    }
-
-    const existingScript = document.querySelector<HTMLScriptElement>(KAKAO_SCRIPT_SELECTOR)
-
-    const handleReady = () => {
-      const runtime = window.kakao
-
-      if (typeof runtime?.maps?.load !== 'function') {
-        setRuntimeStatus('error')
-        return
-      }
-
-      runtime.maps.load(() => {
-        setRuntimeStatus(hasUsableKakaoRuntime() ? 'ready' : 'error')
-      })
-    }
-
-    const handleError = () => {
-      setRuntimeStatus('error')
-    }
-
-    const script = existingScript ?? document.createElement('script')
-    script.async = true
-    script.dataset.kakaoMapSdk = 'true'
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false`
-    script.addEventListener('load', handleReady, { once: true })
-    script.addEventListener('error', handleError, { once: true })
-
-    if (!existingScript) {
-      document.head.appendChild(script)
-    }
-
-    return () => {
-      script.removeEventListener('load', handleReady)
-      script.removeEventListener('error', handleError)
-    }
-  }, [appKey, canUseRuntime, isTestMode, retryKey])
-
-  const retry = useCallback(() => {
-    if (!appKey || isTestMode) {
-      return
-    }
-
-    document.querySelector<HTMLScriptElement>(KAKAO_SCRIPT_SELECTOR)?.remove()
-    setRuntimeStatus('loading')
-    setRetryKey((current) => current + 1)
-  }, [appKey, isTestMode])
-
-  const status: KakaoScriptStatus = hasExistingRuntime
-    ? 'ready'
-    : isTestMode
-      ? 'fallback'
-      : !canUseRuntime
-        ? 'unavailable'
-        : runtimeStatus
-
-  return {
-    retry,
-    status,
-  }
-}
-
-const MapLevelHud = ({ mapLevel }: { mapLevel: number }) => (
-  <div className="pointer-events-none absolute left-4 top-4 z-10 text-[11px] font-medium text-slate-100">
-    <span
-      className="rounded-full border border-white/15 bg-slate-950/65 px-3 py-1.5 shadow-lg backdrop-blur"
-      data-testid="map-level"
-    >
-      level {mapLevel}
-    </span>
-  </div>
-)
-
-const MapZoomControls = ({
-  mapLevel,
-  onZoomIn,
-  onZoomOut,
-}: {
-  mapLevel: number
-  onZoomIn: () => void
-  onZoomOut: () => void
-}) => (
-  <div
-    className="absolute right-4 top-4 z-10 flex flex-col gap-2 rounded-[24px] border border-white/15 bg-slate-950/65 p-2 shadow-xl backdrop-blur"
-    data-testid="map-zoom-controls"
-  >
-    <button
-      aria-label="지도 확대"
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[#1f1f1f] shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-      disabled={mapLevel <= MAP_MIN_LEVEL}
-      onClick={onZoomIn}
-      type="button"
-    >
-      ＋
-    </button>
-    <button
-      aria-label="지도 축소"
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[#1f1f1f] shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-      disabled={mapLevel >= MAP_MAX_LEVEL}
-      onClick={onZoomOut}
-      type="button"
-    >
-      －
-    </button>
-  </div>
-)
-
 const FallbackMapPane = ({
   places,
   selectedPlaceId,
   mapLevel,
-  onMapLevelChange,
   onMarkerSelect,
 }: MapPaneProps) => {
   const visiblePlaces = useMemo(
@@ -256,8 +70,6 @@ const FallbackMapPane = ({
   const focusCenter = focusedPlace
     ? { latitude: focusedPlace.latitude, longitude: focusedPlace.longitude }
     : MAP_INITIAL_CENTER
-  const handleZoomIn = () => onMapLevelChange(clamp(mapLevel - 1, MAP_MIN_LEVEL, MAP_MAX_LEVEL))
-  const handleZoomOut = () => onMapLevelChange(clamp(mapLevel + 1, MAP_MIN_LEVEL, MAP_MAX_LEVEL))
 
   return (
     <div
@@ -266,8 +78,6 @@ const FallbackMapPane = ({
       data-testid="map-canvas"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,197,94,0.25),_transparent_25%),linear-gradient(135deg,_rgba(15,23,42,1)_0%,_rgba(30,41,59,1)_45%,_rgba(59,130,246,0.35)_100%)]" />
-      <MapLevelHud mapLevel={mapLevel} />
-      <MapZoomControls mapLevel={mapLevel} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
       {visiblePlaces.map((place) => {
         const palette = markerPalette[place.place_type]
         const top = clamp(
@@ -360,7 +170,6 @@ export const MapPane = ({
   const kakaoMapRef = useRef<KakaoMapInstance | null>(null)
   const markerRefs = useRef<KakaoMarkerInstance[]>([])
   const overlayRefs = useRef<KakaoOverlayInstance[]>([])
-  const zoomControlRef = useRef<unknown | null>(null)
   const visiblePlaces = useMemo(
     () => places.filter(hasCoordinates),
     [places],
@@ -376,11 +185,6 @@ export const MapPane = ({
         center: new window.kakao.maps.LatLng(MAP_INITIAL_CENTER.latitude, MAP_INITIAL_CENTER.longitude),
         level: mapLevel,
       })
-
-      if (!zoomControlRef.current) {
-        zoomControlRef.current = new window.kakao.maps.ZoomControl()
-        kakaoMapRef.current.addControl(zoomControlRef.current, window.kakao.maps.ControlPosition.RIGHT)
-      }
 
       window.kakao.maps.event.addListener(kakaoMapRef.current, 'zoom_changed', () => {
         onMapLevelChange(kakaoMapRef.current?.getLevel() ?? mapLevel)
@@ -478,7 +282,6 @@ export const MapPane = ({
 
   return (
     <div className="relative z-0 h-full min-h-screen overflow-hidden bg-slate-900" data-testid="map-canvas">
-      <MapLevelHud mapLevel={mapLevel} />
       <div className="h-full min-h-screen" ref={mapRef} />
     </div>
   )

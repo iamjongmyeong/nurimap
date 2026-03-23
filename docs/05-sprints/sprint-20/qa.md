@@ -3,10 +3,12 @@
 - Sprint 20의 real-data migration에서 docs/runtime lock, auth cookie cutover, place/review persistence, recommendation regression guard를 검증한다.
 - 구현의 상세 acceptance criteria와 test matrix는 `.omx/plans/test-spec-supabase-place-auth-real-data-migration.md`, `.omx/plans/test-spec-sprint-20-vercel-function-limit-resolution.md`를 SSOT로 사용한다.
 - 2026-03-23 auth hotfix slice에서는 local-only bypass 정책을 유지하면서 OTP 발송 회귀와 exact allowlist OTP 예외를 함께 검증한다.
+- browse 지도 surface에서는 level HUD / zoom button 비노출 contract가 현재 UI/docs와 일치하는지 함께 검증한다.
 
 # Automated Checks Result
 
 - 실행 명령:
+  - `pnpm exec vitest run src/app-shell/NurimapBrowse.test.tsx src/app-shell/NurimapDetail.test.tsx`
   - `pnpm exec vitest run src/server/authPolicy.test.ts src/server/authService.test.ts`
   - `pnpm exec vitest run src/server/apiAuthSessionRoutes.test.ts src/server/apiAuthVerifyOtp.test.ts src/server/releaseHardening.test.ts`
   - `pnpm build`
@@ -19,6 +21,7 @@
   - `pnpm exec vercel curl /places/smoke-place --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
   - `pnpm exec vercel curl /assets/index-BDwYyS21.js --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes -- --head`
 - 결과:
+  - PASS — `src/app-shell/NurimapBrowse.test.tsx`, `src/app-shell/NurimapDetail.test.tsx` 2 files / 26 tests 통과
   - PASS — `src/server/authPolicy.test.ts`, `src/server/authService.test.ts` 2 files / 27 tests 통과
   - PASS — `src/server/apiAuthSessionRoutes.test.ts`, `src/server/apiAuthVerifyOtp.test.ts`, `src/server/releaseHardening.test.ts` 3 files / 10 tests 통과
   - PASS — `pnpm build` 통과
@@ -38,12 +41,14 @@
   - empty-state browse가 test mode mock seed가 아니라 실제 빈 `/api/place-list` 응답에서 오는지 확인했다.
   - duplicate place / review overwrite 규칙이 backend persistence 경계 안에서 유지되는지 확인했다.
   - recommendation runtime이 재도입되지 않았는지 현재 verified surface 기준으로 점검했다.
+  - browse 지도 surface에서 level HUD / zoom button 비노출 구현과 live docs가 일치하는지 확인했다.
 - 결과:
   - PASS — auth bootstrap은 backend-owned session cookie + CSRF contract로 동작한다.
   - PASS — production/dev runtime path에서 frontend direct Supabase session listener는 제거된 상태다.
   - PASS — clean DB에서는 browse가 valid empty state로 내려오고, place/review write 후에는 persisted data를 다시 읽는다.
   - PASS — duplicate place / overwrite review semantics는 backend API 응답(`confirm_required`, `updated`)으로 유지된다.
   - PASS — 이번에 검증한 local runtime surface에서는 recommendation UI/action 재도입이 보이지 않았다.
+  - PASS — browse 지도 surface는 별도 level HUD / zoom button 없이 유지되고, map level state는 기존 browse/detail 동작과 함께 유지된다.
 
 ## Browser Automation QA Evidence
 - 실행 목적:
@@ -59,6 +64,7 @@
   - Preview smoke 2차 확인: `pnpm exec vercel curl / --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
   - Preview smoke 3차 확인: `pnpm exec vercel curl /places/smoke-place --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes`
   - Preview smoke 4차 확인: `pnpm exec vercel curl /assets/index-BDwYyS21.js --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes -- --head`
+  - local map chrome 확인: `pnpm exec vercel dev --local --listen 127.0.0.1:4174 --yes` 실행 후, Playwright inline runner로 `?auth_test_state=authenticated` + mocked `/api/place-list` + mocked Kakao runtime 조합에서 browse map shell을 캡처했다.
 - 확인한 시나리오:
   - local OTP request -> Mailpit 수신 -> OTP verify -> name entry -> authenticated shell 진입
   - `390x844` mobile에서 local auto-login bypass로 authenticated shell 진입
@@ -74,10 +80,12 @@
   - authenticated `vercel curl` 경로로 Preview URL의 `/`가 SPA HTML(`누리맵`, built asset reference 포함)을 반환하는지 확인
   - authenticated `vercel curl` 경로로 `/places/smoke-place`가 rewrite 후 동일한 SPA HTML을 반환하는지 확인
   - authenticated `vercel curl` 경로로 built JS asset(`/assets/index-BDwYyS21.js`)이 HTTP 200으로 내려오는지 확인
+  - local browser automation에서 desktop/mobile browse map shell에 `map-level`, `map-zoom-controls`, `지도 확대`, `지도 축소` UI가 노출되지 않는지 확인
 - 판정:
   - PASS — local Supabase + integrated runtime 기준 핵심 browse/detail/create/overwrite/session persistence 흐름이 통과했다.
   - PASS — API test files를 `api/` 밖으로 이동하고 `.vercelignore`를 추가한 뒤 Preview deployment가 성공했다.
   - PASS — authenticated `vercel curl` smoke 기준으로 `/`, `/places/smoke-place`, static asset boot가 모두 확인됐다.
+  - PASS — local mocked-runtime browser check에서 browse map shell에 level HUD / zoom button이 보이지 않았다.
   - NOTE — direct anonymous 접근은 여전히 Vercel deployment protection login wall(HTTP 401)로 보호된다. 이는 현재 protection posture이며, 이번 slice의 deploy/UI separation smoke 자체를 막지는 않았다.
 - 스크린샷 경로:
   - `artifacts/qa/sprint-20/local-otp-name-entry-success.png`
@@ -95,6 +103,8 @@
   - Preview smoke result: `artifacts/qa/sprint-20/preview-smoke-results.json`
   - Preview smoke summary (authenticated): `artifacts/qa/sprint-20/preview-smoke-summary-main.txt`
   - Preview screenshots: `artifacts/qa/sprint-20/preview-root.png`, `artifacts/qa/sprint-20/preview-place-rewrite.png`
+  - Map chrome check: `artifacts/qa/sprint-20/map-no-zoom-controls-desktop-mocked-runtime.png`, `artifacts/qa/sprint-20/map-no-zoom-controls-mobile-mocked-runtime.png`
+  - Map chrome check result: `artifacts/qa/sprint-20/map-no-zoom-controls-mocked-runtime-check.json`
   - Historical blocker log: `artifacts/qa/sprint-20/preview-deploy-blocker.txt`
 
 ## User QA Required
@@ -102,6 +112,7 @@
   - auth UX 유지 여부
   - empty-state browse + 첫 등록 흐름
   - review overwrite 체감
+  - browse 지도 surface가 이전보다 덜 복잡하고 자연스럽게 보이는지
 - 사용자 수행 절차:
   1. `make dev`로 integrated local runtime을 실행한다.
   2. 앱이 자동 로그인되면 browse/list 진입 흐름이 이전과 비교해 어색하지 않은지 확인한다.
