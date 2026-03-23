@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   __getPlaceEntryCacheSizeForTests,
   __resetPlaceEntryCaches,
@@ -7,6 +7,8 @@ import {
 
 describe('placeEntryService', () => {
   beforeEach(() => {
+    vi.unstubAllEnvs()
+    vi.stubEnv('KAKAO_REST_API_KEY', '')
     __resetPlaceEntryCaches()
   })
 

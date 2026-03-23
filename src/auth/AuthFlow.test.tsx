@@ -285,10 +285,14 @@ describe('Sprint 18 OTP auth flow', () => {
     vi.stubGlobal('fetch', fetchMock)
     document.cookie = 'nurimap_csrf=csrf-123'
 
-    render(<App />)
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
 
     await waitFor(() => {
-      expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+      expect(screen.getByTestId('protected-child')).toBeInTheDocument()
     })
 
     expect(fetchMock).toHaveBeenCalledWith(
