@@ -2,6 +2,9 @@ SHELL := /bin/zsh
 HOST ?= localhost
 PORT ?= 5173
 BROWSER_URL ?= http://$(HOST):$(PORT)
+SUPABASE_STUDIO_HOST ?= 127.0.0.1
+SUPABASE_STUDIO_PORT ?= 54323
+SUPABASE_STUDIO_URL ?= http://$(SUPABASE_STUDIO_HOST):$(SUPABASE_STUDIO_PORT)
 PORT_CHECK_CMD = lsof -nP -iTCP:$(PORT) -sTCP:LISTEN
 VERCEL_DEV_CMD = pnpm exec vercel dev --local --listen $(HOST):$(PORT) --yes
 
@@ -24,6 +27,7 @@ dev:
 	@$(MAKE) check
 	@printf '%s\n' "Starting Nurimap integrated runtime in local development mode."
 	@printf '%s\n' "App URL: $(BROWSER_URL)"
+	@printf '%s\n' "Supabase Studio: $(SUPABASE_STUDIO_URL)"
 	@printf '%s\n' "Make sure local Supabase is already running before exercising backend flows."
 	@set -a; \
 		[ -f ./.env ] && source ./.env; \
@@ -41,6 +45,7 @@ agentation:
 	@$(MAKE) check
 	@printf '%s\n' "Starting Nurimap with Agentation enabled in development mode."
 	@printf '%s\n' "App URL: $(BROWSER_URL)"
+	@printf '%s\n' "Supabase Studio: $(SUPABASE_STUDIO_URL)"
 	@printf '%s\n' "Make sure local Supabase is already running before exercising backend flows."
 	@printf '%s\n' "Agentation MCP endpoint: http://localhost:4747"
 	@printf '%s\n' "VITE_ENABLE_AGENTATION=true"
