@@ -193,6 +193,9 @@ describe('Sprint 16 place detail refresh', () => {
 
     expect(screen.getByTestId('mobile-detail-page')).toBeInTheDocument()
     expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('누리 식당')
+    expect(screen.getByTestId('detail-header')).toHaveStyle({
+      paddingTop: 'var(--nurimap-effective-top-inset, 0px)',
+    })
     expect(screen.getByTestId('detail-address')).toHaveTextContent('서울 마포구 양화로19길 22-16 1층')
     expect(screen.getByTestId('detail-added-by')).toHaveTextContent('김누리님이 추가한 장소')
     expect(screen.getByLabelText('뒤로 가기')).toBeInTheDocument()
@@ -252,6 +255,36 @@ describe('Sprint 16 place detail refresh', () => {
 
     expect(await screen.findByTestId('mobile-detail-page')).toBeInTheDocument()
     expect(await screen.findByTestId('detail-review-list')).toHaveTextContent('새 리뷰 작성 테스트')
+    expect(screen.getByTestId('detail-review-list')).toHaveTextContent('테스트 사용자')
+    expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.4 (9)')
+    expect(screen.queryByTestId('detail-review-cta')).not.toBeInTheDocument()
+  })
+
+  it('keeps a saved multiline review visible after returning to browse and reopening the same place', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+    await user.click(screen.getByTestId('review-add-rating-star-5'))
+    await user.type(screen.getByTestId('review-add-content-input'), '첫 줄\n둘째 줄')
+    await user.click(screen.getByTestId('review-add-submit-button'))
+
+    expect(await screen.findByTestId('mobile-detail-page')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
+
+    expect(window.location.pathname).toBe('/')
+    expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+
+    const savedReview = await screen.findByTestId('detail-review-content-review-place-cafe-1-mine')
+    expect(savedReview.textContent).toBe('첫 줄\n둘째 줄')
+    expect(savedReview).toHaveClass('whitespace-pre-line')
     expect(screen.getByTestId('detail-review-list')).toHaveTextContent('테스트 사용자')
     expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.4 (9)')
     expect(screen.queryByTestId('detail-review-cta')).not.toBeInTheDocument()

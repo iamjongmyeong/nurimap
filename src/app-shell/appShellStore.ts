@@ -17,7 +17,7 @@ export type NavigationState =
   | 'place_detail_open'
 
 export type DetailChildSurface = 'detail' | 'add_rating'
-export type PlaceListLoadState = 'idle' | 'loading' | 'empty' | 'ready' | 'error'
+export type PlaceListLoadState = 'idle' | 'loading' | 'ready' | 'error'
 export type PlaceDetailLoadState = 'idle' | 'loading' | 'ready' | 'error'
 
 type AppShellState = {
@@ -103,7 +103,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       const places = await loadPlaceList()
       set({
         places,
-        placeListLoad: places.length === 0 ? 'empty' : 'ready',
+        placeListLoad: 'ready',
       })
     } catch {
       set({ placeListLoad: 'error' })

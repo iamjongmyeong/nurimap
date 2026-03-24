@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
-import { resetAppShellStore, useAppShellStore } from './app-shell/appShellStore'
+import { resetAppShellStore } from './app-shell/appShellStore'
 import { MOCK_PLACES } from './app-shell/mockPlaces'
 
 const originalFetch = globalThis.fetch
@@ -44,11 +44,16 @@ const createAppShellFetchMock = () =>
     return new Response(JSON.stringify({ status: 'missing' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   })
 
-const setViewport = (width: number) => {
+const setViewport = (width: number, height = 844) => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
     writable: true,
     value: width,
+  })
+  Object.defineProperty(window, 'innerHeight', {
+    configurable: true,
+    writable: true,
+    value: height,
   })
 
   act(() => {
@@ -95,8 +100,18 @@ describe('Nurimap app shell', () => {
     setViewport(390)
     render(<App />)
 
+    expect(screen.getByTestId('mobile-shell')).toHaveClass('h-[100dvh]', 'min-h-[100dvh]', 'overflow-hidden')
+    expect(screen.getByTestId('mobile-shell')).toHaveStyle({
+      height: 'var(--nurimap-viewport-height, 100dvh)',
+      minHeight: 'var(--nurimap-viewport-height, 100dvh)',
+    })
     expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('map-canvas')).toHaveClass('h-full', 'min-h-0')
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveClass('fixed')
+    expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveStyle({
+      paddingBottom: 'var(--nurimap-effective-bottom-inset, 0px)',
+    })
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveClass('h-14')
     expect(screen.getByTestId('mobile-bottom-tab-bar').className).not.toContain('shadow-[')
     expect(screen.getByTestId('mobile-bottom-tab-bar').className).toContain('before:bg-[#f0f0f0]')
@@ -128,9 +143,17 @@ describe('Nurimap app shell', () => {
 
     expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
     expect(screen.getByTestId('mobile-list-header')).toContainElement(screen.getByAltText('Nurimedia 로고'))
-    expect(screen.getByTestId('mobile-list-header')).toHaveClass('pl-6', 'pr-5', 'pt-6', 'pb-4')
+    expect(screen.getByTestId('mobile-list-header-content')).toHaveClass('pl-6', 'pr-5', 'pt-6', 'pb-4')
+    expect(screen.getByTestId('mobile-list-header')).toHaveStyle({
+      paddingTop: 'var(--nurimap-effective-top-inset, 0px)',
+    })
     expect(screen.getByTestId('mobile-list-header').className).not.toContain('border-b')
     expect(screen.getByTestId('mobile-list-page')).toHaveTextContent('누리맵')
+    expect(screen.getByTestId('mobile-list-page')).toHaveClass('h-full', 'min-h-0', 'overflow-hidden', 'pb-14')
+    expect(screen.getByTestId('mobile-list-page')).toHaveStyle({
+      paddingBottom: 'calc(56px + var(--nurimap-effective-bottom-inset, 0px))',
+    })
+    expect(screen.getByTestId('mobile-list-scroll-region')).toHaveClass('overflow-y-auto', 'overscroll-contain')
     expect(screen.getByTestId('mobile-list-logout-button')).toHaveAccessibleName('로그아웃')
     expect(screen.getByTestId('mobile-list-logout-button')).toHaveClass('h-6', 'w-6')
     expect(screen.getByTestId('mobile-list-logout-button').className).not.toContain('border')
@@ -147,6 +170,53 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'false')
     expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-black.svg')
     expect(screen.getByTestId('mobile-tab-list-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-list-gray.svg')
+  })
+
+  it('locks document scroll for the mobile shell and restores it on unmount', () => {
+    setViewport(390)
+    const { unmount } = render(<App />)
+
+    expect(document.documentElement.style.overflow).toBe('hidden')
+    expect(document.body.style.overflow).toBe('hidden')
+    expect(document.body.style.overscrollBehavior).toBe('none')
+    expect(document.documentElement.style.getPropertyValue('--nurimap-viewport-height')).toBe('844px')
+
+    unmount()
+
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.body.style.overflow).toBe('')
+    expect(document.body.style.overscrollBehavior).toBe('')
+  })
+
+  it('hydrates safe-area viewport variables from visualViewport metrics for embedded webviews', () => {
+    const originalVisualViewport = window.visualViewport
+    const addEventListener = vi.fn()
+    const removeEventListener = vi.fn()
+
+    setViewport(390, 844)
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: {
+        height: 780,
+        offsetTop: 24,
+        addEventListener,
+        removeEventListener,
+      },
+    })
+
+    const { unmount } = render(<App />)
+
+    expect(document.documentElement.style.getPropertyValue('--nurimap-viewport-height')).toBe('780px')
+    expect(document.documentElement.style.getPropertyValue('--nurimap-viewport-offset-top')).toBe('24px')
+    expect(document.documentElement.style.getPropertyValue('--nurimap-viewport-offset-bottom')).toBe('40px')
+    expect(addEventListener).toHaveBeenCalledWith('resize', expect.any(Function))
+    expect(addEventListener).toHaveBeenCalledWith('scroll', expect.any(Function))
+
+    unmount()
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: originalVisualViewport,
+    })
   })
 
   it('does not render the mobile bottom tab bar on desktop', () => {
@@ -166,11 +236,4 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('desktop-add-button')).toHaveClass('h-9')
   })
 
-  it('renders the empty state when the list state is empty', () => {
-    setViewport(1280)
-    useAppShellStore.setState({ placeListLoad: 'empty' })
-    render(<App />)
-
-    expect(screen.getByText('아직 등록된 장소가 없어요')).toBeInTheDocument()
-  })
 })

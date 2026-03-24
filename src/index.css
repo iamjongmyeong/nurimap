@@ -73,6 +73,13 @@
 }
 
 :root {
+  --nurimap-safe-area-top: env(safe-area-inset-top, 0px);
+  --nurimap-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --nurimap-viewport-height: 100dvh;
+  --nurimap-viewport-offset-top: 0px;
+  --nurimap-viewport-offset-bottom: 0px;
+  --nurimap-effective-top-inset: max(var(--nurimap-safe-area-top), var(--nurimap-viewport-offset-top));
+  --nurimap-effective-bottom-inset: max(var(--nurimap-safe-area-bottom), var(--nurimap-viewport-offset-bottom));
   color: rgba(15, 23, 42, 1);
   background: rgba(248, 250, 252, 1);
   font-family:
@@ -93,12 +100,13 @@
 html,
 body,
 #root {
+  height: 100%;
   min-height: 100%;
   margin: 0;
 }
 
 body {
-  min-height: 100vh;
+  min-height: var(--nurimap-viewport-height, 100dvh);
 }
 
 button {

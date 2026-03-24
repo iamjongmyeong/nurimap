@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { MapPane } from './MapPane'
 import { useAuth } from '../auth/authContext'
 import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
@@ -78,20 +78,28 @@ const BROWSE_BOOTSTRAP_RETRY_LABEL = '다시 시도'
 const STAR_PATH =
   'M11.9995 19.3643L6.46613 22.6977C6.22168 22.8532 5.96613 22.9199 5.69946 22.8977C5.4328 22.8754 5.19946 22.7865 4.99946 22.631C4.79946 22.4754 4.64391 22.2812 4.5328 22.0483C4.42168 21.8154 4.39946 21.5541 4.46613 21.2643L5.9328 14.9643L1.0328 10.731C0.810573 10.531 0.671906 10.303 0.616795 10.047C0.561684 9.79099 0.578129 9.54121 0.666129 9.29766C0.754129 9.0541 0.887462 8.8541 1.06613 8.69766C1.2448 8.54121 1.48924 8.44121 1.79946 8.39766L8.26613 7.83099L10.7661 1.89766C10.8772 1.63099 11.0497 1.43099 11.2835 1.29766C11.5172 1.16432 11.7559 1.09766 11.9995 1.09766C12.243 1.09766 12.4817 1.16432 12.7155 1.29766C12.9492 1.43099 13.1217 1.63099 13.2328 1.89766L15.7328 7.83099L22.1995 8.39766C22.5106 8.4421 22.755 8.5421 22.9328 8.69766C23.1106 8.85321 23.2439 9.05321 23.3328 9.29766C23.4217 9.5421 23.4386 9.79232 23.3835 10.0483C23.3284 10.3043 23.1892 10.5319 22.9661 10.731L18.0661 14.9643L19.5328 21.2643C19.5995 21.5532 19.5772 21.8145 19.4661 22.0483C19.355 22.2821 19.1995 22.4763 18.9995 22.631C18.7995 22.7857 18.5661 22.8745 18.2995 22.8977C18.0328 22.9208 17.7772 22.8541 17.5328 22.6977L11.9995 19.3643Z'
 const SECONDARY_BUTTON_CLASSES = 'inline-flex items-center justify-center rounded-full border border-[#d9d8e6] bg-white px-4 py-3 text-sm font-semibold text-[#222127] transition hover:border-[#c8c7d7] hover:bg-[#fafaff] disabled:cursor-not-allowed disabled:opacity-50'
+const MOBILE_SHELL_CLASS = 'relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-white md:hidden'
+const MOBILE_SURFACE_CLASS = 'absolute inset-0 flex h-full min-h-0 flex-col bg-white overflow-hidden'
+const MOBILE_SCROLL_REGION_CLASS = 'flex-1 overflow-y-auto overscroll-contain'
+const MOBILE_SHELL_STYLE: CSSProperties = {
+  height: 'var(--nurimap-viewport-height, 100dvh)',
+  minHeight: 'var(--nurimap-viewport-height, 100dvh)',
+}
+const MOBILE_SAFE_AREA_TOP_STYLE: CSSProperties = {
+  paddingTop: 'var(--nurimap-effective-top-inset, 0px)',
+}
+const MOBILE_SAFE_AREA_BOTTOM_STYLE: CSSProperties = {
+  paddingBottom: 'var(--nurimap-effective-bottom-inset, 0px)',
+}
+const MOBILE_BOTTOM_BAR_SPACER_STYLE: CSSProperties = {
+  paddingBottom: 'calc(56px + var(--nurimap-effective-bottom-inset, 0px))',
+}
 const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
 
 const resizeAddRatingTextarea = (textarea: HTMLTextAreaElement) => {
   textarea.style.height = `${ADD_RATING_TEXTAREA_MIN_HEIGHT}px`
   textarea.style.height = `${Math.max(textarea.scrollHeight, ADD_RATING_TEXTAREA_MIN_HEIGHT)}px`
 }
-
-
-const EmptyState = () => (
-  <div className="rounded-[28px] border border-dashed border-[#d9d9e7] bg-white px-5 py-8 text-left shadow-[0_20px_60px_rgba(40,47,88,0.08)]">
-    <p className="text-sm font-semibold text-[#222127]">아직 등록된 장소가 없어요</p>
-    <p className="mt-2 text-sm leading-6 text-[#7e7b8b]">조건에 맞는 장소가 생기면 이 영역에 먼저 보여드릴게요.</p>
-  </div>
-)
 
 const BrowseBootstrapState = ({
   mode,
@@ -101,7 +109,7 @@ const BrowseBootstrapState = ({
   onRetry?: () => void
 }) => (
   <div
-    className="flex min-h-screen w-full items-center justify-center bg-[#f7f6fb] px-6 py-10"
+    className="flex h-full min-h-0 w-full items-center justify-center bg-[#f7f6fb] px-6 py-10"
     data-testid={mode === 'loading' ? 'browse-bootstrap-loading' : 'browse-bootstrap-error'}
   >
     <div className="w-full max-w-sm rounded-[32px] bg-white px-6 py-7 text-center shadow-[0_24px_72px_rgba(15,23,42,0.12)]">
@@ -377,12 +385,12 @@ const PlaceListPanel = ({
   status: PlaceListLoadState
   onSelect: (placeId: string) => void
 }) => {
-  if (status !== 'ready' && status !== 'empty') {
+  if (status !== 'ready') {
     return null
   }
 
-  if (status === 'empty' || places.length === 0) {
-    return <EmptyState />
+  if (places.length === 0) {
+    return null
   }
 
   return (
@@ -455,7 +463,7 @@ const ReviewItem = ({ review }: { review: PlaceSummary['reviews'][number] }) => 
     <span className="sr-only">{review.rating_score.toFixed(1)}</span>
     <ReviewStars rating={review.rating_score} />
     {review.content.trim() !== '' ? (
-      <p className="text-sm leading-6 text-[#1f1f1f]" data-testid={`detail-review-content-${review.id}`}>
+      <p className="whitespace-pre-line text-sm leading-6 text-[#1f1f1f]" data-testid={`detail-review-content-${review.id}`}>
         {review.content}
       </p>
     ) : null}
@@ -553,8 +561,8 @@ const DetailHeader = ({
   onBack: () => void
   title: string
 }) => (
-  <div className="sticky top-0 z-10 h-14 bg-white" data-testid="detail-header">
-    <div className="relative h-full">
+  <div className="sticky top-0 z-10 shrink-0 bg-white" data-testid="detail-header" style={MOBILE_SAFE_AREA_TOP_STYLE}>
+    <div className="relative h-14">
       <button
         aria-label={ariaLabel}
         className="absolute left-6 top-6 inline-flex h-6 w-6 cursor-pointer items-center justify-center text-[#1f1f1f]"
@@ -596,9 +604,9 @@ const DetailOverviewScreen = ({
   place: PlaceSummary | undefined
   status: PlaceDetailLoadState
 }) => (
-  <div className="flex h-full flex-col bg-white">
+  <div className="flex h-full min-h-0 flex-col bg-white">
     <DetailHeader ariaLabel={backLabel} onBack={onBack} title="장소 상세" />
-    <div className="flex-1 overflow-auto">
+    <div className={MOBILE_SCROLL_REGION_CLASS} data-testid="detail-scroll-region">
       <DetailBody onRetry={onRetry} place={place} status={status} />
     </div>
     {status === 'ready' && place && !place.my_review ? <DetailFooterCta onClick={onOpenAddRating} /> : null}
@@ -681,9 +689,9 @@ const AddRatingScreen = ({
   }
 
   return (
-    <div className="flex h-full flex-col bg-white" data-testid="mobile-review-add-page">
+    <div className="flex h-full min-h-0 flex-col bg-white" data-testid="mobile-review-add-page">
       <DetailHeader ariaLabel="뒤로 가기" onBack={onBack} title="평가 남기기" />
-      <div className="flex-1 overflow-auto px-6 pb-6 pt-6">
+      <div className={`${MOBILE_SCROLL_REGION_CLASS} px-6 pb-6 pt-6`} data-testid="detail-add-rating-scroll-region">
         <div className="mx-auto flex w-full flex-col" data-testid="review-add-surface">
           {place ? (
             <>
@@ -904,8 +912,9 @@ const MobileBottomTabBar = ({ activeTab }: { activeTab: MobilePrimaryTab }) => {
   return (
     <nav
       aria-label="모바일 하단 탭"
-      className="absolute inset-x-0 bottom-0 z-30 h-14 bg-white before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[#f0f0f0] before:content-['']"
+      className="fixed inset-x-0 bottom-0 z-30 h-14 bg-white before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[#f0f0f0] before:content-['']"
       data-testid="mobile-bottom-tab-bar"
+      style={MOBILE_SAFE_AREA_BOTTOM_STYLE}
     >
       <div className="grid h-14 grid-cols-3 items-center" data-testid="mobile-bottom-tab-bar-grid">
         <MobileBottomTabButton active={activeTab === 'map'} onClick={returnToMapBrowse} testId="mobile-tab-map">
@@ -957,23 +966,25 @@ const MobileListPage = ({
   }
 
   return (
-    <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-white pb-14" data-testid="mobile-list-page">
-      <div className="shrink-0 bg-white pb-4 pl-6 pr-5 pt-6" data-testid="mobile-list-header">
-        <div className="flex items-center justify-between gap-3">
-          <DesktopBrowseBrand />
-          <button
-            aria-label="로그아웃"
-            className="inline-flex h-6 w-6 items-center justify-center rounded-[10px] bg-white text-[#7a7a7a] transition hover:text-[#e52e30]"
-            data-testid="mobile-list-logout-button"
-            onClick={handleSignOut}
-            type="button"
-          >
-            <LogoutIcon className="h-4 w-4" />
-            <span className="sr-only">로그아웃</span>
-          </button>
+    <section className={`${MOBILE_SURFACE_CLASS} z-20 pb-14`} data-testid="mobile-list-page" style={MOBILE_BOTTOM_BAR_SPACER_STYLE}>
+      <div className="shrink-0 bg-white" data-testid="mobile-list-header" style={MOBILE_SAFE_AREA_TOP_STYLE}>
+        <div className="pb-4 pl-6 pr-5 pt-6" data-testid="mobile-list-header-content">
+          <div className="flex items-center justify-between gap-3">
+            <DesktopBrowseBrand />
+            <button
+              aria-label="로그아웃"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-[10px] bg-white text-[#7a7a7a] transition hover:text-[#e52e30]"
+              data-testid="mobile-list-logout-button"
+              onClick={handleSignOut}
+              type="button"
+            >
+              <LogoutIcon className="h-4 w-4" />
+              <span className="sr-only">로그아웃</span>
+            </button>
+          </div>
         </div>
       </div>
-      <div className="flex-1 overflow-auto bg-white">
+      <div className={`${MOBILE_SCROLL_REGION_CLASS} bg-white`} data-testid="mobile-list-scroll-region">
         <PlaceListPanel
           onSelect={onOpenPlaceDetail}
           places={placeListLoad === 'ready' ? places : []}
@@ -1006,14 +1017,14 @@ const MobileDetailPage = ({
 }) => {
   if (detailChildSurface === 'add_rating') {
     return (
-      <section className="absolute inset-0 z-30 flex min-h-screen flex-col bg-white">
+      <section className={`${MOBILE_SURFACE_CLASS} z-30`}>
         <AddRatingScreen key={place?.id ?? 'missing-place'} onBack={onAddRatingBack} onSubmit={onSubmitReview} place={place} />
       </section>
     )
   }
 
   return (
-    <section className="absolute inset-0 z-30 flex min-h-screen flex-col bg-white" data-testid="mobile-detail-page">
+    <section className={`${MOBILE_SURFACE_CLASS} z-30`} data-testid="mobile-detail-page">
       <DetailOverviewScreen
         backLabel={backLabel}
         onBack={onBrowseBack}
@@ -1027,12 +1038,16 @@ const MobileDetailPage = ({
 }
 
 const DesktopAppShell = ({
+  browseFocusNonce,
+  browseFocusPlaceId,
   navigationState,
   mapPlaces,
   onOpenPlaceDetail,
   onReturnToMapBrowse,
   selectedPlace,
 }: {
+  browseFocusNonce: number
+  browseFocusPlaceId: string | null
   navigationState: NavigationState
   mapPlaces: PlaceSummary[]
   onOpenPlaceDetail: (placeId: string) => void
@@ -1044,7 +1059,7 @@ const DesktopAppShell = ({
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
 
   return (
-    <main className="hidden md:flex" data-testid="desktop-shell">
+    <main className="hidden h-screen md:flex" data-testid="desktop-shell">
       <DesktopSidebar
         navigationState={navigationState}
         onOpenPlaceDetail={onOpenPlaceDetail}
@@ -1053,8 +1068,10 @@ const DesktopAppShell = ({
         selectedPlace={selectedPlace}
         selectedPlaceId={selectedPlaceId}
       />
-      <section className="relative isolate flex-1 min-h-screen bg-[#f7f6fb]">
+      <section className="relative isolate flex-1 bg-[#f7f6fb]">
         <MapPane
+          browseFocusNonce={browseFocusNonce}
+          browseFocusPlaceId={browseFocusPlaceId}
           mapLevel={mapLevel}
           onMapLevelChange={setMapLevel}
           onMarkerSelect={onOpenPlaceDetail}
@@ -1067,6 +1084,8 @@ const DesktopAppShell = ({
 }
 
 const MobileAppShell = ({
+  browseFocusNonce,
+  browseFocusPlaceId,
   detailChildSurface,
   navigationState,
   mapPlaces,
@@ -1077,6 +1096,8 @@ const MobileAppShell = ({
   onSubmitReview,
   selectedPlace,
 }: {
+  browseFocusNonce: number
+  browseFocusPlaceId: string | null
   detailChildSurface: 'detail' | 'add_rating'
   navigationState: NavigationState
   mapPlaces: PlaceSummary[]
@@ -1100,8 +1121,10 @@ const MobileAppShell = ({
     navigationState === 'map_browse' || navigationState === 'mobile_place_list_open'
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-white md:hidden" data-testid="mobile-shell">
+    <main className={MOBILE_SHELL_CLASS} data-testid="mobile-shell" style={MOBILE_SHELL_STYLE}>
       <MapPane
+        browseFocusNonce={browseFocusNonce}
+        browseFocusPlaceId={browseFocusPlaceId}
         mapLevel={mapLevel}
         onMapLevelChange={setMapLevel}
         onMarkerSelect={onOpenPlaceDetail}
@@ -1174,6 +1197,14 @@ export const NurimapAppShell = () => {
   const setMapLevel = useAppShellStore((state) => state.setMapLevel)
   const { retry: retryMapRuntime, status: mapRuntimeStatus } = useKakaoScript()
   const { csrfHeaderName, csrfToken } = useAuth()
+  const skipNextBrowseRestoreRef = useRef(false)
+  const [browseMapFocus, setBrowseMapFocus] = useState<{
+    nonce: number
+    placeId: string | null
+  }>({
+    nonce: 0,
+    placeId: null,
+  })
   const mapPlaces = places.filter(hasCoordinates)
   const routePlaceId = getPlaceIdFromPathname(pathname)
   const routeSelectedPlace = routePlaceId
@@ -1184,6 +1215,17 @@ export const NurimapAppShell = () => {
     : places.find((place) => place.id === selectedPlaceId)
   const effectiveNavigationState = routePlaceId ? 'place_detail_open' : navigationState
   const effectiveDetailChildSurface = routePlaceId ? detailChildSurface : 'detail'
+
+  const armBrowseMapFocus = useCallback((placeId: string | null) => {
+    if (!placeId) {
+      return
+    }
+
+    setBrowseMapFocus((current) => ({
+      nonce: current.nonce + 1,
+      placeId,
+    }))
+  }, [])
 
   useEffect(() => {
     if (placeListLoad !== 'idle') {
@@ -1210,6 +1252,11 @@ export const NurimapAppShell = () => {
         return
       }
 
+      if (skipNextBrowseRestoreRef.current) {
+        skipNextBrowseRestoreRef.current = false
+      } else {
+        armBrowseMapFocus(routePlaceId ?? selectedPlaceId)
+      }
       returnToMapBrowse()
     }
 
@@ -1217,7 +1264,72 @@ export const NurimapAppShell = () => {
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [returnToMapBrowse, syncDetailChildSurface])
+  }, [armBrowseMapFocus, returnToMapBrowse, routePlaceId, selectedPlaceId, syncDetailChildSurface])
+
+  useEffect(() => {
+    if (isDesktop) {
+      const html = document.documentElement
+      html.style.removeProperty('--nurimap-viewport-height')
+      html.style.removeProperty('--nurimap-viewport-offset-top')
+      html.style.removeProperty('--nurimap-viewport-offset-bottom')
+      return
+    }
+
+    const html = document.documentElement
+    const body = document.body
+    const previousHtmlOverflow = html.style.overflow
+    const previousBodyOverflow = body.style.overflow
+    const previousBodyOverscroll = body.style.overscrollBehavior
+
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    body.style.overscrollBehavior = 'none'
+
+    return () => {
+      html.style.overflow = previousHtmlOverflow
+      body.style.overflow = previousBodyOverflow
+      body.style.overscrollBehavior = previousBodyOverscroll
+    }
+  }, [isDesktop])
+
+  useEffect(() => {
+    if (isDesktop) {
+      return
+    }
+
+    const html = document.documentElement
+
+    const syncViewportMetrics = () => {
+      const visualViewport = window.visualViewport
+      const viewportHeight = Math.round(visualViewport?.height ?? window.innerHeight)
+      const viewportOffsetTop = Math.max(0, Math.round(visualViewport?.offsetTop ?? 0))
+      const viewportOffsetBottom = Math.max(
+        0,
+        Math.round(window.innerHeight - ((visualViewport?.height ?? window.innerHeight) + (visualViewport?.offsetTop ?? 0))),
+      )
+
+      html.style.setProperty('--nurimap-viewport-height', `${viewportHeight}px`)
+      html.style.setProperty('--nurimap-viewport-offset-top', `${viewportOffsetTop}px`)
+      html.style.setProperty('--nurimap-viewport-offset-bottom', `${viewportOffsetBottom}px`)
+    }
+
+    syncViewportMetrics()
+
+    window.addEventListener('resize', syncViewportMetrics)
+    window.addEventListener('orientationchange', syncViewportMetrics)
+    window.visualViewport?.addEventListener('resize', syncViewportMetrics)
+    window.visualViewport?.addEventListener('scroll', syncViewportMetrics)
+
+    return () => {
+      window.removeEventListener('resize', syncViewportMetrics)
+      window.removeEventListener('orientationchange', syncViewportMetrics)
+      window.visualViewport?.removeEventListener('resize', syncViewportMetrics)
+      window.visualViewport?.removeEventListener('scroll', syncViewportMetrics)
+      html.style.removeProperty('--nurimap-viewport-height')
+      html.style.removeProperty('--nurimap-viewport-offset-top')
+      html.style.removeProperty('--nurimap-viewport-offset-bottom')
+    }
+  }, [isDesktop])
 
   useEffect(() => {
     if (!routePlaceId) {
@@ -1262,6 +1374,8 @@ export const NurimapAppShell = () => {
   }
 
   const handleReturnToMapBrowse = () => {
+    armBrowseMapFocus(routePlaceId ?? selectedPlaceId)
+    skipNextBrowseRestoreRef.current = true
     returnToMapBrowse()
     navigateToPath('/', true)
   }
@@ -1331,11 +1445,11 @@ export const NurimapAppShell = () => {
 
   if (isBrowseSurface && isBrowseBootstrapLoading) {
     return isDesktop ? (
-      <main className="hidden md:flex" data-testid="desktop-shell">
+      <main className="hidden h-screen md:flex" data-testid="desktop-shell">
         <BrowseBootstrapState mode="loading" />
       </main>
     ) : (
-      <main className="relative min-h-screen overflow-hidden bg-white md:hidden" data-testid="mobile-shell">
+      <main className={MOBILE_SHELL_CLASS} data-testid="mobile-shell" style={MOBILE_SHELL_STYLE}>
         <BrowseBootstrapState mode="loading" />
       </main>
     )
@@ -1343,11 +1457,11 @@ export const NurimapAppShell = () => {
 
   if (isBrowseSurface && hasBrowseBootstrapError) {
     return isDesktop ? (
-      <main className="hidden md:flex" data-testid="desktop-shell">
+      <main className="hidden h-screen md:flex" data-testid="desktop-shell">
         <BrowseBootstrapState mode="error" onRetry={() => { void handleRetryBrowseBootstrap() }} />
       </main>
     ) : (
-      <main className="relative min-h-screen overflow-hidden bg-white md:hidden" data-testid="mobile-shell">
+      <main className={MOBILE_SHELL_CLASS} data-testid="mobile-shell" style={MOBILE_SHELL_STYLE}>
         <BrowseBootstrapState mode="error" onRetry={() => { void handleRetryBrowseBootstrap() }} />
       </main>
     )
@@ -1355,6 +1469,8 @@ export const NurimapAppShell = () => {
 
   return isDesktop ? (
     <DesktopAppShell
+      browseFocusNonce={browseMapFocus.nonce}
+      browseFocusPlaceId={browseMapFocus.placeId}
       navigationState={effectiveNavigationState}
       mapPlaces={mapPlaces}
       onOpenPlaceDetail={handleOpenPlaceDetail}
@@ -1363,6 +1479,8 @@ export const NurimapAppShell = () => {
     />
   ) : (
     <MobileAppShell
+      browseFocusNonce={browseMapFocus.nonce}
+      browseFocusPlaceId={browseMapFocus.placeId}
       detailChildSurface={effectiveDetailChildSurface}
       navigationState={effectiveNavigationState}
       mapPlaces={mapPlaces}

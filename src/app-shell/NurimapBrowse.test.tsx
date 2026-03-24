@@ -6,6 +6,90 @@ import { resetAppShellStore, useAppShellStore } from './appShellStore'
 
 const originalFetch = globalThis.fetch
 
+const installKakaoRuntimeMock = () => {
+  let currentLevel = 3
+  const panTo = vi.fn()
+  const setLevel = vi.fn((level: number) => {
+    currentLevel = level
+  })
+  const mapInstance = {
+    getLevel: () => currentLevel,
+    panTo,
+    setLevel,
+  }
+
+  class MockLatLng {
+    latitude: number
+    longitude: number
+
+    constructor(latitude: number, longitude: number) {
+      this.latitude = latitude
+      this.longitude = longitude
+    }
+  }
+
+  class MockMarker {
+    setMap = vi.fn()
+    options: unknown
+
+    constructor(options: unknown) {
+      this.options = options
+    }
+  }
+
+  class MockMarkerImage {
+    source: string
+    size: unknown
+
+    constructor(source: string, size: unknown) {
+      this.source = source
+      this.size = size
+    }
+  }
+
+  class MockSize {
+    width: number
+    height: number
+
+    constructor(width: number, height: number) {
+      this.width = width
+      this.height = height
+    }
+  }
+
+  class MockOverlay {
+    setMap = vi.fn()
+    options: unknown
+
+    constructor(options: unknown) {
+      this.options = options
+    }
+  }
+
+  window.kakao = {
+    maps: {
+      load: (callback: () => void) => callback(),
+      Map: vi.fn(function MockMap() {
+        return mapInstance
+      }) as unknown as NonNullable<typeof window.kakao>['maps']['Map'],
+      LatLng: MockLatLng as unknown as NonNullable<typeof window.kakao>['maps']['LatLng'],
+      Marker: MockMarker as unknown as NonNullable<typeof window.kakao>['maps']['Marker'],
+      MarkerImage: MockMarkerImage as unknown as NonNullable<typeof window.kakao>['maps']['MarkerImage'],
+      Size: MockSize as unknown as NonNullable<typeof window.kakao>['maps']['Size'],
+      CustomOverlay: MockOverlay as unknown as NonNullable<typeof window.kakao>['maps']['CustomOverlay'],
+      event: {
+        addListener: vi.fn(),
+      },
+    },
+  }
+
+  return {
+    mapInstance,
+    panTo,
+    setLevel,
+  }
+}
+
 const cloneMockPlace = (placeId: string) => {
   const matched = MOCK_PLACES.find((place) => place.id === placeId)
   if (!matched) return null
@@ -349,6 +433,49 @@ describe('Sprint 16 browse refresh', () => {
     expect(screen.getByTestId('mobile-detail-page')).toBeInTheDocument()
     expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('장소 상세')
     expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('누리 식당')
+  })
+
+  it('does not pan the Kakao map on initial detail open, but restores focus once on in-app back', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    const { panTo, setLevel } = installKakaoRuntimeMock()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
+
+    expect(window.location.pathname).toBe('/places/place-restaurant-1')
+    expect(useAppShellStore.getState().mapLevel).toBe(2)
+    expect(setLevel).toHaveBeenCalledWith(2)
+    expect(panTo).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
+
+    expect(window.location.pathname).toBe('/')
+    expect(panTo).toHaveBeenCalledTimes(1)
+  })
+
+  it('restores Kakao map focus once on browser/history back without reintroducing initial-open pan', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    const { panTo, setLevel } = installKakaoRuntimeMock()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+
+    expect(window.location.pathname).toBe('/places/place-cafe-1')
+    expect(useAppShellStore.getState().mapLevel).toBe(2)
+    expect(setLevel).toHaveBeenCalledWith(2)
+    expect(panTo).not.toHaveBeenCalled()
+
+    act(() => {
+      window.history.replaceState({}, '', '/')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+
+    expect(window.location.pathname).toBe('/')
+    expect(panTo).toHaveBeenCalledTimes(1)
   })
 
   it('renders the unified loading state while browse data is still bootstrapping', () => {

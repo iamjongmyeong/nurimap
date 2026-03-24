@@ -9,6 +9,8 @@ import {
 } from './useKakaoScript'
 
 type MapPaneProps = {
+  browseFocusNonce: number
+  browseFocusPlaceId: string | null
   places: PlaceSummary[]
   selectedPlaceId: string | null
   mapLevel: number
@@ -234,6 +236,7 @@ const MapMarkerLabel = ({
 )
 
 const FallbackMapPane = ({
+  browseFocusPlaceId,
   places,
   selectedPlaceId,
   mapLevel,
@@ -247,7 +250,7 @@ const FallbackMapPane = ({
     () => getMapZoomPresentation(mapLevel),
     [mapLevel],
   )
-  const focusedPlace = visiblePlaces.find((place) => place.id === selectedPlaceId) ?? null
+  const focusedPlace = visiblePlaces.find((place) => place.id === browseFocusPlaceId) ?? null
   const focusCenter = focusedPlace
     ? { latitude: focusedPlace.latitude, longitude: focusedPlace.longitude }
     : MAP_INITIAL_CENTER
@@ -255,7 +258,7 @@ const FallbackMapPane = ({
   return (
     <div
       aria-label="지도 캔버스"
-      className="relative z-0 h-full min-h-screen overflow-hidden bg-slate-900"
+      className="relative z-0 h-full min-h-0 overflow-hidden bg-slate-900"
       data-testid="map-canvas"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,197,94,0.25),_transparent_25%),linear-gradient(135deg,_rgba(15,23,42,1)_0%,_rgba(30,41,59,1)_45%,_rgba(59,130,246,0.35)_100%)]" />
@@ -328,7 +331,7 @@ const FallbackMapPane = ({
 const MapLoadingPane = () => (
   <div
     aria-label="지도 캔버스"
-    className="relative z-0 flex min-h-screen items-center justify-center overflow-hidden bg-[#edf2f7]"
+    className="relative z-0 flex h-full min-h-0 items-center justify-center overflow-hidden bg-[#edf2f7]"
     data-testid="map-canvas"
   >
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(148,163,184,0.18),_transparent_28%),linear-gradient(180deg,_rgba(248,250,252,1)_0%,_rgba(237,242,247,1)_100%)]" />
@@ -342,7 +345,7 @@ const MapLoadingPane = () => (
 const MapErrorPane = ({ onRetry }: { onRetry: () => void }) => (
   <div
     aria-label="지도 캔버스"
-    className="relative z-0 flex min-h-screen items-center justify-center overflow-hidden bg-[#edf2f7]"
+    className="relative z-0 flex h-full min-h-0 items-center justify-center overflow-hidden bg-[#edf2f7]"
     data-testid="map-canvas"
   >
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(148,163,184,0.18),_transparent_28%),linear-gradient(180deg,_rgba(248,250,252,1)_0%,_rgba(237,242,247,1)_100%)]" />
@@ -357,6 +360,8 @@ const MapErrorPane = ({ onRetry }: { onRetry: () => void }) => (
 )
 
 export const MapPane = ({
+  browseFocusNonce,
+  browseFocusPlaceId,
   places,
   selectedPlaceId,
   mapLevel,
@@ -444,14 +449,14 @@ export const MapPane = ({
 
   useEffect(() => {
     const map = kakaoMapRef.current
-    const selectedPlace = visiblePlaces.find((place) => place.id === selectedPlaceId)
+    const focusPlace = visiblePlaces.find((place) => place.id === browseFocusPlaceId)
 
-    if (!map || !selectedPlace || !window.kakao?.maps) {
+    if (!map || !focusPlace || !window.kakao?.maps) {
       return
     }
 
-    map.panTo(new window.kakao.maps.LatLng(selectedPlace.latitude, selectedPlace.longitude))
-  }, [selectedPlaceId, visiblePlaces])
+    map.panTo(new window.kakao.maps.LatLng(focusPlace.latitude, focusPlace.longitude))
+  }, [browseFocusNonce, browseFocusPlaceId, visiblePlaces])
 
   useEffect(() => {
     const map = kakaoMapRef.current
@@ -467,6 +472,8 @@ export const MapPane = ({
   if (status === 'fallback') {
     return (
       <FallbackMapPane
+        browseFocusNonce={browseFocusNonce}
+        browseFocusPlaceId={browseFocusPlaceId}
         mapLevel={mapLevel}
         onMapLevelChange={onMapLevelChange}
         onMarkerSelect={onMarkerSelect}
@@ -485,8 +492,8 @@ export const MapPane = ({
   }
 
   return (
-    <div className="relative z-0 h-full min-h-screen overflow-hidden bg-slate-900" data-testid="map-canvas">
-      <div className="h-full min-h-screen" ref={mapRef} />
+    <div className="relative z-0 h-full min-h-0 overflow-hidden bg-slate-900" data-testid="map-canvas">
+      <div className="h-full min-h-0" ref={mapRef} />
     </div>
   )
 }
