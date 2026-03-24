@@ -17,6 +17,12 @@ coverage/
 !.codex/config.toml
 !.codex/prompts/
 !.codex/prompts/**
+!.codex/skills/
+.codex/skills/*
+!.codex/skills/frontend-design/
+!.codex/skills/frontend-design/**
+!.codex/skills/web-design-guidelines/
+!.codex/skills/web-design-guidelines/**
 
 # OMX runtime/generated artifacts
 .omx/state/
@@ -32,3 +38,4 @@ coverage/
 
 # Supabase local scratch files
 supabase/snippets/
+.omx/

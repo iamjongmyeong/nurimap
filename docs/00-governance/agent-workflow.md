@@ -62,6 +62,8 @@
 ### Design / Development
 - SDK, framework, API를 사용할 때는 먼저 공식 문서를 확인한다.
 - 프론트엔드 구현은 spec에 다른 지시가 없으면 Vite + React + Tailwind CSS를 따른다. 별도 UI 라이브러리 baseline은 source of truth가 명시할 때만 추가한다.
+- project-level Codex skill은 `.codex/skills/`를 canonical 위치로 사용한다. repo-local custom skill도 계속 사용해야 하면 `.codex/skills/`에 두고 그 경로를 기준으로 참조한다.
+- 프론트엔드 구현/리프레시 작업은 필요 시 `frontend-design`과 `vercel-react-best-practices`를 함께 적용한다.
 - frontend state가 필요하면 React-oriented library로 Zustand를 사용할 수 있다.
 - backend / data integration 작업은 기본적으로 **Frontend -> Backend -> Supabase** 계약을 따른다. source of truth가 명시적으로 바뀌지 않는 한 frontend가 Supabase에 직접 연결하거나 frontend에 Supabase client/runtime contract를 다시 도입하지 않는다.
 - Supabase는 backend에서만 사용한다. server-only credential/service-role-capable credential을 기준으로 연결하고, RLS는 필요 시 defense-in-depth로만 사용한다. 제품의 인증/인가/business rule을 RLS에 primary source of truth로 위임하지 않는다.
@@ -74,7 +76,7 @@
 - screenshot이 제공되면 `/prompts:vision`으로 레이아웃/spacing/text/icon 요구를 먼저 분석하고, 구현 결과 비교가 필요하면 `$visual-verdict`를 사용한다.
 - design 문서는 visual guide가 아니라 thin contract로 유지한다. 시각 구현 디테일은 external handoff 또는 해당 Sprint QA evidence에 두고, design 문서에는 surface/transition/invariant/failure boundary만 남긴다.
 - 특정 UI 계약이 더 큰 surface나 flow에 종속되면 별도 문서로 과분화하지 말고 관련 thin contract에 흡수한다. 공통 route/layout/view-state/integration runtime 규칙은 관련 architecture 문서를 기준으로 본다.
-- frontend UI review, UX audit, accessibility/design review에는 `web-design-guidelines`를 참고한다.
+- frontend UI review, UX audit, accessibility/design review에는 `.codex/skills/`의 `web-design-guidelines`를 참고한다.
 - 관련 spec이 `docs/03-specs/`에 있으면 TDD 순서로 failing test -> 구현 -> 검증을 따른다.
 
 ### Auth / Login Work
