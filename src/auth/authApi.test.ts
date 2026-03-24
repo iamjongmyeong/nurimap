@@ -67,6 +67,7 @@ describe('authApi', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/auth/verify-otp', expect.objectContaining({
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
     }))
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
@@ -83,6 +84,44 @@ describe('authApi', () => {
       },
       csrfHeaderName: 'x-nurimap-csrf-token',
     })
+  })
+
+  it('calls session endpoint with explicit no-store cookie-aware options', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'missing' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await getSessionViaApi()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/session', expect.objectContaining({
+      credentials: 'same-origin',
+      cache: 'no-store',
+    }))
+  })
+
+  it('forwards an abort signal when the session helper receives one', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'missing' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const abortController = new AbortController()
+
+    await getSessionViaApi({
+      signal: abortController.signal,
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/session', expect.objectContaining({
+      credentials: 'same-origin',
+      cache: 'no-store',
+      signal: abortController.signal,
+    }))
   })
 
   it('calls session/profile/logout endpoints with the expected contracts', async () => {
@@ -124,7 +163,11 @@ describe('authApi', () => {
       csrfToken: 'csrf-123',
     })
 
-    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/auth/session')
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/auth/session', expect.objectContaining({
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: undefined,
+    }))
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/auth/profile', expect.objectContaining({
       method: 'POST',
       headers: {

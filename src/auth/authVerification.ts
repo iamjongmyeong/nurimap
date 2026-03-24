@@ -1,5 +1,8 @@
 export const AUTH_BOOTSTRAP_TIMEOUT_MS = 5000
 export const AUTH_REQUEST_TIMEOUT_MS = 15000
+export const AUTH_VERIFY_TIMEOUT_MS = 15000
+export const AUTH_SESSION_RECOVERY_ATTEMPTS = 2
+export const AUTH_SESSION_RECOVERY_DELAY_MS = 400
 export const GENERIC_AUTH_FAILURE_MESSAGE = '새로운 코드로 다시 시도해주세요.'
 export const OTP_ENTRY_FAILURE_MESSAGE = '이 코드는 사용할 수 없어요.'
 
@@ -28,6 +31,11 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = AUTH_BOOTSTRAP_T
   }
 }
 
+const waitForDelay = async (delayMs: number) =>
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, delayMs)
+  })
+
 export const resolveBypassVerification = async ({
   tokenHash,
   verificationType,
@@ -41,7 +49,7 @@ export const resolveBypassVerification = async ({
   }) => Promise<AuthVerificationResult>
 }) => {
   try {
-    return await withTimeout(verifyAndAdoptSession({ tokenHash, verificationType }))
+    return await withTimeout(verifyAndAdoptSession({ tokenHash, verificationType }), AUTH_VERIFY_TIMEOUT_MS)
   } catch {
     return {
       status: 'error' as const,
@@ -74,4 +82,4 @@ export const resolveOtpVerifyFailureMessage = ({
   return hasResent ? OTP_ENTRY_FAILURE_MESSAGE : GENERIC_AUTH_FAILURE_MESSAGE
 }
 
-export { withTimeout }
+export { waitForDelay, withTimeout }

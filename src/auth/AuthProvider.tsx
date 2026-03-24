@@ -5,14 +5,20 @@ import {
   requestOtpViaApi,
   saveNameViaApi,
   signOutViaApi,
+  type SessionResponse,
   verifyOtpViaApi,
 } from './authApi'
 import { requestTestOtp, setTestAuthState, signOutTestUser, submitTestName, useTestAuthState, verifyTestOtp } from './testAuthState'
 import {
+  AUTH_BOOTSTRAP_TIMEOUT_MS,
+  AUTH_SESSION_RECOVERY_ATTEMPTS,
+  AUTH_SESSION_RECOVERY_DELAY_MS,
   AUTH_REQUEST_TIMEOUT_MS,
+  AUTH_VERIFY_TIMEOUT_MS,
   GENERIC_AUTH_FAILURE_MESSAGE,
   resolveBypassVerification,
   resolveOtpVerifyFailureMessage,
+  waitForDelay,
   withTimeout,
 } from './authVerification'
 
@@ -532,6 +538,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setPhase(user?.user_metadata?.name ? 'authenticated' : 'name_required')
   }, [])
 
+  const applyAuthenticatedSessionPayload = useCallback((
+    payload: Extract<SessionResponse, { status: 'authenticated' }>,
+  ) => {
+    applyAuthenticatedState({
+      accessToken: null,
+      csrfHeaderName: payload.csrfHeaderName,
+      user: {
+        email: payload.user.email,
+        user_metadata: {
+          name: payload.user.name,
+        },
+      },
+    })
+  }, [applyAuthenticatedState])
+
+  const recoverAuthenticatedSession = useCallback(async ({
+    acceptMissingImmediately = true,
+  }: {
+    acceptMissingImmediately?: boolean
+  } = {}) => {
+    for (let attempt = 0; attempt < AUTH_SESSION_RECOVERY_ATTEMPTS; attempt += 1) {
+      try {
+        const { payload } = await withTimeout(getSessionViaApi(), AUTH_BOOTSTRAP_TIMEOUT_MS)
+        if (payload.status === 'authenticated') {
+          return payload
+        }
+
+        if (payload.status === 'missing' && (acceptMissingImmediately || attempt === AUTH_SESSION_RECOVERY_ATTEMPTS - 1)) {
+          return null
+        }
+      } catch {
+        // retry ambiguous network/timeouts a few times before giving up
+      }
+
+      if (attempt < AUTH_SESSION_RECOVERY_ATTEMPTS - 1) {
+        await waitForDelay(AUTH_SESSION_RECOVERY_DELAY_MS)
+      }
+    }
+
+    return null
+  }, [])
+
   const verifyAndAdoptBypassSession = useCallback(async ({
     tokenHash,
     verificationType,
@@ -599,19 +647,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return
         }
 
-        const { payload } = await withTimeout(getSessionViaApi())
+        const recoveredSession = await recoverAuthenticatedSession()
 
-        if (payload.status === 'authenticated') {
-          applyAuthenticatedState({
-            accessToken: null,
-            csrfHeaderName: payload.csrfHeaderName,
-            user: {
-              email: payload.user.email,
-              user_metadata: {
-                name: payload.user.name,
-              },
-            },
-          })
+        if (recoveredSession) {
+          if (!isMounted) {
+            return
+          }
+
+          applyAuthenticatedSessionPayload(recoveredSession)
           return
         }
 
@@ -632,7 +675,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       isMounted = false
     }
-  }, [applyAuthenticatedState, isTestMode])
+  }, [applyAuthenticatedSessionPayload, isTestMode, recoverAuthenticatedSession])
 
   const requestOtp = useCallback(async (
     nextEmail: string,
@@ -787,7 +830,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { response, payload } = await withTimeout(verifyOtpViaApi({
         email: verifyEmail,
         token: otpCode,
-      }))
+      }), AUTH_VERIFY_TIMEOUT_MS)
 
       if (!response.ok || payload.status === 'error') {
         const failureMessage = resolveOtpVerifyFailureMessage({
@@ -816,12 +859,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       })
     } catch {
+      const recoveredSession = await recoverAuthenticatedSession({
+        acceptMissingImmediately: false,
+      })
+      if (recoveredSession) {
+        applyAuthenticatedSessionPayload(recoveredSession)
+        return
+      }
+
       setFailureReason(GENERIC_AUTH_FAILURE_MESSAGE)
       setPhase('auth_failure')
     } finally {
       setSubmitting(false)
     }
-  }, [applyAuthenticatedState, email, hasResentOtp, isTestMode, otpCode, requestedEmail])
+  }, [
+    applyAuthenticatedSessionPayload,
+    applyAuthenticatedState,
+    email,
+    hasResentOtp,
+    isTestMode,
+    otpCode,
+    recoverAuthenticatedSession,
+    requestedEmail,
+  ])
 
   useEffect(() => {
     if (!localAutoLoginEmail || isTestMode) {

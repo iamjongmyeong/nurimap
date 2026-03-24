@@ -91,6 +91,7 @@ export const verifyOtpViaApi = async ({
 }) => {
   const response = await fetch('/api/auth/verify-otp', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email,
@@ -106,8 +107,16 @@ export const verifyOtpViaApi = async ({
   }
 }
 
-export const getSessionViaApi = async () => {
-  const response = await fetch('/api/auth/session')
+export const getSessionViaApi = async ({
+  signal,
+}: {
+  signal?: AbortSignal
+} = {}) => {
+  const response = await fetch('/api/auth/session', {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    signal,
+  })
   return {
     response,
     payload: await parseJson<SessionResponse>(response),

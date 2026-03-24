@@ -5,6 +5,8 @@ import { AuthProvider } from './AuthProvider'
 import {
   AUTH_BOOTSTRAP_TIMEOUT_MS,
   AUTH_REQUEST_TIMEOUT_MS,
+  AUTH_SESSION_RECOVERY_ATTEMPTS,
+  AUTH_SESSION_RECOVERY_DELAY_MS,
   GENERIC_AUTH_FAILURE_MESSAGE,
   OTP_ENTRY_FAILURE_MESSAGE,
 } from './authVerification'
@@ -295,6 +297,10 @@ describe('Sprint 18 OTP auth flow', () => {
       expect(screen.getByTestId('protected-child')).toBeInTheDocument()
     })
 
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/session', expect.objectContaining({
+      cache: 'no-store',
+      credentials: 'same-origin',
+    }))
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/auth/request-otp',
       expect.objectContaining({
@@ -345,7 +351,10 @@ describe('Sprint 18 OTP auth flow', () => {
     await waitFor(() => {
       expect(screen.getByTestId('protected-child')).toBeInTheDocument()
     })
-    expect(fetchMock).toHaveBeenCalledWith('/api/auth/session')
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/session', expect.objectContaining({
+      cache: 'no-store',
+      credentials: 'same-origin',
+    }))
   })
 
   it('falls back to the login form when session bootstrap never resolves', async () => {
@@ -363,10 +372,82 @@ describe('Sprint 18 OTP auth flow', () => {
     expect(screen.getByTestId('auth-verifying-spinner')).toBeInTheDocument()
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(AUTH_BOOTSTRAP_TIMEOUT_MS)
+      await vi.advanceTimersByTimeAsync(
+        AUTH_BOOTSTRAP_TIMEOUT_MS * AUTH_SESSION_RECOVERY_ATTEMPTS + AUTH_SESSION_RECOVERY_DELAY_MS,
+      )
+      await Promise.resolve()
+      await Promise.resolve()
     })
 
     expect(screen.getByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
+  })
+
+  it('recovers from an ambiguous otp verify failure when a follow-up session check finds the session', async () => {
+    vi.stubEnv('MODE', 'development')
+    setViewport(1280)
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'missing' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({
+          status: 'success',
+          mode: 'otp',
+          message: '인증 코드를 보냈어요.',
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockRejectedValueOnce(new Error('auth_timeout'))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({
+          status: 'authenticated',
+          user: {
+            id: 'user-1',
+            email: 'tester@nurimedia.co.kr',
+            name: '테스트 사용자',
+          },
+          csrfHeaderName: 'x-nurimap-csrf-token',
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+    document.cookie = 'nurimap_csrf=csrf-123'
+
+    render(
+      <AuthProvider>
+        <div data-testid="protected-child" />
+      </AuthProvider>,
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    fireEvent.change(screen.getByLabelText('이메일'), { target: { value: 'tester@nurimedia.co.kr' } })
+    fireEvent.click(screen.getByRole('button', { name: '인증 코드 전송' }))
+
+    await screen.findByLabelText('인증 코드')
+
+    fireEvent.change(screen.getByLabelText('인증 코드'), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: '인증' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('protected-child')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByTestId('auth-failure-screen')).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/auth/session', expect.objectContaining({
+      cache: 'no-store',
+      credentials: 'same-origin',
+    }))
   })
 
   it('recovers to the auth form when the request-otp call never resolves', async () => {

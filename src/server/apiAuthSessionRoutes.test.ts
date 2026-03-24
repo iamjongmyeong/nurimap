@@ -94,6 +94,7 @@ describe('/api/auth session routes', () => {
     await sessionHandler({ method: 'GET', headers: {} } as unknown as VercelRequest, response)
 
     expect(state.statusCode).toBe(200)
+    expect(state.headers?.['Cache-Control']).toEqual(expect.stringContaining('no-store'))
     expect(state.body).toEqual({
       status: 'authenticated',
       user: {
@@ -103,6 +104,17 @@ describe('/api/auth session routes', () => {
       },
       csrfHeaderName: 'x-nurimap-csrf-token',
     })
+  })
+
+  it('returns missing sessions with explicit no-store cache headers', async () => {
+    getAuthenticatedSessionMock.mockResolvedValue({ status: 'missing' })
+
+    const { response, state } = createResponse()
+    await sessionHandler({ method: 'GET', headers: {} } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(200)
+    expect(state.headers?.['Cache-Control']).toEqual(expect.stringContaining('no-store'))
+    expect(state.body).toEqual({ status: 'missing' })
   })
 
   it('requires csrf validation before logout clears cookies', async () => {
