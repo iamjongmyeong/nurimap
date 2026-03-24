@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-03-24T15:52:08.494Z",
+  "url": "http://localhost:5173/",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "finalState": "authenticated_mobile_shell",
+  "passed": true,
+  "elapsedMs": 6267,
+  "notes": [
+    "mobile bottom tab bar visible"
+  ],
+  "apiResponses": [
+    {
+      "url": "http://localhost:5173/api/auth/session",
+      "status": 200,
+      "body": "{\"status\":\"missing\"}"
+    },
+    {
+      "url": "http://localhost:5173/api/auth/session",
+      "status": 200,
+      "body": "{\"status\":\"missing\"}"
+    },
+    {
+      "url": "http://localhost:5173/api/auth/request-otp",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"mode\":\"bypass\",\"message\":\"테스트 계정으로 바로 로그인합니다.\",\"tokenHash\":\"[REDACTED_TOKEN_HASH]\",\"verificationType\":\"magiclink\"}"
+    },
+    {
+      "url": "http://localhost:5173/api/auth/verify-otp",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"nextPhase\":\"authenticated\",\"user\":{\"id\":\"[REDACTED_USER_ID]\",\"email\":\"[REDACTED_EMAIL]\",\"name\":\"테스트\"},\"csrfHeaderName\":\"x-nurimap-csrf-token\"}"
+    },
+    {
+      "url": "http://localhost:5173/api/place-list",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"places\":[{\"id\":\"[REDACTED_USER_ID]\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%8"
+    },
+    {
+      "url": "http://localhost:5173/api/place-list",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"places\":[{\"id\":\"[REDACTED_USER_ID]\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%8"
+    }
+  ]
+}

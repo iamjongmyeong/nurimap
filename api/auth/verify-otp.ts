@@ -6,6 +6,7 @@ import {
   serializeCsrfCookie,
 } from '../_lib/_appSessionService.js'
 import { verifyLoginOtp } from '../_lib/_authService.js'
+import { getRequestRuntimeOrigin } from '../_lib/_requestOrigin.js'
 
 const isSecureRequest = (req: VercelRequest) =>
   process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https'
@@ -24,8 +25,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     || req.body?.verificationType === 'invite'
     ? req.body.verificationType
     : undefined
+  const runtimeOrigin = getRequestRuntimeOrigin(req.headers) ?? undefined
 
-  const result = await verifyLoginOtp({ email, token, tokenHash, verificationType })
+  const result = await verifyLoginOtp({ email, token, tokenHash, verificationType, runtimeOrigin })
   if (result.status === 'error') {
     res.status(400).json(result)
     return

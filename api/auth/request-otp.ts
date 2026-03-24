@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+
 import { requestLoginOtp } from '../_lib/_authService.js'
+import { getRequestRuntimeOrigin } from '../_lib/_requestOrigin.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -13,10 +15,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestAttemptId = typeof req.body?.requestAttemptId === 'string'
     ? req.body.requestAttemptId
     : undefined
+  const runtimeOrigin = getRequestRuntimeOrigin(req.headers) ?? undefined
   const result = await requestLoginOtp(email, {
     requireBypass,
     intent,
     requestAttemptId,
+    runtimeOrigin,
   })
 
   if (result.status === 'error') {

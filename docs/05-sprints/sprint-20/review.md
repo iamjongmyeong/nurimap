@@ -8,6 +8,7 @@
 - browse 지도 surface의 사용자 추가 장소 marker / label은 Figma handoff(node `61:18`) 기준으로 concentric marker + outlined name label 스타일로 새로 정리했다.
 - auth first-login slice에서는 첫 로그인 OTP 요청을 implicit signup 대신 server pre-provision + normal OTP delivery로 고정했고, verify 단계의 허용 이메일 경계를 다시 검사하도록 보강했다.
 - 2026-03-24 production auth recovery slice에서는 login failure 원인을 deploy alias, TLS/env, DB schema gate로 분리해 추적했고, root cert rollout + phase1 migration 적용 뒤 production login success를 확인했다.
+- 2026-03-25 local bypass recovery slice에서는 `make dev`의 Vercel dev worker가 `PUBLIC_APP_URL`을 production origin으로 덮어써도 local request origin 기준으로 bypass가 다시 동작하도록 고쳤고, Vite dev middleware parity를 보강해 `/api/auth/verify-otp`와 `/api/place-list`까지 local integrated runtime에서 정상 응답하도록 맞췄다.
 
 # Completed
 
@@ -30,6 +31,7 @@
 - TLS root-cert handling 수정(commit `078b57c`)을 production deploy에 반영하고, linked `supabase db push`로 `20260322065245_phase1_place_auth_real_data_foundation.sql`을 exact production project에 적용했다.
 - production incident 분석 결과, auth/login rollout은 코드 배포·runtime env·DB schema를 각각 별도 gate로 봐야 하며, 실제 blocker가 `SELF_SIGNED_CERT_IN_CHAIN` → `relation "public.user_profiles" does not exist` 순으로 이동했다.
 - 2026-03-24 production에서 user-confirmed login success를 확인했다.
+- 2026-03-25 local bypass recovery slice에서 request-origin-aware bypass gating, verify-otp dev middleware, place-list dev middleware를 추가했고, Playwright mobile smoke로 `make dev` 첫 진입 bypass success를 확인했다.
 
 # Not Completed
 

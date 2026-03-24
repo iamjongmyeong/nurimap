@@ -182,6 +182,41 @@ describe('Sprint 18 otp auth request flow', () => {
     expect(signInWithOtpMock).not.toHaveBeenCalled()
   })
 
+  it('allows bypass-only requests on a local runtime origin even when PUBLIC_APP_URL is overridden to production', async () => {
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
+    generateLinkMock.mockResolvedValue({
+      data: {
+        properties: {
+          hashed_token: 'bypass-token-hash',
+          verification_type: 'magiclink',
+        },
+      },
+      error: null,
+    })
+
+    const result = await requestLoginOtp('bypass.user@example.com', {
+      requireBypass: true,
+      runtimeOrigin: 'http://localhost:5173',
+    })
+
+    expect(result).toEqual({
+      status: 'success',
+      mode: 'bypass',
+      message: '테스트 계정으로 바로 로그인합니다.',
+      tokenHash: 'bypass-token-hash',
+      verificationType: 'magiclink',
+    })
+    expect(generateLinkMock).toHaveBeenCalledWith({
+      type: 'magiclink',
+      email: 'bypass.user@example.com',
+      options: {
+        redirectTo: 'http://localhost:5173',
+      },
+    })
+  })
+
   it('does not use bypass for an allowlisted external email outside a local loopback runtime', async () => {
     process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
     process.env.AUTH_BYPASS_ENABLED = 'true'
@@ -896,6 +931,47 @@ describe('Sprint 18 otp auth request flow', () => {
 
     expect(verifyOtpMock).not.toHaveBeenCalled()
     expect(createAppSessionMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts token-hash verification on a local runtime origin even when PUBLIC_APP_URL is overridden to production', async () => {
+    process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'bypass.user@example.com',
+          app_metadata: {
+            nurimap_auth: {
+              day_key: '2026-03-22',
+              day_count: 1,
+              last_requested_at: '2026-03-22T00:00:00.000Z',
+              last_verified_at: null,
+            },
+          },
+          user_metadata: {},
+        },
+        session: {
+          access_token: 'provider-access-token',
+        },
+      },
+      error: null,
+    })
+
+    const result = await verifyLoginOtp({
+      email: '',
+      runtimeOrigin: 'http://localhost:5173',
+      token: '',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })
+
+    expect(result.status).toBe('success')
+    expect(verifyOtpMock).toHaveBeenCalledWith({
+      token_hash: 'token-hash',
+      type: 'magiclink',
+    })
   })
 
   it('returns a recoverable otp error when verification fails', async () => {

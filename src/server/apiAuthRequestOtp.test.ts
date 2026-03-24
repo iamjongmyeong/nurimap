@@ -47,6 +47,9 @@ describe('/api/auth/request-otp', () => {
     const { response, state } = createResponse()
     await handler({
       method: 'POST',
+      headers: {
+        origin: 'http://localhost:5173',
+      },
       body: {
         email: 'tester@nurimedia.co.kr',
         requireBypass: false,
@@ -59,6 +62,7 @@ describe('/api/auth/request-otp', () => {
       requireBypass: false,
       intent: undefined,
       requestAttemptId: 'attempt-123',
+      runtimeOrigin: 'http://localhost:5173',
     })
     expect(state.statusCode).toBe(200)
     expect(state.body).toEqual({
@@ -79,6 +83,9 @@ describe('/api/auth/request-otp', () => {
     const { response, state } = createResponse()
     await handler({
       method: 'POST',
+      headers: {
+        host: 'localhost:5173',
+      },
       body: {
         email: 'tester@nurimedia.co.kr',
         intent: 'status',
@@ -90,6 +97,7 @@ describe('/api/auth/request-otp', () => {
       requireBypass: false,
       intent: 'status',
       requestAttemptId: 'attempt-accepted',
+      runtimeOrigin: 'http://localhost:5173',
     })
     expect(state.statusCode).toBe(200)
     expect(state.body).toEqual({

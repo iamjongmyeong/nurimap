@@ -69,7 +69,9 @@ describe('/api/auth/verify-otp', () => {
 
     const request = {
       method: 'POST',
-      headers: {},
+      headers: {
+        origin: 'http://localhost:5173',
+      },
       body: {
         email: 'tester@nurimedia.co.kr',
         token: '123456',
@@ -81,6 +83,7 @@ describe('/api/auth/verify-otp', () => {
 
     expect(verifyLoginOtpMock).toHaveBeenCalledWith({
       email: 'tester@nurimedia.co.kr',
+      runtimeOrigin: 'http://localhost:5173',
       token: '123456',
     })
     expect(state.statusCode).toBe(200)

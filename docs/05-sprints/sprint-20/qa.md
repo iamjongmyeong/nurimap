@@ -6,6 +6,7 @@
 - browse 지도 surface에서는 level HUD / zoom button 비노출 contract가 현재 UI/docs와 일치하는지 함께 검증한다.
 - 2026-03-23 marker visual refresh slice에서는 사용자 추가 장소 marker / label이 Figma handoff node `61:18`의 핵심 시각 언어와 맞는지 함께 검증한다.
 - 2026-03-24 production auth recovery slice에서는 production login failure를 deploy alias, TLS/env, DB schema gate로 분리해 확인하고, recovery 뒤 실제 production login success까지 검증한다.
+- 2026-03-25 local bypass recovery slice에서는 `make dev` 실행 중 Vercel dev worker가 `PUBLIC_APP_URL`을 production origin으로 덮어써도 local bypass가 loopback request origin 기준으로 다시 동작하는지 검증한다.
 
 # Automated Checks Result
 
@@ -25,6 +26,9 @@
   - `pnpm exec vitest run src/server/authService.test.ts src/server/apiAuthVerifyOtp.test.ts src/server/releaseHardening.test.ts`
   - `pnpm build`
   - `pnpm exec vitest run src/app-shell/NurimapBrowse.test.tsx src/app-shell/PlaceRegistrationFlow.test.tsx`
+  - `pnpm build`
+  - `pnpm exec vitest run src/server/authService.test.ts src/server/apiAuthRequestOtp.test.ts src/server/apiAuthVerifyOtp.test.ts`
+  - `pnpm lint`
   - `pnpm build`
   - `pnpm exec vercel inspect nurimap.jongmyeong.me`
   - `pnpm exec vercel logs --environment production --query '/api/auth/verify-otp' --since 30m --no-follow --expand`
@@ -46,6 +50,8 @@
   - PASS — first-login OTP hardening 반영 후 `pnpm build` 재통과
   - PASS — marker visual refresh slice에서 `src/app-shell/NurimapBrowse.test.tsx`, `src/app-shell/PlaceRegistrationFlow.test.tsx` 2 files / 33 tests 통과
   - PASS — marker visual refresh 반영 후 `pnpm build` 재통과
+  - PASS — local bypass recovery slice에서 `src/server/authService.test.ts`, `src/server/apiAuthRequestOtp.test.ts`, `src/server/apiAuthVerifyOtp.test.ts` 3 files / 32 tests 통과
+  - PASS — local bypass recovery 반영 후 `pnpm lint`, `pnpm build` 재통과
   - PASS — 2026-03-24 production alias는 `nurimap-h5vb84834-jongmyeong-projects.vercel.app`(00:22:55 KST 생성)를 가리켰고, latest runtime blocker는 TLS chain failure에서 `relation "public.user_profiles" does not exist`로 좁혀졌다.
   - PASS — `supabase db push --linked --dry-run --yes`가 pending migration으로 `20260322065245_phase1_place_auth_real_data_foundation.sql` 1개만 제시했다.
   - PASS — `supabase db push --linked --yes`로 phase1 foundation migration을 exact linked project에 적용했다.
@@ -88,6 +94,7 @@
   - Preview smoke 4차 확인: `pnpm exec vercel curl /assets/index-BDwYyS21.js --deployment https://nurimap-5jf77rli7-jongmyeong-projects.vercel.app --yes -- --head`
   - local map chrome 확인: `pnpm exec vercel dev --local --listen 127.0.0.1:4174 --yes` 실행 후, Playwright inline runner로 `?auth_test_state=authenticated` + mocked `/api/place-list` + mocked Kakao runtime 조합에서 browse map shell을 캡처했다.
   - marker visual preview: local HTML preview + Playwright screenshot으로 `artifacts/qa/sprint-20/map-user-added-marker-preview.png`를 생성하고, Figma thumbnail(`/tmp/nurimap-figma/node-61-18-thumb-1200.png`)과 비교했다.
+  - local bypass recovery: `make dev` 실행 상태에서 Playwright mobile viewport(`390x844`)로 첫 진입을 열고 auth/session/request-otp/verify-otp/place-list 응답과 최종 shell을 `artifacts/qa/sprint-20/local-bypass-make-dev-result.json`에 기록했다.
 - 확인한 시나리오:
   - local OTP request -> Mailpit 수신 -> OTP verify -> name entry -> authenticated shell 진입
   - `390x844` mobile에서 local auto-login bypass로 authenticated shell 진입
@@ -105,12 +112,16 @@
   - authenticated `vercel curl` 경로로 built JS asset(`/assets/index-BDwYyS21.js`)이 HTTP 200으로 내려오는지 확인
   - local browser automation에서 desktop/mobile browse map shell에 `map-level`, `map-zoom-controls`, `지도 확대`, `지도 축소` UI가 노출되지 않는지 확인
   - marker visual preview에서 동심원 marker와 outlined place-name label이 reference와 같은 방향인지 확인
+  - `make dev` mobile 첫 진입에서 `/api/auth/request-otp`가 `mode: "bypass"`로 응답하는지 확인
+  - 같은 세션에서 `/api/auth/verify-otp`가 `status: "success"`로 응답하고 session / csrf cookie가 설정되는지 확인
+  - bypass 직후 `/api/place-list`가 module source가 아니라 `{ status: "success", places }` JSON으로 응답하고 mobile browse shell이 열리는지 확인
 - 판정:
   - PASS — local Supabase + integrated runtime 기준 핵심 browse/detail/create/overwrite/session persistence 흐름이 통과했다.
   - PASS — API test files를 `api/` 밖으로 이동하고 `.vercelignore`를 추가한 뒤 Preview deployment가 성공했다.
   - PASS — authenticated `vercel curl` smoke 기준으로 `/`, `/places/smoke-place`, static asset boot가 모두 확인됐다.
   - PASS — local mocked-runtime browser check에서 browse map shell에 level HUD / zoom button이 보이지 않았다.
   - PASS — marker visual preview는 Figma reference 대비 core motif(24px marker, white outer ring, orange inner ring, white center dot, 10px label with 0.5px white stroke)가 일치했다.
+  - PASS — local bypass recovery slice에서 `make dev` + Playwright 기준 `/api/auth/request-otp` 200 bypass, `/api/auth/verify-otp` 200 success, `/api/place-list` 200 success가 확인됐고 mobile authenticated shell(`mobile-bottom-tab-bar`)까지 도달했다.
   - NOTE — direct anonymous 접근은 여전히 Vercel deployment protection login wall(HTTP 401)로 보호된다. 이는 현재 protection posture이며, 이번 slice의 deploy/UI separation smoke 자체를 막지는 않았다.
 - 스크린샷 경로:
   - `artifacts/qa/sprint-20/local-otp-name-entry-success.png`
@@ -131,6 +142,8 @@
   - Map chrome check: `artifacts/qa/sprint-20/map-no-zoom-controls-desktop-mocked-runtime.png`, `artifacts/qa/sprint-20/map-no-zoom-controls-mobile-mocked-runtime.png`
   - Map chrome check result: `artifacts/qa/sprint-20/map-no-zoom-controls-mocked-runtime-check.json`
   - Marker visual preview: `artifacts/qa/sprint-20/map-user-added-marker-preview.html`, `artifacts/qa/sprint-20/map-user-added-marker-preview.png`
+  - Local bypass recovery: `artifacts/qa/sprint-20/local-bypass-make-dev-mobile-success.png`
+  - Local bypass recovery result: `artifacts/qa/sprint-20/local-bypass-make-dev-result.json`
   - Historical blocker log: `artifacts/qa/sprint-20/preview-deploy-blocker.txt`
 
 ## User QA Required
@@ -175,6 +188,8 @@
   2. TLS root-cert handling 코드 deploy
   3. exact production project에 `20260322065245_phase1_place_auth_real_data_foundation.sql` 적용
   4. production login 재시도 및 success 확인
+- 2026-03-25 local bypass regression의 root cause는 `make dev`의 Vercel dev worker가 `PUBLIC_APP_URL`을 production origin으로 덮어써 local bypass 판정이 non-local로 미끄러진 점과, 같은 integrated runtime에서 `/api/auth/verify-otp` / `/api/place-list`가 dev middleware parity 없이 module source/404로 노출된 점이었다.
+- 같은 slice에서 request origin 기반 local runtime 판정과 Vite auth/place-list middleware parity를 추가한 뒤, Playwright mobile smoke로 local bypass 회복을 확인했다.
 
 # QA Verdict
 

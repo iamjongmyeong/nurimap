@@ -30,6 +30,7 @@ type RequestLoginOtpOptions = {
   requireBypass?: boolean
   intent?: RequestLoginOtpIntent
   requestAttemptId?: string
+  runtimeOrigin?: string
 }
 type AuthRequestError =
   | {
@@ -126,36 +127,27 @@ const getBypassEmails = () =>
 
 const getAllowedEmails = () => parseAllowedEmails(process.env.AUTH_ALLOWED_EMAILS ?? '')
 
-const isEmailAllowedForAuth = (email: string) => {
+const isEmailAllowedForAuth = (email: string, runtimeOrigin?: string) => {
   const normalizedEmail = normalizeEmail(email)
   return (
     isAllowedEmailDomain(normalizedEmail, process.env.AUTH_ALLOWED_EMAIL_DOMAIN ?? '') ||
     isExplicitlyAllowedEmail(normalizedEmail, getAllowedEmails()) ||
-    isBypassLoginEmail(normalizedEmail)
+    isBypassLoginEmail(normalizedEmail, runtimeOrigin)
   )
 }
 
 const LOCAL_BYPASS_HOSTS = new Set(['127.0.0.1', '::1', 'localhost'])
 
-const isBypassLoginEmail = (email: string) => {
-  if (process.env.AUTH_BYPASS_ENABLED !== 'true' || !isLocalBypassRuntime()) {
-    return false
-  }
-
-  return getBypassEmails().includes(normalizeEmail(email))
-}
-
 const toVerificationType = (verificationType: string | undefined): AuthVerifyType =>
   verificationType === 'magiclink' || verificationType === 'invite' ? verificationType : 'signup'
 
-const getPublicAppUrl = () => {
-  const rawValue = process.env.PUBLIC_APP_URL?.trim()
+const normalizeHttpUrl = (rawValue: string | null | undefined) => {
   if (!rawValue) {
     return null
   }
 
   try {
-    const parsedUrl = new URL(rawValue)
+    const parsedUrl = new URL(rawValue.trim())
     if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
       return null
     }
@@ -175,18 +167,30 @@ const getPublicAppUrl = () => {
   }
 }
 
-const isLocalBypassRuntime = () => {
-  const publicAppUrl = getPublicAppUrl()
-  if (!publicAppUrl) {
+const getPublicAppUrl = () => normalizeHttpUrl(process.env.PUBLIC_APP_URL)
+
+const isLoopbackRuntimeUrl = (runtimeUrl: string | null) => {
+  if (!runtimeUrl) {
     return false
   }
 
   try {
-    const hostname = new URL(publicAppUrl).hostname.toLowerCase()
+    const hostname = new URL(runtimeUrl).hostname.toLowerCase()
     return LOCAL_BYPASS_HOSTS.has(hostname) || hostname.endsWith('.localhost')
   } catch {
     return false
   }
+}
+
+const isLocalBypassRuntime = (runtimeOrigin?: string) =>
+  isLoopbackRuntimeUrl(runtimeOrigin ? normalizeHttpUrl(runtimeOrigin) : getPublicAppUrl())
+
+const isBypassLoginEmail = (email: string, runtimeOrigin?: string) => {
+  if (process.env.AUTH_BYPASS_ENABLED !== 'true' || !isLocalBypassRuntime(runtimeOrigin)) {
+    return false
+  }
+
+  return getBypassEmails().includes(normalizeEmail(email))
 }
 
 const formatCooldownTime = (remainingSeconds: number) => {
@@ -617,18 +621,20 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
     : null
   const normalizedEmail = normalizeEmail(email)
   const publicAppUrl = getPublicAppUrl()
-  const bypassLoginEmail = isBypassLoginEmail(normalizedEmail)
+  const localRuntimeOrigin = options.runtimeOrigin ? normalizeHttpUrl(options.runtimeOrigin) : null
+  const bypassLoginEmail = isBypassLoginEmail(normalizedEmail, options.runtimeOrigin)
 
   if (options.requireBypass && !bypassLoginEmail) {
     return bypassRequiredResult(normalizedEmail)
   }
 
   if (bypassLoginEmail) {
-    if (!publicAppUrl) {
+    const bypassRedirectUrl = localRuntimeOrigin ?? publicAppUrl
+    if (!bypassRedirectUrl) {
       return deliveryFailedResult(normalizedEmail, { failure_stage: 'public_app_url' })
     }
 
-    return await generateImmediateBypassPayload(normalizedEmail, publicAppUrl)
+    return await generateImmediateBypassPayload(normalizedEmail, bypassRedirectUrl)
   }
 
   if (!isAllowedEmailDomain(normalizedEmail, allowedDomain) && !isExplicitlyAllowedEmail(normalizedEmail, allowedEmails)) {
@@ -765,11 +771,13 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
 
 export const verifyLoginOtp = async ({
   email,
+  runtimeOrigin,
   token,
   tokenHash,
   verificationType,
 }: {
   email: string
+  runtimeOrigin?: string
   token: string
   tokenHash?: string
   verificationType?: AuthVerifyType
@@ -779,7 +787,7 @@ export const verifyLoginOtp = async ({
   const normalizedEmail = normalizeEmail(email)
   const now = new Date()
 
-  if (tokenHash && !isLocalBypassRuntime()) {
+  if (tokenHash && !isLocalBypassRuntime(runtimeOrigin)) {
     return {
       status: 'error',
       message: OTP_VERIFY_FAILURE_MESSAGE,
@@ -807,7 +815,7 @@ export const verifyLoginOtp = async ({
 
   const verifiedUser = data.user
   const persistedEmail = (verifiedUser.email ?? normalizedEmail).trim().toLowerCase()
-  if (!isEmailAllowedForAuth(persistedEmail)) {
+  if (!isEmailAllowedForAuth(persistedEmail, runtimeOrigin)) {
     if (data.session?.access_token) {
       try {
         await adminAuth.admin.signOut(data.session.access_token)
