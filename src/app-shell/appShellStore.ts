@@ -78,7 +78,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       placeDetailLoad: 'ready',
       selectedPlaceId: placeId,
     }),
-  closePlaceDetail: () => set({ navigationState: 'map_browse', detailChildSurface: 'detail' }),
+  closePlaceDetail: () => set({ navigationState: 'map_browse', detailChildSurface: 'detail', selectedPlaceId: null }),
   openDetailAddRating: () => set({ detailChildSurface: 'add_rating' }),
   closeDetailAddRating: () => set({ detailChildSurface: 'detail' }),
   syncDetailChildSurface: (detailChildSurface) => set({ detailChildSurface }),

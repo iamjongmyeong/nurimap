@@ -6,8 +6,8 @@ import { resetAppShellStore, useAppShellStore } from './appShellStore'
 
 const originalFetch = globalThis.fetch
 
-const installKakaoRuntimeMock = () => {
-  let currentLevel = 3
+const installKakaoRuntimeMock = (initialLevel = 3) => {
+  let currentLevel = initialLevel
   const panTo = vi.fn()
   const setLevel = vi.fn((level: number) => {
     currentLevel = level
@@ -276,6 +276,7 @@ describe('Sprint 16 browse refresh', () => {
 
   it('opens desktop detail inside the sidebar instead of a floating overlay when a map marker is selected', async () => {
     setViewport(1280)
+    useAppShellStore.setState({ mapLevel: 1 })
     const user = userEvent.setup()
     render(<App />)
 
@@ -288,7 +289,7 @@ describe('Sprint 16 browse refresh', () => {
     expect(detail).toHaveTextContent('양화로 카페')
     expect(detail.className).not.toContain('absolute')
     expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
-    expect(useAppShellStore.getState().mapLevel).toBe(2)
+    expect(useAppShellStore.getState().mapLevel).toBe(1)
   })
 
   it('hides markers and labels at level 5', () => {
@@ -435,38 +436,42 @@ describe('Sprint 16 browse refresh', () => {
     expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('누리 식당')
   })
 
-  it('does not pan the Kakao map on initial detail open, but restores focus once on in-app back', async () => {
+  it('does not pan or zoom the Kakao map on mobile detail open or in-app back', async () => {
     setViewport(390)
+    useAppShellStore.setState({ mapLevel: 1 })
     const user = userEvent.setup()
-    const { panTo, setLevel } = installKakaoRuntimeMock()
+    const { panTo, setLevel } = installKakaoRuntimeMock(1)
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
     await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
 
     expect(window.location.pathname).toBe('/places/place-restaurant-1')
-    expect(useAppShellStore.getState().mapLevel).toBe(2)
-    expect(setLevel).toHaveBeenCalledWith(2)
+    expect(useAppShellStore.getState().mapLevel).toBe(1)
+    expect(setLevel).not.toHaveBeenCalled()
     expect(panTo).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
 
     expect(window.location.pathname).toBe('/')
-    expect(panTo).toHaveBeenCalledTimes(1)
+    expect(useAppShellStore.getState().mapLevel).toBe(1)
+    expect(setLevel).not.toHaveBeenCalled()
+    expect(panTo).not.toHaveBeenCalled()
   })
 
-  it('restores Kakao map focus once on browser/history back without reintroducing initial-open pan', async () => {
+  it('does not pan or zoom the Kakao map on mobile browser/history back from detail', async () => {
     setViewport(390)
+    useAppShellStore.setState({ mapLevel: 1 })
     const user = userEvent.setup()
-    const { panTo, setLevel } = installKakaoRuntimeMock()
+    const { panTo, setLevel } = installKakaoRuntimeMock(1)
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
     await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
 
     expect(window.location.pathname).toBe('/places/place-cafe-1')
-    expect(useAppShellStore.getState().mapLevel).toBe(2)
-    expect(setLevel).toHaveBeenCalledWith(2)
+    expect(useAppShellStore.getState().mapLevel).toBe(1)
+    expect(setLevel).not.toHaveBeenCalled()
     expect(panTo).not.toHaveBeenCalled()
 
     act(() => {
@@ -475,7 +480,9 @@ describe('Sprint 16 browse refresh', () => {
     })
 
     expect(window.location.pathname).toBe('/')
-    expect(panTo).toHaveBeenCalledTimes(1)
+    expect(useAppShellStore.getState().mapLevel).toBe(1)
+    expect(setLevel).not.toHaveBeenCalled()
+    expect(panTo).not.toHaveBeenCalled()
   })
 
   it('renders the unified loading state while browse data is still bootstrapping', () => {

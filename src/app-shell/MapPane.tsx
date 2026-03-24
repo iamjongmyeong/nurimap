@@ -9,8 +9,6 @@ import {
 } from './useKakaoScript'
 
 type MapPaneProps = {
-  browseFocusNonce: number
-  browseFocusPlaceId: string | null
   places: PlaceSummary[]
   selectedPlaceId: string | null
   mapLevel: number
@@ -236,7 +234,6 @@ const MapMarkerLabel = ({
 )
 
 const FallbackMapPane = ({
-  browseFocusPlaceId,
   places,
   selectedPlaceId,
   mapLevel,
@@ -250,10 +247,6 @@ const FallbackMapPane = ({
     () => getMapZoomPresentation(mapLevel),
     [mapLevel],
   )
-  const focusedPlace = visiblePlaces.find((place) => place.id === browseFocusPlaceId) ?? null
-  const focusCenter = focusedPlace
-    ? { latitude: focusedPlace.latitude, longitude: focusedPlace.longitude }
-    : MAP_INITIAL_CENTER
 
   return (
     <div
@@ -265,12 +258,12 @@ const FallbackMapPane = ({
       {mapLevel <= MARKER_VISIBILITY_THRESHOLD ? visiblePlaces.map((place) => {
         const isSelected = selectedPlaceId === place.id
         const top = clamp(
-          50 - (place.latitude - focusCenter.latitude) * 3500,
+          50 - (place.latitude - MAP_INITIAL_CENTER.latitude) * 3500,
           18,
           86,
         )
         const left = clamp(
-          50 + (place.longitude - focusCenter.longitude) * 8000,
+          50 + (place.longitude - MAP_INITIAL_CENTER.longitude) * 8000,
           12,
           88,
         )
@@ -360,8 +353,6 @@ const MapErrorPane = ({ onRetry }: { onRetry: () => void }) => (
 )
 
 export const MapPane = ({
-  browseFocusNonce,
-  browseFocusPlaceId,
   places,
   selectedPlaceId,
   mapLevel,
@@ -449,17 +440,6 @@ export const MapPane = ({
 
   useEffect(() => {
     const map = kakaoMapRef.current
-    const focusPlace = visiblePlaces.find((place) => place.id === browseFocusPlaceId)
-
-    if (!map || !focusPlace || !window.kakao?.maps) {
-      return
-    }
-
-    map.panTo(new window.kakao.maps.LatLng(focusPlace.latitude, focusPlace.longitude))
-  }, [browseFocusNonce, browseFocusPlaceId, visiblePlaces])
-
-  useEffect(() => {
-    const map = kakaoMapRef.current
     if (!map) {
       return
     }
@@ -472,8 +452,6 @@ export const MapPane = ({
   if (status === 'fallback') {
     return (
       <FallbackMapPane
-        browseFocusNonce={browseFocusNonce}
-        browseFocusPlaceId={browseFocusPlaceId}
         mapLevel={mapLevel}
         onMapLevelChange={onMapLevelChange}
         onMarkerSelect={onMarkerSelect}

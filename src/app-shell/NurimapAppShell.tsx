@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { MapPane } from './MapPane'
 import { useAuth } from '../auth/authContext'
 import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
@@ -1038,16 +1038,12 @@ const MobileDetailPage = ({
 }
 
 const DesktopAppShell = ({
-  browseFocusNonce,
-  browseFocusPlaceId,
   navigationState,
   mapPlaces,
   onOpenPlaceDetail,
   onReturnToMapBrowse,
   selectedPlace,
 }: {
-  browseFocusNonce: number
-  browseFocusPlaceId: string | null
   navigationState: NavigationState
   mapPlaces: PlaceSummary[]
   onOpenPlaceDetail: (placeId: string) => void
@@ -1070,8 +1066,6 @@ const DesktopAppShell = ({
       />
       <section className="relative isolate flex-1 bg-[#f7f6fb]">
         <MapPane
-          browseFocusNonce={browseFocusNonce}
-          browseFocusPlaceId={browseFocusPlaceId}
           mapLevel={mapLevel}
           onMapLevelChange={setMapLevel}
           onMarkerSelect={onOpenPlaceDetail}
@@ -1084,8 +1078,6 @@ const DesktopAppShell = ({
 }
 
 const MobileAppShell = ({
-  browseFocusNonce,
-  browseFocusPlaceId,
   detailChildSurface,
   navigationState,
   mapPlaces,
@@ -1096,8 +1088,6 @@ const MobileAppShell = ({
   onSubmitReview,
   selectedPlace,
 }: {
-  browseFocusNonce: number
-  browseFocusPlaceId: string | null
   detailChildSurface: 'detail' | 'add_rating'
   navigationState: NavigationState
   mapPlaces: PlaceSummary[]
@@ -1123,8 +1113,6 @@ const MobileAppShell = ({
   return (
     <main className={MOBILE_SHELL_CLASS} data-testid="mobile-shell" style={MOBILE_SHELL_STYLE}>
       <MapPane
-        browseFocusNonce={browseFocusNonce}
-        browseFocusPlaceId={browseFocusPlaceId}
         mapLevel={mapLevel}
         onMapLevelChange={setMapLevel}
         onMarkerSelect={onOpenPlaceDetail}
@@ -1181,10 +1169,10 @@ export const NurimapAppShell = () => {
   const navigationState = useAppShellStore((state) => state.navigationState)
   const detailChildSurface = useAppShellStore((state) => state.detailChildSurface)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
+  const closePlaceDetail = useAppShellStore((state) => state.closePlaceDetail)
   const openDetailAddRating = useAppShellStore((state) => state.openDetailAddRating)
   const closeDetailAddRating = useAppShellStore((state) => state.closeDetailAddRating)
   const syncDetailChildSurface = useAppShellStore((state) => state.syncDetailChildSurface)
-  const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
   const places = useAppShellStore((state) => state.places)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
   const setSelectedPlaceId = useAppShellStore((state) => state.setSelectedPlaceId)
@@ -1193,18 +1181,8 @@ export const NurimapAppShell = () => {
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
   const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
   const submitPlaceReview = useAppShellStore((state) => state.submitPlaceReview)
-  const mapLevel = useAppShellStore((state) => state.mapLevel)
-  const setMapLevel = useAppShellStore((state) => state.setMapLevel)
   const { retry: retryMapRuntime, status: mapRuntimeStatus } = useKakaoScript()
   const { csrfHeaderName, csrfToken } = useAuth()
-  const skipNextBrowseRestoreRef = useRef(false)
-  const [browseMapFocus, setBrowseMapFocus] = useState<{
-    nonce: number
-    placeId: string | null
-  }>({
-    nonce: 0,
-    placeId: null,
-  })
   const mapPlaces = places.filter(hasCoordinates)
   const routePlaceId = getPlaceIdFromPathname(pathname)
   const routeSelectedPlace = routePlaceId
@@ -1215,17 +1193,6 @@ export const NurimapAppShell = () => {
     : places.find((place) => place.id === selectedPlaceId)
   const effectiveNavigationState = routePlaceId ? 'place_detail_open' : navigationState
   const effectiveDetailChildSurface = routePlaceId ? detailChildSurface : 'detail'
-
-  const armBrowseMapFocus = useCallback((placeId: string | null) => {
-    if (!placeId) {
-      return
-    }
-
-    setBrowseMapFocus((current) => ({
-      nonce: current.nonce + 1,
-      placeId,
-    }))
-  }, [])
 
   useEffect(() => {
     if (placeListLoad !== 'idle') {
@@ -1252,19 +1219,14 @@ export const NurimapAppShell = () => {
         return
       }
 
-      if (skipNextBrowseRestoreRef.current) {
-        skipNextBrowseRestoreRef.current = false
-      } else {
-        armBrowseMapFocus(routePlaceId ?? selectedPlaceId)
-      }
-      returnToMapBrowse()
+      closePlaceDetail()
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [armBrowseMapFocus, returnToMapBrowse, routePlaceId, selectedPlaceId, syncDetailChildSurface])
+  }, [closePlaceDetail, syncDetailChildSurface])
 
   useEffect(() => {
     if (isDesktop) {
@@ -1346,11 +1308,7 @@ export const NurimapAppShell = () => {
     if (selectedPlaceId !== routePlaceId) {
       setSelectedPlaceId(routePlaceId)
     }
-
-    if (mapLevel !== 2) {
-      setMapLevel(2)
-    }
-  }, [loadPlaceDetailFromApi, mapLevel, placeDetailLoad, routePlaceId, routeSelectedPlace, selectedPlaceId, setMapLevel, setSelectedPlaceId])
+  }, [loadPlaceDetailFromApi, placeDetailLoad, routePlaceId, routeSelectedPlace, selectedPlaceId, setSelectedPlaceId])
 
   const navigateToPath = (path: string, replace = false) => {
     if (window.location.pathname === path) {
@@ -1369,14 +1327,11 @@ export const NurimapAppShell = () => {
 
   const handleOpenPlaceDetail = (placeId: string) => {
     openPlaceDetail(placeId)
-    setMapLevel(2)
     navigateToPath(getDetailRoutePath(placeId))
   }
 
   const handleReturnToMapBrowse = () => {
-    armBrowseMapFocus(routePlaceId ?? selectedPlaceId)
-    skipNextBrowseRestoreRef.current = true
-    returnToMapBrowse()
+    closePlaceDetail()
     navigateToPath('/', true)
   }
 
@@ -1469,8 +1424,6 @@ export const NurimapAppShell = () => {
 
   return isDesktop ? (
     <DesktopAppShell
-      browseFocusNonce={browseMapFocus.nonce}
-      browseFocusPlaceId={browseMapFocus.placeId}
       navigationState={effectiveNavigationState}
       mapPlaces={mapPlaces}
       onOpenPlaceDetail={handleOpenPlaceDetail}
@@ -1479,8 +1432,6 @@ export const NurimapAppShell = () => {
     />
   ) : (
     <MobileAppShell
-      browseFocusNonce={browseMapFocus.nonce}
-      browseFocusPlaceId={browseMapFocus.placeId}
       detailChildSurface={effectiveDetailChildSurface}
       navigationState={effectiveNavigationState}
       mapPlaces={mapPlaces}

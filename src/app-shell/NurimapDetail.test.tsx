@@ -156,7 +156,7 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('detail-zeropay-row')).toHaveTextContent('제로페이 불가능')
   })
 
-  it('returns from desktop detail to browse mode with the new back control', async () => {
+  it('returns from desktop detail to browse mode without leaving a selected-looking browse state', async () => {
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
@@ -169,18 +169,42 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.queryByTestId('desktop-detail-panel')).not.toBeInTheDocument()
     expect(screen.getByTestId('desktop-browse-topbar')).toBeInTheDocument()
     expect(screen.getByTestId('desktop-browse-footer')).toBeInTheDocument()
+    expect(useAppShellStore.getState().selectedPlaceId).toBeNull()
+    expect(screen.getByTestId('place-list-item-place-restaurant-1').className).not.toContain('bg-[#f7f8ff]')
   })
 
   it('keeps the map visible while desktop detail is shown in the sidebar', async () => {
     setViewport(1280)
+    useAppShellStore.setState({ mapLevel: 1 })
     const user = userEvent.setup()
     render(<App />)
 
     await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
 
     expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
-    expect(useAppShellStore.getState().mapLevel).toBe(2)
+    expect(useAppShellStore.getState().mapLevel).toBe(1)
     expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-detail-panel'))
+  })
+
+  it('returns from desktop browser back without auto-zoom and without a selected-looking browse state', async () => {
+    setViewport(1280)
+    useAppShellStore.setState({ mapLevel: 1 })
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
+    expect(window.location.pathname).toBe('/places/place-restaurant-1')
+
+    act(() => {
+      window.history.replaceState({}, '', '/')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+
+    expect(window.location.pathname).toBe('/')
+    expect(screen.queryByTestId('desktop-detail-panel')).not.toBeInTheDocument()
+    expect(useAppShellStore.getState().selectedPlaceId).toBeNull()
+    expect(useAppShellStore.getState().mapLevel).toBe(1)
+    expect(screen.getByTestId('place-list-item-place-restaurant-1').className).not.toContain('bg-[#f7f8ff]')
   })
 
   it('shows the refreshed mobile detail page as a full-screen page', async () => {
@@ -278,8 +302,10 @@ describe('Sprint 16 place detail refresh', () => {
 
     expect(window.location.pathname).toBe('/')
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
+    expect(useAppShellStore.getState().selectedPlaceId).toBeNull()
 
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    expect(screen.getByTestId('place-list-item-place-cafe-1').className).not.toContain('bg-[#f7f8ff]')
     await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
 
     const savedReview = await screen.findByTestId('detail-review-content-review-place-cafe-1-mine')
@@ -343,8 +369,9 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('review-add-content-input')).toHaveValue('a'.repeat(500))
   })
 
-  it('returns to the map screen on mobile back and keeps the selected place', async () => {
+  it('returns to the map screen on mobile back without auto-zoom and without a selected-looking browse state', async () => {
     setViewport(390)
+    useAppShellStore.setState({ mapLevel: 4 })
     const user = userEvent.setup()
     render(<App />)
 
@@ -355,14 +382,18 @@ describe('Sprint 16 place detail refresh', () => {
 
     expect(window.location.pathname).toBe('/')
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
-    expect(useAppShellStore.getState().selectedPlaceId).toBe('place-restaurant-1')
-    expect(useAppShellStore.getState().mapLevel).toBe(2)
+    expect(useAppShellStore.getState().selectedPlaceId).toBeNull()
+    expect(useAppShellStore.getState().mapLevel).toBe(4)
     expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    expect(screen.getByTestId('place-list-item-place-restaurant-1').className).not.toContain('bg-[#f7f8ff]')
   })
 
-  it('returns to the map screen on mobile browser back and keeps the selected place', async () => {
+  it('returns to the map screen on mobile browser back without auto-zoom and without a selected-looking browse state', async () => {
     setViewport(390)
+    useAppShellStore.setState({ mapLevel: 4 })
     const user = userEvent.setup()
     render(<App />)
 
@@ -377,10 +408,13 @@ describe('Sprint 16 place detail refresh', () => {
 
     expect(window.location.pathname).toBe('/')
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
-    expect(useAppShellStore.getState().selectedPlaceId).toBe('place-cafe-1')
-    expect(useAppShellStore.getState().mapLevel).toBe(2)
+    expect(useAppShellStore.getState().selectedPlaceId).toBeNull()
+    expect(useAppShellStore.getState().mapLevel).toBe(4)
     expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    expect(screen.getByTestId('place-list-item-place-cafe-1').className).not.toContain('bg-[#f7f8ff]')
   })
 
   it('shows the detail loading state', () => {
@@ -440,12 +474,23 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.queryByText('아직 등록된 리뷰가 없어요.')).not.toBeInTheDocument()
   })
 
-  it('opens the detail screen from a direct /places route entry', () => {
+  it('opens the desktop detail screen from a direct /places route entry without changing map zoom', () => {
     setViewport(1280)
     window.history.replaceState({}, '', '/places/place-restaurant-1')
+    useAppShellStore.setState({ mapLevel: 1 })
     render(<App />)
 
     expect(screen.getByTestId('desktop-detail-panel')).toHaveTextContent('누리 식당')
-    expect(useAppShellStore.getState().mapLevel).toBe(2)
+    expect(useAppShellStore.getState().mapLevel).toBe(1)
+  })
+
+  it('opens the mobile detail screen from a direct /places route entry without changing map zoom', () => {
+    setViewport(390)
+    window.history.replaceState({}, '', '/places/place-restaurant-1')
+    useAppShellStore.setState({ mapLevel: 4 })
+    render(<App />)
+
+    expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('누리 식당')
+    expect(useAppShellStore.getState().mapLevel).toBe(4)
   })
 })
