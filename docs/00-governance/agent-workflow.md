@@ -186,6 +186,12 @@
 ## Git And Completion
 - 구현과 문서 sync, 검증이 모두 끝난 뒤에만 commit한다.
 - commit 전에 관련 테스트와 문서 링크 검증 결과를 확인한다.
+- `git push`가 Vercel 자동 배포를 유발하는 브랜치/환경이면, push 전에 `.vercelignore`를 함께 점검한다.
+- 점검 목적은 두 가지다.
+  - production 배포에 필요 없는 파일이 업로드되지 않는지 확인한다.
+  - 현재 build/runtime에 필요한 파일이 `.vercelignore` 때문에 제외되지 않는지 확인한다.
+- 새 root config, build 설정 파일, package manager 설정 파일, 또는 production build가 참조하는 새 경로를 추가했다면 `.vercelignore`도 같은 변경 범위에서 함께 검토한다.
+- 사용자가 비개발자이거나 배포 안전성이 중요한 작업에서는, agent가 배포 전 `.vercelignore` 점검 결과를 짧게 보고한 뒤 push/배포 단계로 진행한다.
 - commit 이후 필요한 경우 `docs/06-history/decisions.md`의 관련 entry에 실제 commit hash를 반영한다.
 
 ## Suggested Agent Roles
