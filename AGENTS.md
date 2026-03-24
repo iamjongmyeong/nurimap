@@ -294,6 +294,9 @@ Visual iteration gate:
 Continuation:
   Before concluding, confirm: zero pending tasks, all features working, tests passing, zero errors, verification evidence collected. If any item is unchecked, continue working.
 
+Deployment safety:
+  If a `git push` is likely to trigger Vercel deployment, check `.vercelignore` before finishing and briefly report the result.
+
 Ralph planning gate:
   If ralph is active, verify PRD + test spec artifacts exist before any implementation work/tool execution. If missing, stay in planning and create them first (ralplan-first).
 </execution_protocols>

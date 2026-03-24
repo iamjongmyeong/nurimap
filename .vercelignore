@@ -1,12 +1,33 @@
-# Test files should never be uploaded as functions
-**/*.test.*
+# Upload only the files required to build and serve the production app on Vercel.
+# If the build later depends on another root config file, allowlist it explicitly.
+/*
 
-# Generated/local artifacts
-artifacts/
+# Production app source
+!api/
+!api/**
+!public/
+!public/**
+!src/
+!src/**
+
+# Required root build/runtime config
+!index.html
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig*.json
+!vercel.json
+!vite.config.ts
+
+# Exclude non-production source even inside allowlisted directories
+**/*.test.*
+src/test/
+playwright-report/
 coverage/
 dist/
-playwright-report/
+artifacts/
 .tmp-home/
 .omx/
 .vercel/
+.codex/
 *.log
