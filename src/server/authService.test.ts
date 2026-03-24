@@ -249,12 +249,13 @@ describe('Sprint 18 otp auth request flow', () => {
     })
     expect(updateUserByIdMock).toHaveBeenCalledWith('user-allow-1', {
       app_metadata: {
-        nurimap_auth: {
+        nurimap_auth: expect.objectContaining({
           day_key: expect.any(String),
           day_count: 1,
           last_requested_at: expect.any(String),
           last_verified_at: null,
-        },
+          recent_request_receipts: [],
+        }),
       },
       user_metadata: {},
     })
@@ -331,12 +332,13 @@ describe('Sprint 18 otp auth request flow', () => {
     })
     expect(updateUserByIdMock).toHaveBeenCalledWith('user-1', {
       app_metadata: {
-        nurimap_auth: {
+        nurimap_auth: expect.objectContaining({
           day_key: expect.any(String),
           day_count: 3,
           last_requested_at: expect.any(String),
           last_verified_at: '2026-03-07T10:00:00.000Z',
-        },
+          recent_request_receipts: [],
+        }),
       },
       user_metadata: { name: 'Tester' },
     })
@@ -377,12 +379,13 @@ describe('Sprint 18 otp auth request flow', () => {
     })
     expect(updateUserByIdMock).toHaveBeenCalledWith('user-2', {
       app_metadata: {
-        nurimap_auth: {
+        nurimap_auth: expect.objectContaining({
           day_key: expect.any(String),
           day_count: 1,
           last_requested_at: expect.any(String),
           last_verified_at: null,
-        },
+          recent_request_receipts: [],
+        }),
       },
       user_metadata: {},
     })
@@ -433,12 +436,13 @@ describe('Sprint 18 otp auth request flow', () => {
     })
     expect(updateUserByIdMock).toHaveBeenCalledWith('user-race-1', {
       app_metadata: {
-        nurimap_auth: {
+        nurimap_auth: expect.objectContaining({
           day_key: expect.any(String),
           day_count: 1,
           last_requested_at: expect.any(String),
           last_verified_at: null,
-        },
+          recent_request_receipts: [],
+        }),
       },
       user_metadata: {},
     })
@@ -516,6 +520,47 @@ describe('Sprint 18 otp auth request flow', () => {
         total_ms: expect.any(Number),
       }),
     )
+  })
+
+  it('persists an accepted requestAttemptId receipt when otp send succeeds', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    listUsersMock.mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: 'user-1',
+            email: 'tester@nurimedia.co.kr',
+            app_metadata: {},
+            user_metadata: {},
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const result = await requestLoginOtp('tester@nurimedia.co.kr', {
+      requestAttemptId: 'attempt-123',
+    })
+
+    expect(result).toEqual({
+      status: 'success',
+      mode: 'otp',
+      message: '인증 코드를 보냈어요.',
+    })
+    expect(updateUserByIdMock).toHaveBeenCalledWith('user-1', {
+      app_metadata: {
+        nurimap_auth: expect.objectContaining({
+          recent_request_receipts: [
+            expect.objectContaining({
+              attempt_id: 'attempt-123',
+              status: 'accepted',
+              error_code: null,
+            }),
+          ],
+        }),
+      },
+      user_metadata: {},
+    })
   })
 
   it('logs supabase otp delivery failures', async () => {
@@ -621,6 +666,95 @@ describe('Sprint 18 otp auth request flow', () => {
       retryAfterSeconds: 67,
     })
     expect(signInWithOtpMock).not.toHaveBeenCalled()
+  })
+
+  it('returns canonical otp success from status mode when the exact attempt was already accepted', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    const nowIso = new Date().toISOString()
+
+    listUsersMock.mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: 'user-1',
+            email: 'tester@nurimedia.co.kr',
+            app_metadata: {
+              nurimap_auth: {
+                day_key: '2026-03-08',
+                day_count: 1,
+                last_requested_at: nowIso,
+                last_verified_at: null,
+                recent_request_receipts: [
+                  {
+                    attempt_id: 'attempt-accepted',
+                    status: 'accepted',
+                    recorded_at: nowIso,
+                    error_code: null,
+                  },
+                ],
+              },
+            },
+            user_metadata: {},
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const result = await requestLoginOtp('tester@nurimedia.co.kr', {
+      intent: 'status',
+      requestAttemptId: 'attempt-accepted',
+    })
+
+    expect(result).toEqual({
+      status: 'success',
+      mode: 'otp',
+      message: '인증 코드를 보냈어요.',
+      requestResolution: 'accepted',
+    })
+    expect(signInWithOtpMock).not.toHaveBeenCalled()
+    expect(updateUserByIdMock).not.toHaveBeenCalled()
+  })
+
+  it('returns unknown delivery failure from status mode when the attempt receipt is missing', async () => {
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    const nowIso = new Date().toISOString()
+
+    listUsersMock.mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: 'user-1',
+            email: 'tester@nurimedia.co.kr',
+            app_metadata: {
+              nurimap_auth: {
+                day_key: '2026-03-08',
+                day_count: 1,
+                last_requested_at: nowIso,
+                last_verified_at: null,
+                recent_request_receipts: [],
+              },
+            },
+            user_metadata: {},
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const result = await requestLoginOtp('tester@nurimedia.co.kr', {
+      intent: 'status',
+      requestAttemptId: 'attempt-missing',
+    })
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 'delivery_failed',
+      message: '인증 코드를 보내지 못했어요. 다시 시도해 주세요.',
+      requestResolution: 'unknown',
+    })
+    expect(signInWithOtpMock).not.toHaveBeenCalled()
+    expect(updateUserByIdMock).not.toHaveBeenCalled()
   })
 
   it('verifies otp via backend and returns an opaque app session contract', async () => {

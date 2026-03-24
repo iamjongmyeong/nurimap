@@ -176,6 +176,14 @@ const OTP_ERROR_TEXT_CLASSES = 'text-[12px] leading-[150%] text-[#E52E30]'
 const LOGIN_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const OTP_CODE_PATTERN = /^\d{6}$/
 const MAX_NAME_LENGTH = 10
+const createRequestAttemptId = () => {
+  if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
+    return window.crypto.randomUUID()
+  }
+
+  return `otp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 const formatCooldownTime = (remainingSeconds: number) => {
   const minutes = Math.floor(remainingSeconds / 60)
   const seconds = remainingSeconds % 60
@@ -580,6 +588,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return null
   }, [])
 
+  const reconcileOtpRequest = useCallback(async ({
+    requestAttemptId,
+    requestedEmail,
+  }: {
+    requestAttemptId: string
+    requestedEmail: string
+  }) => {
+    for (let attempt = 0; attempt < AUTH_SESSION_RECOVERY_ATTEMPTS; attempt += 1) {
+      try {
+        const { payload } = await withTimeout(requestOtpViaApi({
+          email: requestedEmail,
+          intent: 'status',
+          requestAttemptId,
+        }), AUTH_BOOTSTRAP_TIMEOUT_MS)
+
+        if (payload.status === 'error' && payload.requestResolution === 'unknown' && attempt < AUTH_SESSION_RECOVERY_ATTEMPTS - 1) {
+          await waitForDelay(AUTH_SESSION_RECOVERY_DELAY_MS)
+          continue
+        }
+
+        return payload
+      } catch {
+        if (attempt < AUTH_SESSION_RECOVERY_ATTEMPTS - 1) {
+          await waitForDelay(AUTH_SESSION_RECOVERY_DELAY_MS)
+          continue
+        }
+      }
+    }
+
+    return null
+  }, [])
+
   const verifyAndAdoptBypassSession = useCallback(async ({
     tokenHash,
     verificationType,
@@ -700,6 +740,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const trimmedEmail = nextEmail.trim().toLowerCase()
     const isResend = phaseRef.current === 'otp_required' && requestedEmail === trimmedEmail
+    const requestAttemptId = createRequestAttemptId()
 
     setSubmitting(true)
     setCooldownState(null)
@@ -737,7 +778,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { response, payload } = await withTimeout(requestOtpViaApi({
         email: trimmedEmail,
+        intent: 'send',
         requireBypass: options?.requireBypass === true,
+        requestAttemptId,
       }), AUTH_REQUEST_TIMEOUT_MS)
 
       if (!response.ok || payload.status === 'error') {
@@ -794,13 +837,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setMessage(payload.message)
       setPhase('otp_required')
     } catch {
+      const reconciledPayload = await reconcileOtpRequest({
+        requestAttemptId,
+        requestedEmail: trimmedEmail,
+      })
+
+      if (reconciledPayload?.status === 'success' && reconciledPayload.mode === 'otp') {
+        setRequestedEmail(trimmedEmail)
+        setOtpCode('')
+        setHasResentOtp(isResend)
+        setMessage(reconciledPayload.message)
+        setPhase('otp_required')
+        return
+      }
+
+      if (reconciledPayload?.status === 'error') {
+        const retryAfterSeconds = 'retryAfterSeconds' in reconciledPayload
+          && typeof reconciledPayload.retryAfterSeconds === 'number'
+          ? reconciledPayload.retryAfterSeconds
+          : null
+
+        if (reconciledPayload.code === 'cooldown' && retryAfterSeconds !== null) {
+          setCooldownState({
+            email: trimmedEmail,
+            remainingSeconds: retryAfterSeconds,
+          })
+          setMessage(null)
+          setRequestedEmail(null)
+          setOtpCode('')
+          setHasResentOtp(false)
+          setPhase('auth_required')
+          return
+        }
+
+        setRequestedEmail(isResend ? trimmedEmail : null)
+        setMessage(reconciledPayload.message)
+        setPhase(isResend ? 'otp_required' : 'auth_required')
+        return
+      }
+
       setRequestedEmail(isResend ? trimmedEmail : null)
       setMessage('인증 코드를 보내지 못했어요. 다시 시도해 주세요.')
       setPhase(isResend ? 'otp_required' : 'auth_required')
     } finally {
       setSubmitting(false)
     }
-  }, [isTestMode, requestedEmail, verifyAndAdoptBypassSession])
+  }, [isTestMode, reconcileOtpRequest, requestedEmail, verifyAndAdoptBypassSession])
 
   const submitOtp = useCallback(async () => {
     const verifyEmail = (requestedEmail ?? email).trim().toLowerCase()

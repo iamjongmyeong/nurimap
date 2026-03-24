@@ -42,6 +42,40 @@ describe('authApi', () => {
     })
   })
 
+  it('passes status intent and requestAttemptId through the request-otp endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        status: 'success',
+        mode: 'otp',
+        message: '인증 코드를 보냈어요.',
+        requestResolution: 'accepted',
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await requestOtpViaApi({
+      email: 'tester@nurimedia.co.kr',
+      intent: 'status',
+      requestAttemptId: 'attempt-123',
+    })
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      email: 'tester@nurimedia.co.kr',
+      intent: 'status',
+      requireBypass: false,
+      requestAttemptId: 'attempt-123',
+    })
+    expect(result.payload).toEqual({
+      status: 'success',
+      mode: 'otp',
+      message: '인증 코드를 보냈어요.',
+      requestResolution: 'accepted',
+    })
+  })
+
   it('calls verify-otp endpoint with email and token', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({

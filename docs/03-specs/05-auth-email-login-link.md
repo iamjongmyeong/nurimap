@@ -71,17 +71,17 @@
 
 ## Canonical Runtime / API Contract
 - canonical OTP request endpoint는 `POST /api/auth/request-otp`다.
-- request body는 `{ email: string, requireBypass?: boolean }`를 사용한다.
+- request body는 `{ email: string, requireBypass?: boolean, intent?: 'send' | 'status', requestAttemptId?: string }`를 사용한다.
 - backend의 일반 OTP request/verify는 Supabase publishable/anon auth client를 사용하고, `auth.admin.*` 작업만 service-role/admin client를 사용한다.
-- 정상 OTP 발급 성공 응답은 `{ status: 'success', mode: 'otp', message: '인증 코드를 보냈어요.' }`다.
+- 정상 OTP 발급 성공 응답은 `{ status: 'success', mode: 'otp', message: '인증 코드를 보냈어요.', requestResolution?: 'accepted' }`다.
 - bypass 성공 응답은 `{ status: 'success', mode: 'bypass', message: '테스트 계정으로 바로 로그인합니다.', tokenHash: string, verificationType: 'magiclink' | 'signup' | 'invite' }`를 사용한다.
-- cooldown 응답은 `{ status: 'error', code: 'cooldown', message: string, retryAfterSeconds: number }`를 사용한다.
-- 일반 request error 응답은 `{ status: 'error', code: 'invalid_domain' | 'delivery_failed' | 'bypass_required', message: string }`를 사용한다.
+- cooldown 응답은 `{ status: 'error', code: 'cooldown', message: string, retryAfterSeconds: number, requestResolution?: 'rejected' | 'unknown' }`를 사용한다.
+- 일반 request error 응답은 `{ status: 'error', code: 'invalid_domain' | 'delivery_failed' | 'bypass_required', message: string, requestResolution?: 'rejected' | 'unknown' }`를 사용한다.
 - canonical 일반 OTP verify endpoint는 `POST /api/auth/verify-otp`다.
 - verify request body는 `{ email: string, token: string }`를 사용한다.
 - verify 성공 시 backend는 app session cookie를 설정하고 `{ status: 'success', nextPhase: 'authenticated' | 'name_required' }`를 반환한다.
 - auth bootstrap source of truth는 `GET /api/auth/session`이다.
-- server-side resend/cooldown bookkeeping은 Supabase auth user의 `app_metadata.nurimap_auth` 안에 유지하되 `day_key`, `day_count`, `last_requested_at`, `last_verified_at` 같은 OTP-era 필드만 남긴다.
+- server-side resend/cooldown bookkeeping은 Supabase auth user의 `app_metadata.nurimap_auth` 안에 유지하되 `day_key`, `day_count`, `last_requested_at`, `last_verified_at`, `recent_request_receipts` 같은 OTP-era 필드만 남긴다.
 - bypass 경로는 canonical user auth flow가 아니라 dev/test convenience 예외다. 이 경로는 기존 `tokenHash` + `verificationType` session adoption shape를 유지할 수 있다.
 
 ## Failure Copy Contract
@@ -98,6 +98,9 @@
 - 새 OTP 발급 후 이전 미사용 OTP는 실패한다.
 - 같은 이메일은 burst 3회까지 즉시 재요청할 수 있다.
 - 같은 이메일의 4번째 요청부터는 5분 cooldown이 적용되고 남은 대기 시간이 `0분 00초` 형식으로 표시되며 입력 이메일이 유지된다.
+- request-otp timeout 또는 transport ambiguity가 발생해도 앱은 같은 canonical route의 `status` intent로 직전 `requestAttemptId`를 조용히 재확인할 수 있다.
+- `status` intent reconcile-hit는 새 OTP를 다시 보내지 않고 기존 OTP success payload를 반환한다.
+- `status` intent reconcile-hit는 resend/cooldown bookkeeping을 추가로 증가시키지 않는다.
 - 잘못된 OTP를 입력하면 앱은 로그인되지 않고, 사용자는 같은 OTP 입력 상태에서 다시 시도할 수 있다.
 - 만료되었거나 무효화된 OTP는 로그인되지 않고, 사용자는 새 OTP 요청 경로를 볼 수 있다.
 - OTP 확인 중에는 처리 상태가 보이고 결과 확정 전 앱 메인 화면으로 이동하지 않는다.

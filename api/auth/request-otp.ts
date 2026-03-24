@@ -9,7 +9,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const email = typeof req.body?.email === 'string' ? req.body.email : ''
   const requireBypass = req.body?.requireBypass === true
-  const result = await requestLoginOtp(email, { requireBypass })
+  const intent = req.body?.intent === 'status' ? 'status' : undefined
+  const requestAttemptId = typeof req.body?.requestAttemptId === 'string'
+    ? req.body.requestAttemptId
+    : undefined
+  const result = await requestLoginOtp(email, {
+    requireBypass,
+    intent,
+    requestAttemptId,
+  })
 
   if (result.status === 'error') {
     const statusCode = result.code === 'delivery_failed'

@@ -1,14 +1,26 @@
 export type RequestOtpResponse =
-  | { status: 'success'; mode: 'otp'; message: string }
+  | { status: 'success'; mode: 'otp'; message: string; requestResolution?: 'accepted' }
   | {
       status: 'success'
       mode: 'bypass'
       message: string
       tokenHash: string
       verificationType: 'magiclink' | 'signup' | 'invite'
+      requestResolution?: 'accepted'
     }
-  | { status: 'error'; code: 'cooldown'; message: string; retryAfterSeconds: number }
-  | { status: 'error'; code?: string; message: string }
+  | {
+      status: 'error'
+      code: 'cooldown'
+      message: string
+      retryAfterSeconds: number
+      requestResolution?: 'rejected' | 'unknown'
+    }
+  | {
+      status: 'error'
+      code?: string
+      message: string
+      requestResolution?: 'rejected' | 'unknown'
+    }
 
 export type VerifyOtpResponse =
   | {
@@ -58,17 +70,23 @@ const parseJson = async <T>(response: Response) => {
 
 export const requestOtpViaApi = async ({
   email,
+  intent,
   requireBypass = false,
+  requestAttemptId,
 }: {
   email: string
+  intent?: 'send' | 'status'
   requireBypass?: boolean
+  requestAttemptId?: string
 }) => {
   const response = await fetch('/api/auth/request-otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email,
+      intent,
       requireBypass,
+      requestAttemptId,
     }),
   })
 

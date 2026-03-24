@@ -308,10 +308,12 @@ describe('Sprint 18 OTP auth flow', () => {
         headers: { 'Content-Type': 'application/json' },
       }),
     )
-    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual(expect.objectContaining({
       email: 'bypass.named@example.com',
+      intent: 'send',
       requireBypass: true,
-    })
+      requestAttemptId: expect.any(String),
+    }))
     expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
       email: '',
       token: '',
@@ -480,7 +482,11 @@ describe('Sprint 18 OTP auth flow', () => {
     expect(screen.getByTestId('auth-request-button')).toBeDisabled()
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(AUTH_REQUEST_TIMEOUT_MS)
+      await vi.advanceTimersByTimeAsync(
+        AUTH_REQUEST_TIMEOUT_MS +
+        AUTH_BOOTSTRAP_TIMEOUT_MS * AUTH_SESSION_RECOVERY_ATTEMPTS +
+        AUTH_SESSION_RECOVERY_DELAY_MS,
+      )
     })
 
     expect(screen.getByText('인증 코드를 보내지 못했어요. 다시 시도해 주세요.')).toBeInTheDocument()

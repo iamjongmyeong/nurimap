@@ -84,6 +84,7 @@ describe('Sprint 18 auth policy', () => {
       day_count: 0,
       last_requested_at: null,
       last_verified_at: '2026-03-08T10:00:00.000Z',
+      recent_request_receipts: [],
     })
   })
 })

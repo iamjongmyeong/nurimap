@@ -1,12 +1,15 @@
 import {
   createEmptyLoginOtpState,
   evaluateRequestPolicy,
+  findRequestAttemptReceipt,
   isExplicitlyAllowedEmail,
   isAllowedEmailDomain,
   normalizeEmail,
   parseAllowedEmails,
+  recordRequestAttemptReceipt,
   recordVerifiedOtpState,
   type LoginOtpState,
+  type LoginOtpRequestReceipt,
 } from './_authPolicy.js'
 import {
   createAppSession,
@@ -21,8 +24,12 @@ import { createSupabaseAdminClient, createSupabaseAuthClient } from './_supabase
 
 type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'delivery_failed' | 'bypass_required'
 type AuthVerifyType = 'magiclink' | 'signup' | 'invite'
+type AuthRequestResolution = 'accepted' | 'rejected' | 'unknown'
+type RequestLoginOtpIntent = 'send' | 'status'
 type RequestLoginOtpOptions = {
   requireBypass?: boolean
+  intent?: RequestLoginOtpIntent
+  requestAttemptId?: string
 }
 type AuthRequestError =
   | {
@@ -30,11 +37,13 @@ type AuthRequestError =
       code: 'cooldown'
       message: string
       retryAfterSeconds: number
+      requestResolution?: Exclude<AuthRequestResolution, 'accepted'>
     }
   | {
       status: 'error'
       code: Exclude<AuthRequestErrorCode, 'cooldown'>
       message: string
+      requestResolution?: Exclude<AuthRequestResolution, 'accepted'>
     }
 type SendLoginOtpResult =
   | {
@@ -52,6 +61,7 @@ type AuthRequestSuccess =
       status: 'success'
       mode: 'otp'
       message: string
+      requestResolution?: Extract<AuthRequestResolution, 'accepted'>
     }
   | {
       status: 'success'
@@ -59,6 +69,7 @@ type AuthRequestSuccess =
       message: string
       tokenHash: string
       verificationType: AuthVerifyType
+      requestResolution?: Extract<AuthRequestResolution, 'accepted'>
     }
 
 type AuthVerifySuccess = {
@@ -293,6 +304,61 @@ const findUserByEmail = async (email: string) => {
 
 const getStringOrNull = (value: unknown) => (typeof value === 'string' ? value : null)
 const getNumberOrZero = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
+const getAcceptedRequestResolution = () => ({ requestResolution: 'accepted' as const })
+const getErrorRequestResolution = (value: Exclude<AuthRequestResolution, 'accepted'>) => ({ requestResolution: value })
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+
+const getRecentRequestReceipts = (value: unknown): LoginOtpRequestReceipt[] => {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.flatMap((candidate) => {
+    if (!isRecord(candidate)) {
+      return []
+    }
+
+    const attemptId = getStringOrNull(candidate.attempt_id)
+    const status = candidate.status === 'accepted' || candidate.status === 'rejected'
+      ? candidate.status
+      : null
+    const recordedAt = getStringOrNull(candidate.recorded_at)
+    const errorCode = candidate.error_code === 'cooldown'
+      || candidate.error_code === 'invalid_domain'
+      || candidate.error_code === 'delivery_failed'
+      || candidate.error_code === 'bypass_required'
+      ? candidate.error_code
+      : null
+
+    if (!attemptId || !status || !recordedAt) {
+      return []
+    }
+
+    return [{
+      attempt_id: attemptId,
+      status,
+      recorded_at: recordedAt,
+      error_code: errorCode,
+    }]
+  })
+}
+
+const createRequestAttemptReceipt = ({
+  attemptId,
+  errorCode = null,
+  now,
+  status,
+}: {
+  attemptId: string
+  errorCode?: AuthRequestErrorCode | null
+  now: Date
+  status: LoginOtpRequestReceipt['status']
+}): LoginOtpRequestReceipt => ({
+  attempt_id: attemptId,
+  status,
+  recorded_at: now.toISOString(),
+  error_code: errorCode,
+})
 
 const getLoginState = (user: { app_metadata?: Record<string, unknown> } | null): LoginOtpState => {
   const appMetadata = user?.app_metadata ?? {}
@@ -308,6 +374,7 @@ const getLoginState = (user: { app_metadata?: Record<string, unknown> } | null):
     day_count: getNumberOrZero(state.day_count),
     last_requested_at: getStringOrNull(state.last_requested_at),
     last_verified_at: getStringOrNull(state.last_verified_at),
+    recent_request_receipts: getRecentRequestReceipts(state.recent_request_receipts),
   }
 }
 
@@ -322,6 +389,148 @@ const updateUserAuthState = async (userId: string, nextState: LoginOtpState, use
   if (error) {
     throw error
   }
+}
+
+const createOtpSuccessResult = (requestResolution?: Extract<AuthRequestResolution, 'accepted'>) => ({
+  status: 'success' as const,
+  mode: 'otp' as const,
+  message: '인증 코드를 보냈어요.',
+  ...(requestResolution ? getAcceptedRequestResolution() : {}),
+})
+
+const createRequestErrorResult = ({
+  code,
+  message,
+  requestResolution,
+  retryAfterSeconds,
+}: {
+  code: AuthRequestErrorCode
+  message: string
+  requestResolution?: Exclude<AuthRequestResolution, 'accepted'>
+  retryAfterSeconds?: number
+}) => {
+  if (code === 'cooldown') {
+    return {
+      status: 'error' as const,
+      code,
+      message,
+      retryAfterSeconds: retryAfterSeconds ?? 0,
+      ...(requestResolution ? getErrorRequestResolution(requestResolution) : {}),
+    }
+  }
+
+  return {
+    status: 'error' as const,
+    code,
+    message,
+    ...(requestResolution ? getErrorRequestResolution(requestResolution) : {}),
+  }
+}
+
+const persistRequestAttemptReceipt = async ({
+  attemptId,
+  errorCode = null,
+  now,
+  state,
+  status,
+  userId,
+  userMetadata,
+}: {
+  attemptId: string | null
+  errorCode?: AuthRequestErrorCode | null
+  now: Date
+  state: LoginOtpState
+  status: LoginOtpRequestReceipt['status']
+  userId: string | null
+  userMetadata?: Record<string, unknown>
+}) => {
+  if (!attemptId || !userId) {
+    return
+  }
+
+  await updateUserAuthState(
+    userId,
+    recordRequestAttemptReceipt({
+      state,
+      receipt: createRequestAttemptReceipt({
+        attemptId,
+        errorCode,
+        now,
+        status,
+      }),
+    }),
+    userMetadata,
+  )
+}
+
+const resolveRequestAttemptStatus = ({
+  attemptId,
+  now,
+  state,
+}: {
+  attemptId: string | null
+  now: Date
+  state: LoginOtpState
+}) => {
+  if (!attemptId) {
+    return createRequestErrorResult({
+      code: 'delivery_failed',
+      message: '인증 코드를 보내지 못했어요. 다시 시도해 주세요.',
+      requestResolution: 'unknown',
+    })
+  }
+
+  const receipt = findRequestAttemptReceipt({
+    state,
+    attemptId,
+    now,
+  })
+
+  if (!receipt) {
+    return createRequestErrorResult({
+      code: 'delivery_failed',
+      message: '인증 코드를 보내지 못했어요. 다시 시도해 주세요.',
+      requestResolution: 'unknown',
+    })
+  }
+
+  if (receipt.status === 'accepted') {
+    return createOtpSuccessResult('accepted')
+  }
+
+  if (receipt.error_code === 'cooldown') {
+    const requestPolicy = evaluateRequestPolicy({ now, state })
+    const remainingSeconds = requestPolicy.remainingSeconds ?? 0
+
+    return createRequestErrorResult({
+      code: 'cooldown',
+      message: formatCooldownMessage(remainingSeconds),
+      requestResolution: 'rejected',
+      retryAfterSeconds: remainingSeconds,
+    })
+  }
+
+  if (receipt.error_code === 'invalid_domain') {
+    return createRequestErrorResult({
+      code: 'invalid_domain',
+      message: '누리미디어 구성원만 사용할 수 있어요.',
+      requestResolution: 'rejected',
+    })
+  }
+
+  if (receipt.error_code === 'bypass_required') {
+    return createRequestErrorResult({
+      code: 'bypass_required',
+      message: '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.',
+      requestResolution: 'rejected',
+    })
+  }
+
+  return createRequestErrorResult({
+    code: 'delivery_failed',
+    message: '인증 코드를 보내지 못했어요. 다시 시도해 주세요.',
+    requestResolution: 'rejected',
+  })
 }
 
 const isDuplicateUserError = (error: unknown) => {
@@ -402,6 +611,10 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
   const requestStartedAt = Date.now()
   const allowedDomain = process.env.AUTH_ALLOWED_EMAIL_DOMAIN ?? ''
   const allowedEmails = getAllowedEmails()
+  const requestIntent = options.intent === 'status' ? 'status' : 'send'
+  const requestAttemptId = typeof options.requestAttemptId === 'string' && options.requestAttemptId.trim()
+    ? options.requestAttemptId.trim()
+    : null
   const normalizedEmail = normalizeEmail(email)
   const publicAppUrl = getPublicAppUrl()
   const bypassLoginEmail = isBypassLoginEmail(normalizedEmail)
@@ -432,16 +645,35 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
   const findUserMs = getDurationMs(findUserStartedAt)
   const currentState = getLoginState(existingUser)
   const now = new Date()
+
+  if (requestIntent === 'status') {
+    return resolveRequestAttemptStatus({
+      attemptId: requestAttemptId,
+      now,
+      state: currentState,
+    })
+  }
+
   const requestPolicy = evaluateRequestPolicy({ now, state: currentState })
 
   if (!requestPolicy.allowed) {
     const remainingSeconds = requestPolicy.remainingSeconds ?? 0
     logAuthRequestFailure({ code: 'cooldown', email: normalizedEmail })
+    await persistRequestAttemptReceipt({
+      attemptId: requestAttemptId,
+      errorCode: 'cooldown',
+      now,
+      state: currentState,
+      status: 'rejected',
+      userId: existingUser?.id ?? null,
+      userMetadata: existingUser?.user_metadata ?? undefined,
+    })
     return {
-      status: 'error' as const,
-      code: 'cooldown' as AuthRequestErrorCode,
-      message: formatCooldownMessage(remainingSeconds),
-      retryAfterSeconds: remainingSeconds,
+      ...createRequestErrorResult({
+        code: 'cooldown',
+        message: formatCooldownMessage(remainingSeconds),
+        retryAfterSeconds: remainingSeconds,
+      }),
     } satisfies AuthRequestError
   }
 
@@ -479,6 +711,15 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
   const sendOtpMs = getDurationMs(sendOtpStartedAt)
 
   if (isSendLoginOtpFailure(deliveryResult)) {
+    await persistRequestAttemptReceipt({
+      attemptId: requestAttemptId,
+      errorCode: 'delivery_failed',
+      now,
+      state: currentState,
+      status: 'rejected',
+      userId: targetUser.id,
+      userMetadata: targetUser.user_metadata ?? undefined,
+    })
     return deliveryFailedResult(normalizedEmail, {
       failure_stage: 'send_otp',
       provider: 'supabase',
@@ -493,7 +734,17 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
   }
 
   const persistStateStartedAt = Date.now()
-  await updateUserAuthState(targetUser.id, requestPolicy.nextState, targetUser.user_metadata ?? undefined)
+  const nextState = requestAttemptId
+    ? recordRequestAttemptReceipt({
+      state: requestPolicy.nextState,
+      receipt: createRequestAttemptReceipt({
+        attemptId: requestAttemptId,
+        now,
+        status: 'accepted',
+      }),
+    })
+    : requestPolicy.nextState
+  await updateUserAuthState(targetUser.id, nextState, targetUser.user_metadata ?? undefined)
   const persistStateMs = getDurationMs(persistStateStartedAt)
 
   logAuthRequestAccepted({
@@ -509,11 +760,7 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
     },
   })
 
-  return {
-    status: 'success' as const,
-    mode: 'otp' as const,
-    message: '인증 코드를 보냈어요.',
-  }
+  return createOtpSuccessResult()
 }
 
 export const verifyLoginOtp = async ({
