@@ -12,7 +12,7 @@
 2. `docs/00-governance/docs-structure.md`
 3. 현재 Sprint의 `docs/05-sprints/sprint-XX/planning.md`
 4. 현재 Sprint에서 선택된 `docs/03-specs/*.md`
-5. UI fidelity가 중요한 작업이면 사용자 제공 screenshot / Figma / annotated capture 같은 external handoff
+5. UI fidelity가 중요한 작업이면 사용자 제공 Figma link / node id를 우선 확인하고, 없으면 screenshot / annotated capture 같은 external handoff를 확인한다.
 6. 현재 작업과 관련된 `docs/01-product/user-flows/*.md`, `docs/04-design/*.md`, `docs/02-architecture/*.md`
 7. `docs/00-governance/definition-of-ready.md`
 8. `docs/00-governance/definition-of-done.md`
@@ -71,9 +71,10 @@
 - schema 변경은 migration file로만 수행한다. dashboard 수동 변경이나 ad-hoc SQL을 canonical 변경 경로로 사용하지 않는다.
 - 여러 단계가 묶인 write/auth flow는 backend transaction을 기본으로 한다. RPC는 source of truth가 요구하거나 transaction/API boundary보다 명확한 이점이 있을 때만 예외적으로 검토한다.
 - backend code는 provider 교체 가능성을 남기는 방향으로 작성한다. Supabase-specific detail은 adapter/service boundary 안에 가두고, domain type이나 frontend contract에 provider-specific shape를 직접 새기지 않는다.
-- UI 작업에서 사용자 제공 screenshot / Figma / annotated capture가 있으면 그것을 visual source of truth로 사용하고, 자율적 디자인 해석은 하지 않는다.
-- UI fidelity가 중요한데 screenshot reference가 없으면, 비자명한 시각 변경 전에 사용자에게 desktop/mobile screenshot 제공을 먼저 요청한다.
-- screenshot이 제공되면 `/prompts:vision`으로 레이아웃/spacing/text/icon 요구를 먼저 분석하고, 구현 결과 비교가 필요하면 `$visual-verdict`를 사용한다.
+- UI 작업에서 사용자 제공 Figma link / node id, screenshot, annotated capture가 있으면 그것을 visual source of truth로 사용하고, 자율적 디자인 해석은 하지 않는다.
+- Figma handoff에 link 또는 node id가 있으면 먼저 Figma MCP로 구조와 텍스트를 확인한다.
+- screenshot / annotated capture가 제공되면 `/prompts:vision`으로 레이아웃/spacing/text/icon 요구를 분석하고, 구현 결과 비교가 필요하면 `$visual-verdict`를 사용한다.
+- UI fidelity가 중요한데 screenshot reference와 Figma link가 없으면, 비자명한 시각 변경 전에 사용자에게 desktop/mobile screenshot 제공을 먼저 요청한다.
 - design 문서는 visual guide가 아니라 thin contract로 유지한다. 시각 구현 디테일은 external handoff 또는 해당 Sprint QA evidence에 두고, design 문서에는 surface/transition/invariant/failure boundary만 남긴다.
 - 특정 UI 계약이 더 큰 surface나 flow에 종속되면 별도 문서로 과분화하지 말고 관련 thin contract에 흡수한다. 공통 route/layout/view-state/integration runtime 규칙은 관련 architecture 문서를 기준으로 본다.
 - frontend UI review, UX audit, accessibility/design review에는 `.codex/skills/`의 `web-design-guidelines`를 참고한다.
