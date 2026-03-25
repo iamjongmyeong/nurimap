@@ -1,0 +1,80 @@
+{
+  "checkedAt": "2026-03-25T13:59:35.665Z",
+  "url": "http://localhost:5173/",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "passed": true,
+  "finalState": "authenticated_mobile_detail",
+  "elapsedMs": 3041,
+  "firstPlaceId": "8fa670a5-7a6a-419f-8406-cb4d49bea56b",
+  "detailPreview": "장소 상세\n동보성\n서울 마포구 양화로19길 16\n테스트님이 추가한 장소\n식당\n제로페이 불가능\n5.0 (1)\n\n평가 및 리뷰\n\n리뷰 1\n\n테스트\n\n2026.03.22\n5.0",
+  "apiResponses": [
+    {
+      "url": "http://localhost:5173/api/auth/session",
+      "status": 200,
+      "body": "{\"status\":\"missing\"}"
+    },
+    {
+      "url": "http://localhost:5173/api/auth/session",
+      "status": 200,
+      "body": "{\"status\":\"missing\"}"
+    },
+    {
+      "url": "http://localhost:5173/api/auth/request-otp",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"mode\":\"bypass\",\"message\":\"테스트 계정으로 바로 로그인합니다.\",\"tokenHash\":\"[REDACTED_TOKEN_HASH]\",\"verificationType\":\"magiclink\"}"
+    },
+    {
+      "url": "http://localhost:5173/api/auth/verify-otp",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"nextPhase\":\"authenticated\",\"user\":{\"id\":\"[REDACTED_USER_ID]\",\"email\":\"[REDACTED_EMAIL]\",\"name\":\"테스트\"},\"csrfHeaderName\":\"x-nurimap-csrf-token\"}"
+    },
+    {
+      "url": "http://localhost:5173/api/place-list",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"places\":[{\"id\":\"8fa670a5-7a6a-419f-8406-cb4d49bea56b\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5"
+    },
+    {
+      "url": "http://localhost:5173/api/place-list",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"places\":[{\"id\":\"8fa670a5-7a6a-419f-8406-cb4d49bea56b\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5"
+    },
+    {
+      "url": "http://localhost:5173/api/place-list",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"places\":[{\"id\":\"8fa670a5-7a6a-419f-8406-cb4d49bea56b\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5"
+    },
+    {
+      "url": "http://localhost:5173/api/auth/session",
+      "status": 200,
+      "body": "{\"status\":\"authenticated\",\"user\":{\"id\":\"[REDACTED_USER_ID]\",\"email\":\"[REDACTED_EMAIL]\",\"name\":\"테스트\"},\"csrfHeaderName\":\"x-nurimap-csrf-token\"}"
+    },
+    {
+      "url": "http://localhost:5173/api/auth/session",
+      "status": 200,
+      "body": "{\"status\":\"authenticated\",\"user\":{\"id\":\"[REDACTED_USER_ID]\",\"email\":\"[REDACTED_EMAIL]\",\"name\":\"테스트\"},\"csrfHeaderName\":\"x-nurimap-csrf-token\"}"
+    },
+    {
+      "url": "http://localhost:5173/api/place-list",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"places\":[{\"id\":\"8fa670a5-7a6a-419f-8406-cb4d49bea56b\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5"
+    },
+    {
+      "url": "http://localhost:5173/api/place-detail?placeId=8fa670a5-7a6a-419f-8406-cb4d49bea56b",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"place\":{\"id\":\"8fa670a5-7a6a-419f-8406-cb4d49bea56b\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%A"
+    },
+    {
+      "url": "http://localhost:5173/api/place-list",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"places\":[{\"id\":\"8fa670a5-7a6a-419f-8406-cb4d49bea56b\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5"
+    },
+    {
+      "url": "http://localhost:5173/api/place-detail?placeId=8fa670a5-7a6a-419f-8406-cb4d49bea56b",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"place\":{\"id\":\"8fa670a5-7a6a-419f-8406-cb4d49bea56b\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%A"
+    }
+  ]
+}

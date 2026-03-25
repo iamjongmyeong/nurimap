@@ -837,7 +837,7 @@ export const verifyLoginOtp = async ({
     await withDatabaseTransaction(async (client) => {
       await client.query(
         `
-          insert into public.user_profiles (
+          insert into app_private.user_profiles (
             id,
             email,
             name,
@@ -847,7 +847,7 @@ export const verifyLoginOtp = async ({
           on conflict (id) do update
           set
             email = excluded.email,
-            name = coalesce(excluded.name, public.user_profiles.name),
+            name = coalesce(excluded.name, app_private.user_profiles.name),
             last_seen_at = excluded.last_seen_at
         `,
         [verifiedUser.id, persistedEmail, resolvedName, now.toISOString()],
@@ -914,7 +914,7 @@ export const getAuthenticatedSession = async (sessionId: string | null): Promise
           id,
           email,
           name
-        from public.user_profiles
+        from app_private.user_profiles
         where id = $1
         limit 1
       `,
@@ -950,7 +950,7 @@ export const saveAuthenticatedUserName = async ({
   await withDatabaseTransaction(async (client) => {
     await client.query(
       `
-        update public.user_profiles
+        update app_private.user_profiles
         set
           name = $2,
           last_seen_at = timezone('utc'::text, now())

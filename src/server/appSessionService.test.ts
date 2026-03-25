@@ -129,7 +129,7 @@ describe('appSessionService foundation', () => {
     const normalizedSql = sql.replace(/\s+/g, ' ').trim()
 
     expect(normalizedSql).toContain(
-      'insert into public.app_sessions ( user_id, session_token_hash, csrf_token_hash, expires_at, last_seen_at ) values ($1, $2, $3, $4, $5)',
+      'insert into app_private.app_sessions ( user_id, session_token_hash, csrf_token_hash, expires_at, last_seen_at ) values ($1, $2, $3, $4, $5)',
     )
     expect(parameters).toEqual([
       'user-1',

@@ -699,3 +699,24 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - docs/05-sprints/sprint-18/planning.md
   - docs/06-history/decisions.md
 - Related commit: TBD
+
+## 2026-03-25 Supabase private-schema hardening - Move server-owned app persistence from `public` to `app_private`
+- Context: current Supabase foundation migration created `user_profiles`, `app_sessions`, `places`, and `place_reviews` in the exposed `public` schema, and runtime SQL in both `src/server/*` and `api/_lib/*` referenced those tables directly. Supabase Security Advisor then flagged `rls_disabled_in_public`, and the product's approved architecture had already converged on `Frontend -> Backend API -> DB` with no browser-direct access to these tables. The user explicitly wanted a durable structural rule — server-only data should not live in `public` going forward — rather than a warning-only mitigation.
+- Options considered:
+  - Option A: keep the four tables in `public` and rely on RLS + privilege revoke as the long-term posture.
+  - Option B: move only clearly auth/session/profile-shaped tables to a private schema and leave `places` / `place_reviews` in `public`.
+  - Option C: move all four tables to `app_private`, keep app data access backend-only, and remove `public` from the hosted exposed-schema surface.
+- Decision: Option C를 선택한다.
+- Rationale: Nurimap은 이미 browser-direct Supabase data access를 source of truth로 사용하지 않고, server layer가 auth/session/place rules를 소유한다. 이런 구조에서는 `public`에 server-owned persistence를 남겨 두는 것보다 private schema로 격리하는 편이 원칙과 운영 모두에 더 일관된다. Option A는 경고는 줄일 수 있어도 같은 footgun을 구조적으로 남기고, Option B는 일부 데이터만 예외적으로 `public`에 남겨 ownership semantics를 흐린다. Option C는 migration/refactor 범위는 더 크지만, future table placement 기준을 명확히 하고 같은 실수가 반복되기 어렵게 만든다.
+- Impact: canonical app persistence는 `app_private.user_profiles`, `app_private.app_sessions`, `app_private.places`, `app_private.place_reviews` 기준으로 이동한다. backend/runtime SQL은 moved tables에 대해 `public.*` 대신 `app_private.*`를 사용한다. FE 구조, UX/UI, API 응답 계약은 바꾸지 않는다. hosted Supabase rollout에서는 `public`을 exposed schemas / extra search path에서 제거하는 hardening step을 별도 gate로 확인하고, `public` schema 자체를 없애는 것이 아니라 남아 있는 internal helper object inventory와 함께 운영한다.
+- Revisit trigger: future product requirements genuinely need browser-direct Data API or GraphQL access to app data again, or Supabase platform behavior changes such that exposed-schema hardening is better managed through a different supported contract, revisit whether `app_private` should remain the canonical persistence boundary and whether a dedicated public API schema is needed.
+- Related docs:
+  - docs/00-governance/agent-workflow.md
+  - docs/02-architecture/security-and-ops.md
+  - docs/05-sprints/sprint-20/review.md
+  - docs/05-sprints/sprint-20/qa.md
+  - .omx/specs/deep-interview-supabase-private-schema-hardening.md
+  - .omx/plans/plan-supabase-private-schema-hardening-consensus.md
+  - .omx/plans/prd-supabase-private-schema-hardening.md
+  - .omx/plans/test-spec-supabase-private-schema-hardening.md
+- Related commit: TBD

@@ -15,7 +15,7 @@ import {
   serializeAppSessionCookie,
   serializeCsrfCookie,
 } from './src/server/appSessionService'
-import { listPlacesForUser } from './src/server/placeDataService'
+import { getPlaceDetailForUser, listPlacesForUser } from './src/server/placeDataService'
 import { preparePlaceEntryFromDraft } from './src/server/placeEntryService'
 import { lookupPlaceFromRawUrl } from './src/server/placeLookupService'
 
@@ -247,6 +247,40 @@ const apiDevPlugin = (): Plugin => ({
       res.statusCode = 200
       res.setHeader('Content-Type', 'application/json')
       res.end(JSON.stringify({ status: 'success', places }))
+    })
+
+    server.middlewares.use('/api/place-detail', async (req, res, next) => {
+      if (req.method !== 'GET') {
+        next()
+        return
+      }
+
+      const sessionId = readSessionIdFromCookieHeader(req.headers.cookie)
+      const authSession = await getAuthenticatedSession(sessionId)
+      if (authSession.status === 'missing') {
+        res.statusCode = 401
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({ error: { code: 'unauthorized', message: 'Unauthorized' } }))
+        return
+      }
+
+      const requestUrl = new URL(req.url ?? '/api/place-detail', 'http://localhost')
+      const placeId = requestUrl.searchParams.get('placeId') ?? ''
+      const place = await getPlaceDetailForUser({
+        placeId,
+        viewerUserId: authSession.user.id,
+      })
+
+      if (!place) {
+        res.statusCode = 404
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({ error: { code: 'not_found', message: 'Place not found.' } }))
+        return
+      }
+
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify({ status: 'success', place }))
     })
 
     server.middlewares.use('/api/place-lookup', async (req, res, next) => {

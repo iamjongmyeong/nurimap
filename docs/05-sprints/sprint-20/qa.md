@@ -7,6 +7,7 @@
 - 2026-03-23 marker visual refresh slice에서는 사용자 추가 장소 marker / label이 Figma handoff node `61:18`의 핵심 시각 언어와 맞는지 함께 검증한다.
 - 2026-03-24 production auth recovery slice에서는 production login failure를 deploy alias, TLS/env, DB schema gate로 분리해 확인하고, recovery 뒤 실제 production login success까지 검증한다.
 - 2026-03-25 local bypass recovery slice에서는 `make dev` 실행 중 Vercel dev worker가 `PUBLIC_APP_URL`을 production origin으로 덮어써도 local bypass가 loopback request origin 기준으로 다시 동작하는지 검증한다.
+- 2026-03-25 private-schema hardening slice에서는 server-owned app persistence를 `public`에서 `app_private`로 이동하고, remote migration 적용 및 Data API disable 상태까지 검증한다.
 
 # Automated Checks Result
 
@@ -35,6 +36,12 @@
   - `supabase link --project-ref yjshqlxvrrytjzwmzxdi --yes`
   - `supabase db push --linked --dry-run --yes`
   - `supabase db push --linked --yes`
+  - `pnpm test:run src/server/appSessionService.test.ts src/server/authService.test.ts src/server/placeDataService.test.ts src/server/apiAuthSessionRoutes.test.ts src/server/apiPlaceListRoute.test.ts src/server/apiPlaceEntryRoute.test.ts src/server/apiPlaceReviewRoute.test.ts src/server/apiImportBoundary.test.ts`
+  - `pnpm test:run src/server/apiPlaceDetailRoute.test.ts src/server/apiPlaceListRoute.test.ts src/server/apiAuthSessionRoutes.test.ts`
+  - `pnpm build`
+  - `supabase db push --local --dry-run --yes`
+  - `supabase db push --local --yes`
+  - `supabase db dump --linked --schema app_private -f /tmp/app_private_remote.sql`
 - 결과:
   - PASS — `src/app-shell/NurimapBrowse.test.tsx`, `src/app-shell/NurimapDetail.test.tsx` 2 files / 26 tests 통과
   - PASS — `src/server/authPolicy.test.ts`, `src/server/authService.test.ts` 2 files / 27 tests 통과
@@ -56,6 +63,13 @@
   - PASS — `supabase db push --linked --dry-run --yes`가 pending migration으로 `20260322065245_phase1_place_auth_real_data_foundation.sql` 1개만 제시했다.
   - PASS — `supabase db push --linked --yes`로 phase1 foundation migration을 exact linked project에 적용했다.
   - PASS — migration 적용 뒤 사용자 재시도 기준 production login success를 확인했다.
+  - PASS — private-schema hardening slice에서 `src/server/appSessionService.test.ts`, `src/server/authService.test.ts`, `src/server/placeDataService.test.ts`, `src/server/apiAuthSessionRoutes.test.ts`, `src/server/apiPlaceListRoute.test.ts`, `src/server/apiPlaceEntryRoute.test.ts`, `src/server/apiPlaceReviewRoute.test.ts`, `src/server/apiImportBoundary.test.ts` 8 files / 52 tests 통과
+  - PASS — `src/server/apiPlaceDetailRoute.test.ts`, `src/server/apiPlaceListRoute.test.ts`, `src/server/apiAuthSessionRoutes.test.ts` 3 files / 6 tests 통과
+  - PASS — private-schema hardening 반영 후 `pnpm build` 재통과
+  - PASS — `supabase db push --local --dry-run --yes`가 `20260323153330_harden_public_data_api_access.sql`, `20260325130500_move_server_only_tables_to_app_private.sql` 2개 pending migration을 제시했다.
+  - PASS — `supabase db push --local --yes`로 local DB에 private-schema hardening migration을 적용했다.
+  - PASS — `supabase db push --linked --yes`로 linked remote project에 `20260323153330_harden_public_data_api_access.sql`, `20260325130500_move_server_only_tables_to_app_private.sql`를 적용했다.
+  - PASS — `supabase db dump --linked --schema app_private` 결과로 remote `app_private` schema에 `user_profiles`, `app_sessions`, `places`, `place_reviews`가 존재함을 확인했다.
 
 # Manual QA Result
 
@@ -95,6 +109,9 @@
   - local map chrome 확인: `pnpm exec vercel dev --local --listen 127.0.0.1:4174 --yes` 실행 후, Playwright inline runner로 `?auth_test_state=authenticated` + mocked `/api/place-list` + mocked Kakao runtime 조합에서 browse map shell을 캡처했다.
   - marker visual preview: local HTML preview + Playwright screenshot으로 `artifacts/qa/sprint-20/map-user-added-marker-preview.png`를 생성하고, Figma thumbnail(`/tmp/nurimap-figma/node-61-18-thumb-1200.png`)과 비교했다.
   - local bypass recovery: `make dev` 실행 상태에서 Playwright mobile viewport(`390x844`)로 첫 진입을 열고 auth/session/request-otp/verify-otp/place-list 응답과 최종 shell을 `artifacts/qa/sprint-20/local-bypass-make-dev-result.json`에 기록했다.
+  - private-schema hardening smoke 1차: Playwright inline runner로 `make dev` mobile 첫 진입 bypass login → `/api/place-list` success를 `artifacts/qa/private-schema-hardening/local-smoke-result.json`에 기록했다.
+  - private-schema hardening smoke 2차: dev runtime에서 `/api/place-detail`가 module source를 반환하는 parity gap을 확인한 뒤, `vite.config.ts`에 `/api/place-detail` middleware를 추가하고 `src/server/apiPlaceDetailRoute.test.ts`를 작성했다.
+  - private-schema hardening smoke 3차: runtime 재시작 후 Playwright로 bypass login → `/api/place-list` → `/places/:placeId` 상세 진입을 재검증하고 `artifacts/qa/private-schema-hardening/local-smoke-mobile-detail-success.png` 및 updated result JSON을 저장했다.
 - 확인한 시나리오:
   - local OTP request -> Mailpit 수신 -> OTP verify -> name entry -> authenticated shell 진입
   - `390x844` mobile에서 local auto-login bypass로 authenticated shell 진입
@@ -115,6 +132,9 @@
   - `make dev` mobile 첫 진입에서 `/api/auth/request-otp`가 `mode: "bypass"`로 응답하는지 확인
   - 같은 세션에서 `/api/auth/verify-otp`가 `status: "success"`로 응답하고 session / csrf cookie가 설정되는지 확인
   - bypass 직후 `/api/place-list`가 module source가 아니라 `{ status: "success", places }` JSON으로 응답하고 mobile browse shell이 열리는지 확인
+  - private-schema hardening 반영 뒤 local integrated runtime에서 bypass login이 계속 성공하는지 확인
+  - same runtime에서 `/api/place-list`가 `app_private` backing data를 정상 반환하는지 확인
+  - `390x844` mobile에서 `/places/:placeId` direct route 진입 시 detail payload가 정상 내려오고 상세 화면이 렌더되는지 확인
 - 판정:
   - PASS — local Supabase + integrated runtime 기준 핵심 browse/detail/create/overwrite/session persistence 흐름이 통과했다.
   - PASS — API test files를 `api/` 밖으로 이동하고 `.vercelignore`를 추가한 뒤 Preview deployment가 성공했다.
@@ -122,6 +142,7 @@
   - PASS — local mocked-runtime browser check에서 browse map shell에 level HUD / zoom button이 보이지 않았다.
   - PASS — marker visual preview는 Figma reference 대비 core motif(24px marker, white outer ring, orange inner ring, white center dot, 10px label with 0.5px white stroke)가 일치했다.
   - PASS — local bypass recovery slice에서 `make dev` + Playwright 기준 `/api/auth/request-otp` 200 bypass, `/api/auth/verify-otp` 200 success, `/api/place-list` 200 success가 확인됐고 mobile authenticated shell(`mobile-bottom-tab-bar`)까지 도달했다.
+  - PASS — private-schema hardening slice에서 local integrated runtime 기준 `/api/auth/request-otp` 200 bypass, `/api/auth/verify-otp` 200 success, `/api/place-list` 200 success, `/api/place-detail` 200 success, mobile detail route 진입이 모두 확인됐다.
   - NOTE — direct anonymous 접근은 여전히 Vercel deployment protection login wall(HTTP 401)로 보호된다. 이는 현재 protection posture이며, 이번 slice의 deploy/UI separation smoke 자체를 막지는 않았다.
 - 스크린샷 경로:
   - `artifacts/qa/sprint-20/local-otp-name-entry-success.png`
@@ -144,6 +165,8 @@
   - Marker visual preview: `artifacts/qa/sprint-20/map-user-added-marker-preview.html`, `artifacts/qa/sprint-20/map-user-added-marker-preview.png`
   - Local bypass recovery: `artifacts/qa/sprint-20/local-bypass-make-dev-mobile-success.png`
   - Local bypass recovery result: `artifacts/qa/sprint-20/local-bypass-make-dev-result.json`
+  - Private-schema hardening smoke result: `artifacts/qa/private-schema-hardening/local-smoke-result.json`
+  - Private-schema hardening detail screenshot: `artifacts/qa/private-schema-hardening/local-smoke-mobile-detail-success.png`
   - Historical blocker log: `artifacts/qa/sprint-20/preview-deploy-blocker.txt`
 
 ## User QA Required
@@ -190,6 +213,9 @@
   4. production login 재시도 및 success 확인
 - 2026-03-25 local bypass regression의 root cause는 `make dev`의 Vercel dev worker가 `PUBLIC_APP_URL`을 production origin으로 덮어써 local bypass 판정이 non-local로 미끄러진 점과, 같은 integrated runtime에서 `/api/auth/verify-otp` / `/api/place-list`가 dev middleware parity 없이 module source/404로 노출된 점이었다.
 - 같은 slice에서 request origin 기반 local runtime 판정과 Vite auth/place-list middleware parity를 추가한 뒤, Playwright mobile smoke로 local bypass 회복을 확인했다.
+- 2026-03-25 private-schema hardening slice에서 `app_private` migration과 runtime SQL refactor를 적용한 뒤, linked remote project migration 적용과 local/remote verification을 마쳤다.
+- 같은 slice에서 `make dev` 기준 `/api/place-detail` dev middleware parity gap을 발견했고, `vite.config.ts` middleware + `src/server/apiPlaceDetailRoute.test.ts` 추가로 보정한 뒤 mobile detail smoke까지 재통과시켰다.
+- Data API는 현재 disabled 상태이며, Exposed schemas / Extra search path에는 app data schema가 남아 있지 않다.
 
 # QA Verdict
 
@@ -205,3 +231,4 @@
 - Preview에서 real backend verification이 꼭 필요해지는 시점이 오면, 그때 별도 non-production backend target 도입을 새로운 slice로 계획한다.
 - auth/login production rollout check에는 앞으로도 최소한 active alias 확인, latest `/api/auth/verify-otp` log 확인, auth-critical migration 상태 확인, post-login `/api/auth/session` smoke를 함께 묶어 실행한다.
 - server-only table이 `public` schema에 남는 동안에는 RLS / revoke 또는 private schema hardening을 follow-up rollout 대상으로 유지한다.
+- private-schema hardening과 Data API disable이 완료되었으므로, 기존 “server-only table이 `public` schema에 남아 있다” follow-up은 해소되었다.

@@ -156,7 +156,7 @@ const APP_SESSION_RETURNING_COLUMNS = `
 // legacy UUID row-id cookies until those sessions expire or are revoked.
 const ACTIVE_APP_SESSION_LOOKUP_SQL = `
   select id
-  from public.app_sessions
+  from app_private.app_sessions
   where (session_token_hash = $1 or id::text = $2)
     and revoked_at is null
     and expires_at > timezone('utc'::text, now())
@@ -166,7 +166,7 @@ const ACTIVE_APP_SESSION_LOOKUP_SQL = `
 
 const REVOCABLE_APP_SESSION_LOOKUP_SQL = `
   select id
-  from public.app_sessions
+  from app_private.app_sessions
   where (session_token_hash = $1 or id::text = $2)
     and revoked_at is null
   order by case when session_token_hash = $1 then 0 else 1 end
@@ -203,7 +203,7 @@ export const createAppSession = async ({
   const insert = async (targetClient: PoolClient) => {
     const { rows } = await targetClient.query<AppSessionRecord>(
       `
-        insert into public.app_sessions (
+        insert into app_private.app_sessions (
           user_id,
           session_token_hash,
           csrf_token_hash,
@@ -243,7 +243,7 @@ export const findActiveAppSessionById = async ({
         )
         select
           ${APP_SESSION_RETURNING_COLUMNS}
-        from public.app_sessions
+        from app_private.app_sessions
         where id = (select id from matched_session)
       `,
       lookupParameters,
@@ -275,7 +275,7 @@ export const touchAppSession = async ({
         with matched_session as (
           ${ACTIVE_APP_SESSION_LOOKUP_SQL}
         )
-        update public.app_sessions
+        update app_private.app_sessions
         set last_seen_at = $3
         where id = (select id from matched_session)
         returning
@@ -310,7 +310,7 @@ export const revokeAppSession = async ({
         with matched_session as (
           ${REVOCABLE_APP_SESSION_LOOKUP_SQL}
         )
-        update public.app_sessions
+        update app_private.app_sessions
         set revoked_at = $3
         where id = (select id from matched_session)
         returning

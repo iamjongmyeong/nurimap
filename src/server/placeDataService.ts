@@ -155,10 +155,10 @@ const loadPlaceRows = async ({
         coalesce(round(avg(r.rating_score)::numeric, 1), 0)::float8 as average_rating,
         count(r.id)::int as review_count,
         coalesce(creator.name, split_part(creator.email, '@', 1)) as added_by_name
-      from public.places p
-      join public.user_profiles creator
+      from app_private.places p
+      join app_private.user_profiles creator
         on creator.id = p.created_by_user_id
-      left join public.place_reviews r
+      left join app_private.place_reviews r
         on r.place_id = p.id
       where ($1::uuid is null or p.id = $1::uuid)
       group by p.id, creator.name, creator.email
@@ -197,10 +197,10 @@ const loadMatchingPlaceRow = async ({
         coalesce(round(avg(r.rating_score)::numeric, 1), 0)::float8 as average_rating,
         count(r.id)::int as review_count,
         coalesce(creator.name, split_part(creator.email, '@', 1)) as added_by_name
-      from public.places p
-      join public.user_profiles creator
+      from app_private.places p
+      join app_private.user_profiles creator
         on creator.id = p.created_by_user_id
-      left join public.place_reviews r
+      left join app_private.place_reviews r
         on r.place_id = p.id
       where
         p.naver_place_id = $1
@@ -239,8 +239,8 @@ const loadReviewRows = async ({
         r.content,
         r.created_at::text as created_at,
         r.rating_score
-      from public.place_reviews r
-      join public.user_profiles author
+      from app_private.place_reviews r
+      join app_private.user_profiles author
         on author.id = r.author_user_id
       where r.place_id = any($1::uuid[])
       order by r.created_at desc
@@ -399,7 +399,7 @@ export const persistPlaceRegistration = async ({
       ? await client.query<{ id: string; content: string }>(
           `
             select id, content
-            from public.place_reviews
+            from app_private.place_reviews
             where place_id = $1
               and author_user_id = $2
             limit 1
@@ -433,7 +433,7 @@ export const persistPlaceRegistration = async ({
     if (!existingPlace) {
       const { rows } = await client.query<{ id: string }>(
         `
-          insert into public.places (
+          insert into app_private.places (
             naver_place_id,
             naver_place_url,
             name,
@@ -466,7 +466,7 @@ export const persistPlaceRegistration = async ({
     } else {
       await client.query(
         `
-          update public.places
+          update app_private.places
           set
             naver_place_id = $2,
             naver_place_url = $3,
@@ -507,7 +507,7 @@ export const persistPlaceRegistration = async ({
     if (existingReview) {
       await client.query(
         `
-          update public.place_reviews
+          update app_private.place_reviews
           set
             rating_score = $3,
             content = $4
@@ -524,7 +524,7 @@ export const persistPlaceRegistration = async ({
     } else {
       await client.query(
         `
-          insert into public.place_reviews (
+          insert into app_private.place_reviews (
             place_id,
             author_user_id,
             rating_score,
@@ -603,7 +603,7 @@ export const submitPersistedPlaceReview = async ({
     }>(
       `
         select id, content, rating_score
-        from public.place_reviews
+        from app_private.place_reviews
         where place_id = $1
           and author_user_id = $2
         limit 1
@@ -629,7 +629,7 @@ export const submitPersistedPlaceReview = async ({
     if (existingReview) {
       await client.query(
         `
-          update public.place_reviews
+          update app_private.place_reviews
           set
             rating_score = $3,
             content = $4
@@ -648,7 +648,7 @@ export const submitPersistedPlaceReview = async ({
     } else {
       await client.query(
         `
-          insert into public.place_reviews (
+          insert into app_private.place_reviews (
             place_id,
             author_user_id,
             rating_score,
