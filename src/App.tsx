@@ -3,54 +3,66 @@ import { Analytics } from '@vercel/analytics/react'
 import { NurimapAppShell } from './app-shell/NurimapAppShell'
 import { AuthProvider } from './auth/AuthProvider'
 
-const shouldEnableAgentation = import.meta.env.DEV && import.meta.env.VITE_ENABLE_AGENTATION === 'true'
-
-let AgentationGate: ComponentType = function AgentationGate() {
-  return null
-}
-
-if (shouldEnableAgentation) {
+function AgentationGate() {
+  const shouldEnableAgentation = import.meta.env.DEV && import.meta.env.VITE_ENABLE_AGENTATION === 'true'
   const agentationEndpoint = import.meta.env.VITE_AGENTATION_ENDPOINT ?? 'http://localhost:4747'
+  const [AgentationComponent, setAgentationComponent] = useState<ComponentType<{ endpoint?: string }> | null>(null)
+  const [resolvedAgentationEndpoint, setResolvedAgentationEndpoint] = useState<string | undefined>(undefined)
 
-  AgentationGate = function AgentationGate() {
-    const [AgentationComponent, setAgentationComponent] = useState<ComponentType<{ endpoint?: string }> | null>(null)
+  useEffect(() => {
+    if (!shouldEnableAgentation) {
+      setAgentationComponent(null)
+      setResolvedAgentationEndpoint(undefined)
+      return
+    }
 
-    useEffect(() => {
-      const abortController = new AbortController()
-      let isMounted = true
+    const abortController = new AbortController()
+    let isMounted = true
 
-      const loadAgentation = async () => {
-        try {
-          const healthUrl = new URL('/health', agentationEndpoint)
-          const response = await fetch(healthUrl, {
-            signal: abortController.signal,
-          })
-
-          if (!isMounted || !response.ok) {
-            return
-          }
-
-          const module = await import('agentation')
-          if (isMounted) {
-            setAgentationComponent(() => module.Agentation)
-          }
-        } catch {
-          if (isMounted) {
-            setAgentationComponent(null)
-          }
+    const loadAgentation = async () => {
+      try {
+        const module = await import('agentation')
+        if (isMounted) {
+          setAgentationComponent(() => module.Agentation)
+        }
+      } catch {
+        if (isMounted) {
+          setAgentationComponent(null)
         }
       }
+    }
 
-      void loadAgentation()
+    const resolveAgentationEndpoint = async () => {
+      try {
+        const healthUrl = new URL('/health', agentationEndpoint)
+        const response = await fetch(healthUrl, {
+          signal: abortController.signal,
+        })
 
-      return () => {
-        isMounted = false
-        abortController.abort()
+        if (isMounted) {
+          setResolvedAgentationEndpoint(response.ok ? agentationEndpoint : undefined)
+        }
+      } catch {
+        if (isMounted) {
+          setResolvedAgentationEndpoint(undefined)
+        }
       }
-    }, [])
+    }
 
-    return AgentationComponent ? <AgentationComponent endpoint={agentationEndpoint} /> : null
+    void loadAgentation()
+    void resolveAgentationEndpoint()
+
+    return () => {
+      isMounted = false
+      abortController.abort()
+    }
+  }, [agentationEndpoint, shouldEnableAgentation])
+
+  if (!shouldEnableAgentation || !AgentationComponent) {
+    return null
   }
+
+  return <AgentationComponent endpoint={resolvedAgentationEndpoint} />
 }
 
 function App() {

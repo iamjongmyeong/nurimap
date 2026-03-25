@@ -1,8 +1,16 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import { resetAppShellStore } from './app-shell/appShellStore'
 import { MOCK_PLACES } from './app-shell/mockPlaces'
+
+vi.mock('agentation', () => ({
+  Agentation: ({ endpoint }: { endpoint?: string }) => (
+    <div data-testid="agentation-toolbar" data-endpoint={endpoint ?? ''}>
+      Agentation
+    </div>
+  ),
+}))
 
 const originalFetch = globalThis.fetch
 
@@ -41,6 +49,10 @@ const createAppShellFetchMock = () =>
       return new Response(JSON.stringify({ error: { message: 'not implemented in this suite' } }), { status: 500, headers: { 'Content-Type': 'application/json' } })
     }
 
+    if (url === 'http://localhost:4747/health') {
+      return new Response(JSON.stringify({ status: 'unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+    }
+
     return new Response(JSON.stringify({ status: 'missing' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   })
 
@@ -63,13 +75,44 @@ const setViewport = (width: number, height = 844) => {
 
 describe('Nurimap app shell', () => {
   beforeEach(() => {
+    vi.unstubAllEnvs()
     resetAppShellStore()
     window.history.replaceState({}, '', '/')
     globalThis.fetch = createAppShellFetchMock() as typeof fetch
   })
 
   afterEach(() => {
+    vi.unstubAllEnvs()
     globalThis.fetch = originalFetch
+  })
+
+  it('renders Agentation in local mode when explicitly enabled without a healthy sync server', async () => {
+    vi.stubEnv('VITE_ENABLE_AGENTATION', 'true')
+    setViewport(1280)
+    render(<App />)
+
+    const toolbar = await screen.findByTestId('agentation-toolbar')
+    expect(toolbar).toHaveAttribute('data-endpoint', '')
+  })
+
+  it('passes the sync endpoint to Agentation after the health check succeeds', async () => {
+    vi.stubEnv('VITE_ENABLE_AGENTATION', 'true')
+    const fetchMock = createAppShellFetchMock()
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === 'http://localhost:4747/health') {
+        return new Response(JSON.stringify({ status: 'ok' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      return await createAppShellFetchMock()(input)
+    })
+    globalThis.fetch = fetchMock as typeof fetch
+    setViewport(1280)
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('agentation-toolbar')).toHaveAttribute('data-endpoint', 'http://localhost:4747')
+    })
   })
 
   it('renders the desktop sidebar with the white surface background', () => {
