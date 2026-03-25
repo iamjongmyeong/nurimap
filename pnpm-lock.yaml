@@ -88,8 +88,8 @@ importers:
         specifier: ^28.1.0
         version: 28.1.0
       oh-my-codex:
-        specifier: ^0.11.6
-        version: 0.11.6
+        specifier: ^0.11.9
+        version: 0.11.9
       playwright:
         specifier: ^1.58.2
         version: 1.58.2
@@ -3038,8 +3038,8 @@ packages:
   obug@2.1.1:
     resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
 
-  oh-my-codex@0.11.6:
-    resolution: {integrity: sha512-gJ9GxjEukTdZfF6R7OOmTVmSxdnMEuub191jgXZ/7aO1vrnwfkjiw9yfor38/Mcfl9NbpJ0fnKwhEPuQETKMwg==}
+  oh-my-codex@0.11.9:
+    resolution: {integrity: sha512-s5QME0oxIg8a0ybxuf0wQlUg79XU62soub58AS8uI2yl2SG/SSbR0FxNyBbSd4pfqUD4R4hQXHqvmAJWejvCWQ==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -7052,7 +7052,7 @@ snapshots:
 
   obug@2.1.1: {}
 
-  oh-my-codex@0.11.6:
+  oh-my-codex@0.11.9:
     dependencies:
       '@iarna/toml': 2.2.5
       '@modelcontextprotocol/sdk': 1.27.1(zod@4.3.6)
