@@ -19,6 +19,10 @@ child_agents_md = true
 max_threads = 6
 max_depth = 2
 
+# Figma MCP Server
+[mcp_servers.figma]
+url = "https://mcp.figma.com/mcp"
+
 # ============================================================
 # oh-my-codex (OMX) Configuration
 # Managed by omx setup - manual edits preserved on next setup
