@@ -217,6 +217,25 @@ describe('Sprint 18 otp auth request flow', () => {
     })
   })
 
+  it('does not trust a local runtime origin override for bypass in production mode', async () => {
+    process.env.NODE_ENV = 'production'
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
+
+    const result = await requestLoginOtp('bypass.user@example.com', {
+      requireBypass: true,
+      runtimeOrigin: 'http://localhost:5173',
+    })
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 'bypass_required',
+      message: '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.',
+    })
+    expect(generateLinkMock).not.toHaveBeenCalled()
+  })
+
   it('does not use bypass for an allowlisted external email outside a local loopback runtime', async () => {
     process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
     process.env.AUTH_BYPASS_ENABLED = 'true'
@@ -972,6 +991,27 @@ describe('Sprint 18 otp auth request flow', () => {
       token_hash: 'token-hash',
       type: 'magiclink',
     })
+  })
+
+  it('does not trust a local runtime origin override for token-hash verification in production mode', async () => {
+    process.env.NODE_ENV = 'production'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+
+    await expect(verifyLoginOtp({
+      email: '',
+      runtimeOrigin: 'http://localhost:5173',
+      token: '',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })).resolves.toEqual({
+      status: 'error',
+      message: '이 코드는 사용할 수 없어요.',
+    })
+
+    expect(verifyOtpMock).not.toHaveBeenCalled()
+    expect(createAppSessionMock).not.toHaveBeenCalled()
   })
 
   it('returns a recoverable otp error when verification fails', async () => {

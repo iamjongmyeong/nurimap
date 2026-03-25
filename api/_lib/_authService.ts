@@ -253,6 +253,8 @@ const normalizeHttpUrl = (rawValue: string | null | undefined) => {
 
 const getPublicAppUrl = () => normalizeHttpUrl(process.env.PUBLIC_APP_URL)
 
+const shouldTrustRuntimeOriginForLocalBypass = () => process.env.NODE_ENV !== 'production'
+
 const isLoopbackRuntimeUrl = (runtimeUrl: string | null) => {
   if (!runtimeUrl) {
     return false
@@ -266,8 +268,16 @@ const isLoopbackRuntimeUrl = (runtimeUrl: string | null) => {
   }
 }
 
+const getEffectiveLocalBypassRuntimeUrl = (runtimeOrigin?: string) => {
+  const normalizedRuntimeOrigin = shouldTrustRuntimeOriginForLocalBypass()
+    ? normalizeHttpUrl(runtimeOrigin)
+    : null
+
+  return normalizedRuntimeOrigin ?? getPublicAppUrl()
+}
+
 const isLocalBypassRuntime = (runtimeOrigin?: string) =>
-  isLoopbackRuntimeUrl(runtimeOrigin ? normalizeHttpUrl(runtimeOrigin) : getPublicAppUrl())
+  isLoopbackRuntimeUrl(getEffectiveLocalBypassRuntimeUrl(runtimeOrigin))
 
 const isBypassLoginEmail = (email: string, runtimeOrigin?: string) => {
   if (process.env.AUTH_BYPASS_ENABLED !== 'true' || !isLocalBypassRuntime(runtimeOrigin)) {
