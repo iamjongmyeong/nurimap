@@ -1,27 +1,12 @@
-# Upload only the files required to build and serve the production app on Vercel.
-# If the build later depends on another root config file, allowlist it explicitly.
-/*
-
-# Production app source
-!api/
-!api/**
-!public/
-!public/**
-!src/
-!src/**
-
-# Required root build/runtime config
-!index.html
-!package.json
-!pnpm-lock.yaml
-!pnpm-workspace.yaml
-!tsconfig*.json
-!vercel.json
-!vite.config.ts
-
-# Exclude non-production source even inside allowlisted directories
+# Exclude non-production files from the Vercel build context.
+# Keep the default upload behavior for app/runtime sources so local `vercel deploy`
+# and git-based deployments resolve the same file graph.
 **/*.test.*
 src/test/
+docs/
+supabase/
+scripts/
+Makefile
 playwright-report/
 coverage/
 dist/

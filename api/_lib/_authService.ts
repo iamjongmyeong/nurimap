@@ -113,11 +113,95 @@ type SupabaseUserRecord = {
   user_metadata?: Record<string, unknown>
 }
 
-type SupabaseAdminAuthApi = ReturnType<typeof createSupabaseAdminClient>['auth']
-type SupabasePublicAuthApi = ReturnType<typeof createSupabaseAuthClient>['auth']
+type SupabaseSessionLike = {
+  access_token?: string | null
+} | null
 
-const getAdminAuthClient = (): SupabaseAdminAuthApi => createSupabaseAdminClient().auth
-const getPublicAuthClient = (): SupabasePublicAuthApi => createSupabaseAuthClient().auth
+type SupabaseAdminAuthApi = {
+  admin: {
+    generateLink: (params: {
+      type: 'magiclink'
+      email: string
+      options: {
+        redirectTo: string
+      }
+    }) => Promise<{
+      data: {
+        properties: {
+          hashed_token?: string | null
+          verification_type?: string | null
+        } | null
+      }
+      error: unknown | null
+    }>
+    listUsers: (params: {
+      page: number
+      perPage: number
+    }) => Promise<{
+      data: {
+        users: SupabaseUserRecord[]
+      }
+      error: unknown | null
+    }>
+    updateUserById: (userId: string, attributes: {
+      app_metadata?: Record<string, unknown>
+      user_metadata?: Record<string, unknown>
+    }) => Promise<{
+      error: unknown | null
+    }>
+    createUser: (attributes: {
+      email: string
+      email_confirm: boolean
+    }) => Promise<{
+      data: {
+        user: SupabaseUserRecord | null
+      }
+      error: unknown | null
+    }>
+    signOut: (jwt: string) => Promise<{
+      error: unknown | null
+    }>
+  }
+  getUser: (accessToken: string) => Promise<{
+    data: {
+      user: SupabaseUserRecord | null
+    }
+    error: unknown | null
+  }>
+}
+
+type SupabasePublicAuthApi = {
+  signInWithOtp: (params: {
+    email: string
+    options: {
+      shouldCreateUser: boolean
+    }
+  }) => Promise<{
+    error: unknown | null
+  }>
+  verifyOtp: (params:
+    | {
+        token_hash: string
+        type: AuthVerifyType
+      }
+    | {
+        email: string
+        token: string
+        type: 'email'
+      }
+  ) => Promise<{
+    data: {
+      user: SupabaseUserRecord | null
+      session?: SupabaseSessionLike
+    }
+    error: unknown | null
+  }>
+}
+
+const getAdminAuthClient = (): SupabaseAdminAuthApi =>
+  createSupabaseAdminClient().auth as unknown as SupabaseAdminAuthApi
+const getPublicAuthClient = (): SupabasePublicAuthApi =>
+  createSupabaseAuthClient().auth as unknown as SupabasePublicAuthApi
 const isSendLoginOtpFailure = (
   result: SendLoginOtpResult,
 ): result is Extract<SendLoginOtpResult, { ok: false }> => !result.ok
@@ -266,7 +350,9 @@ const generateImmediateBypassPayload = async (
     },
   })
 
-  if (error || !data.properties.hashed_token) {
+  const properties = data.properties
+
+  if (error || !properties?.hashed_token) {
     return deliveryFailedResult(email)
   }
 
@@ -276,8 +362,8 @@ const generateImmediateBypassPayload = async (
     status: 'success',
     mode: 'bypass',
     message: '테스트 계정으로 바로 로그인합니다.',
-    tokenHash: data.properties.hashed_token,
-    verificationType: toVerificationType(data.properties.verification_type),
+    tokenHash: properties.hashed_token,
+    verificationType: toVerificationType(properties.verification_type ?? undefined),
   }
 }
 
@@ -591,7 +677,10 @@ const sendLoginOtp = async ({
     if (error) {
       return {
         ok: false,
-        statusCode: typeof error.status === 'number' ? error.status : null,
+        statusCode:
+          typeof (error as { status?: unknown })?.status === 'number'
+            ? (error as { status: number }).status
+            : null,
         providerErrorCode: getErrorCode(error),
         providerErrorMessage: getErrorMessage(error),
       }
