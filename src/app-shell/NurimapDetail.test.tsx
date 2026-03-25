@@ -417,7 +417,7 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('place-list-item-place-cafe-1').className).not.toContain('bg-[#f7f8ff]')
   })
 
-  it('shows the detail loading state', () => {
+  it('shows the full-screen loading state while detail is loading', () => {
     setViewport(1280)
     window.history.replaceState({}, '', '/places/place-restaurant-1')
     useAppShellStore.setState({
@@ -426,7 +426,9 @@ describe('Sprint 16 place detail refresh', () => {
     })
     render(<App />)
 
-    expect(screen.getByTestId('place-detail-loading')).toBeInTheDocument()
+    expect(screen.getByTestId('browse-bootstrap-loading')).toBeInTheDocument()
+    expect(screen.queryByTestId('place-detail-loading')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('desktop-detail-panel')).not.toBeInTheDocument()
   })
 
   it('shows the detail error state and retry action', () => {

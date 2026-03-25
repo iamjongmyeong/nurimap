@@ -408,20 +408,9 @@ const PlaceListPanel = ({
   )
 }
 
-const DetailLoadingState = () => (
-  <div className="mt-6 flex items-center gap-3 rounded-[28px] bg-[#f6f6fb] p-5" data-testid="place-detail-loading">
-    <span aria-hidden="true" className="ui-spinner ui-spinner-md text-[#5862fb]" />
-    <div>
-      <p className="text-sm font-semibold text-[#222127]">상세 정보를 불러오는 중이에요</p>
-      <p className="text-sm text-[#7e7b8b]">기본 로딩 상태를 그대로 유지합니다.</p>
-    </div>
-  </div>
-)
-
 const DetailErrorState = ({ onRetry }: { onRetry: () => void }) => (
   <div className="mt-6 rounded-[28px] bg-[#f6f6fb] p-5" data-testid="place-detail-error">
-    <p className="text-sm font-semibold text-[#e53935]">상세 정보를 불러오지 못했어요</p>
-    <p className="mt-2 text-sm text-[#7e7b8b]">상세 화면에서 바로 재시도할 수 있어요.</p>
+    <p className="text-sm font-semibold text-[#e53935]">장소 정보를 불러오지 못했어요.</p>
     <button className={`${SECONDARY_BUTTON_CLASSES} mt-4`} onClick={onRetry} type="button">
       다시 시도
     </button>
@@ -532,10 +521,6 @@ const DetailBody = ({
   place: PlaceSummary | undefined
   status: PlaceDetailLoadState
 }) => {
-  if (status === 'loading') {
-    return <DetailLoadingState />
-  }
-
   if (status === 'error') {
     return <DetailErrorState onRetry={onRetry} />
   }
@@ -543,8 +528,8 @@ const DetailBody = ({
   if (!place) {
     return (
       <div className="mt-6 rounded-[28px] border border-dashed border-[#dbdbe6] bg-white p-5">
-        <p className="text-sm font-medium text-[#222127]">선택된 장소가 아직 없어요</p>
-        <p className="mt-2 text-sm leading-6 text-[#7e7b8b]">목록이나 지도 마커를 선택하면 상세가 열립니다.</p>
+        <p className="text-sm font-medium text-[#222127]">오류가 발생했어요 🥲</p>
+        <p className="mt-2 text-sm leading-6 text-[#7e7b8b]">새로고침하거나 다른 장소를 선택해주세요.</p>
       </div>
     )
   }
@@ -1380,6 +1365,9 @@ export const NurimapAppShell = () => {
   }
 
   const isBrowseSurface = effectiveNavigationState === 'map_browse' || effectiveNavigationState === 'mobile_place_list_open'
+  const isDetailBootstrapLoading =
+    effectiveNavigationState === 'place_detail_open'
+    && placeDetailLoad === 'loading'
   const hasBrowseBootstrapError =
     placeListLoad === 'error'
     || mapRuntimeStatus === 'error'
@@ -1399,6 +1387,18 @@ export const NurimapAppShell = () => {
   }
 
   if (isBrowseSurface && isBrowseBootstrapLoading) {
+    return isDesktop ? (
+      <main className="hidden h-screen md:flex" data-testid="desktop-shell">
+        <BrowseBootstrapState mode="loading" />
+      </main>
+    ) : (
+      <main className={MOBILE_SHELL_CLASS} data-testid="mobile-shell" style={MOBILE_SHELL_STYLE}>
+        <BrowseBootstrapState mode="loading" />
+      </main>
+    )
+  }
+
+  if (isDetailBootstrapLoading) {
     return isDesktop ? (
       <main className="hidden h-screen md:flex" data-testid="desktop-shell">
         <BrowseBootstrapState mode="loading" />
