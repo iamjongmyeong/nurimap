@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from 'react'
-import { MAP_INITIAL_CENTER } from './mockPlaces'
+import { COMPANY_LOCATION, MAP_INITIAL_CENTER } from './mockPlaces'
 import type { PlaceSummary, PlaceType } from './types'
 import {
   useKakaoScript,
   type KakaoMapInstance,
-  type KakaoMarkerInstance,
   type KakaoOverlayInstance,
 } from './useKakaoScript'
 
@@ -22,6 +21,7 @@ const MAP_LOADING_COPY = '지도를 불러오는 중이에요.'
 const MAP_FAILURE_TITLE = '지도를 불러오지 못했어요.'
 const MAP_FAILURE_BODY = '네트워크 상태를 확인한 뒤 다시 시도해주세요.'
 const MAP_RETRY_LABEL = '다시 시도'
+const COMPANY_MARKER_ICON_SRC = '/assets/icons/icon-map-company-24.svg'
 
 type PlaceWithCoordinates = PlaceSummary & {
   latitude: number
@@ -34,11 +34,15 @@ type MapZoomPresentation = {
   labelFontWeight: number
   labelGap: number
   labelStrokeWidth: number
+  markerInnerSize: number
   markerSize: number
 }
 
 const hasCoordinates = (place: PlaceSummary): place is PlaceWithCoordinates =>
   place.latitude !== undefined && place.longitude !== undefined
+
+const shouldHidePlaceFromMap = (place: PlaceSummary) =>
+  place.name === '등록 테스트 장소' && place.road_address === '서울 마포구 등록로 1'
 
 const MAP_LABEL_MAX_WIDTH_PX = 160
 const markerPalette: Record<PlaceType, { fill: string; label: string }> = {
@@ -60,31 +64,34 @@ const getMapZoomPresentation = (mapLevel: number): MapZoomPresentation => {
       hitTargetSize: 56,
       labelFontSize: 14,
       labelFontWeight: 500,
-      labelGap: -32,
+      labelGap: 4,
       labelStrokeWidth: 3,
-      markerSize: 48,
+      markerInnerSize: 8,
+      markerSize: 24,
     }
   }
 
   if (mapLevel === 2) {
     return {
       hitTargetSize: 52,
-      labelFontSize: 13,
+      labelFontSize: 12,
       labelFontWeight: 500,
-      labelGap: -30,
+      labelGap: 2,
       labelStrokeWidth: 3,
-      markerSize: 44,
+      markerInnerSize: 7,
+      markerSize: 22,
     }
   }
 
   if (mapLevel === 3) {
     return {
       hitTargetSize: 40,
-      labelFontSize: 12,
+      labelFontSize: 10,
       labelFontWeight: 500,
-      labelGap: -28,
+      labelGap: 0,
       labelStrokeWidth: 2,
-      markerSize: 32,
+      markerInnerSize: 6,
+      markerSize: 20,
     }
   }
 
@@ -92,10 +99,11 @@ const getMapZoomPresentation = (mapLevel: number): MapZoomPresentation => {
     return {
       hitTargetSize: 36,
       labelFontSize: 8,
-      labelFontWeight: 400,
+      labelFontWeight: 500,
       labelGap: -24,
-      labelStrokeWidth: 2,
-      markerSize: 28,
+      labelStrokeWidth: 1,
+      markerInnerSize: 6,
+      markerSize: 18,
     }
   }
 
@@ -106,6 +114,7 @@ const getMapZoomPresentation = (mapLevel: number): MapZoomPresentation => {
       labelFontWeight: 400,
       labelGap: -5,
       labelStrokeWidth: 1,
+      markerInnerSize: 5,
       markerSize: 16,
     }
   }
@@ -116,6 +125,7 @@ const getMapZoomPresentation = (mapLevel: number): MapZoomPresentation => {
     labelFontWeight: 400,
     labelGap: -1.5,
     labelStrokeWidth: 1,
+    markerInnerSize: 6,
     markerSize: 18,
   }
 }
@@ -182,36 +192,108 @@ const createMapLabelElement = (name: string, testId: string, presentation: MapZo
   return wrapper
 }
 
-const toMarkerImageSource = (placeType: PlaceType) => {
-  const palette = markerPalette[placeType]
+const getMarkerGlyphStyle = ({ markerSize }: Pick<MapZoomPresentation, 'markerSize'>): CSSProperties => ({
+  background: '#5862FB',
+  border: '2px solid #FFFFFF',
+  borderRadius: `${markerSize}px`,
+  boxShadow: '0 0 4px 1px rgba(0, 0, 0, 0.08)',
+  boxSizing: 'border-box',
+  display: 'inline-flex',
+  height: `${markerSize}px`,
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: `${markerSize}px`,
+})
 
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <g clip-path="url(#clip0_marker)">
-        <g filter="url(#filter0_d_marker)">
-          <circle cx="12" cy="12" r="8" fill="${palette.fill}"/>
-          <circle cx="12" cy="12" r="7" stroke="white" stroke-width="2"/>
-        </g>
-        <circle cx="12" cy="12" r="2" fill="white"/>
-      </g>
-      <defs>
-        <filter id="filter0_d_marker" x="-1" y="-1" width="26" height="26" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-          <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-          <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="effect1_dropShadow_marker"/>
-          <feOffset/>
-          <feGaussianBlur stdDeviation="2"/>
-          <feComposite in2="hardAlpha" operator="out"/>
-          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.08 0"/>
-          <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_marker"/>
-          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_marker" result="shape"/>
-        </filter>
-        <clipPath id="clip0_marker">
-          <rect width="24" height="24" fill="white"/>
-        </clipPath>
-      </defs>
-    </svg>
-  `)}`
+const getMarkerInnerStyle = ({ markerInnerSize }: Pick<MapZoomPresentation, 'markerInnerSize'>): CSSProperties => ({
+  background: '#FFFFFF',
+  borderRadius: `${markerInnerSize}px`,
+  display: 'block',
+  height: `${markerInnerSize}px`,
+  width: `${markerInnerSize}px`,
+})
+
+const getCompanyMarkerGlyphStyle = ({ markerSize }: Pick<MapZoomPresentation, 'markerSize'>): CSSProperties => ({
+  display: 'block',
+  height: `${markerSize}px`,
+  width: `${markerSize}px`,
+})
+
+const applyMarkerGlyphStyle = (element: HTMLElement, presentation: Pick<MapZoomPresentation, 'markerSize' | 'markerInnerSize'>) => {
+  const style = getMarkerGlyphStyle(presentation)
+  Object.assign(element.style, {
+    alignItems: String(style.alignItems),
+    background: style.background,
+    border: style.border,
+    borderRadius: style.borderRadius,
+    boxShadow: style.boxShadow,
+    boxSizing: style.boxSizing,
+    display: style.display,
+    height: style.height,
+    justifyContent: String(style.justifyContent),
+    width: style.width,
+  })
+}
+
+const createMapMarkerElement = (
+  place: Pick<PlaceSummary, 'id' | 'name' | 'place_type'>,
+  presentation: Pick<MapZoomPresentation, 'hitTargetSize' | 'markerSize' | 'markerInnerSize'>,
+  onMarkerSelect: (placeId: string) => void,
+) => {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.setAttribute('aria-label', `${place.name} 마커`)
+  button.dataset.markerVariant = 'user-added'
+  button.dataset.markerType = place.place_type
+  button.style.alignItems = 'center'
+  button.style.background = 'transparent'
+  button.style.border = 'none'
+  button.style.cursor = 'pointer'
+  button.style.display = 'flex'
+  button.style.height = `${presentation.hitTargetSize}px`
+  button.style.justifyContent = 'center'
+  button.style.padding = '0'
+  button.style.width = `${presentation.hitTargetSize}px`
+
+  const glyph = document.createElement('span')
+  glyph.setAttribute('aria-hidden', 'true')
+  applyMarkerGlyphStyle(glyph, presentation)
+
+  const inner = document.createElement('span')
+  Object.assign(inner.style, getMarkerInnerStyle(presentation))
+
+  glyph.appendChild(inner)
+  button.appendChild(glyph)
+  button.addEventListener('click', () => onMarkerSelect(place.id))
+
+  return button
+}
+
+const createCompanyMarkerElement = (
+  presentation: Pick<MapZoomPresentation, 'hitTargetSize' | 'markerSize'>,
+) => {
+  const wrapper = document.createElement('div')
+  wrapper.setAttribute('aria-label', '회사 위치')
+  wrapper.style.alignItems = 'center'
+  wrapper.style.display = 'flex'
+  wrapper.style.height = `${presentation.hitTargetSize}px`
+  wrapper.style.justifyContent = 'center'
+  wrapper.style.pointerEvents = 'none'
+  wrapper.style.userSelect = 'none'
+  wrapper.style.width = `${presentation.hitTargetSize}px`
+
+  const glyph = document.createElement('img')
+  glyph.alt = ''
+  glyph.setAttribute('aria-hidden', 'true')
+  glyph.draggable = false
+  glyph.src = COMPANY_MARKER_ICON_SRC
+  Object.assign(glyph.style, getCompanyMarkerGlyphStyle(presentation))
+  glyph.style.pointerEvents = 'none'
+  glyph.style.userSelect = 'none'
+  glyph.style.setProperty('-webkit-user-drag', 'none')
+
+  wrapper.appendChild(glyph)
+  return wrapper
 }
 
 const MapMarkerLabel = ({
@@ -233,6 +315,26 @@ const MapMarkerLabel = ({
   </span>
 )
 
+const MapMarkerGlyph = ({
+  placeType,
+  presentation,
+  testId,
+}: {
+  placeType: PlaceType
+  presentation: Pick<MapZoomPresentation, 'markerSize' | 'markerInnerSize'>
+  testId: string
+}) => (
+  <span
+    aria-hidden="true"
+    className="pointer-events-none inline-flex items-center justify-center select-none"
+    data-marker-type={placeType}
+    data-testid={testId}
+    style={getMarkerGlyphStyle(presentation)}
+  >
+    <span aria-hidden="true" className="block rounded-full bg-white" style={getMarkerInnerStyle(presentation)} />
+  </span>
+)
+
 const FallbackMapPane = ({
   places,
   selectedPlaceId,
@@ -240,7 +342,7 @@ const FallbackMapPane = ({
   onMarkerSelect,
 }: MapPaneProps) => {
   const visiblePlaces = useMemo(
-    () => places.filter(hasCoordinates),
+    () => places.filter(hasCoordinates).filter((place) => !shouldHidePlaceFromMap(place)),
     [places],
   )
   const zoomPresentation = useMemo(
@@ -255,6 +357,27 @@ const FallbackMapPane = ({
       data-testid="map-canvas"
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,197,94,0.25),_transparent_25%),linear-gradient(135deg,_rgba(15,23,42,1)_0%,_rgba(30,41,59,1)_45%,_rgba(59,130,246,0.35)_100%)]" />
+      {mapLevel <= MARKER_VISIBILITY_THRESHOLD ? (
+        <div
+          aria-label="회사 위치"
+          className="pointer-events-none absolute left-1/2 top-1/2 z-[4] -translate-x-1/2 -translate-y-1/2 select-none"
+          data-testid="map-company-marker"
+          style={{
+            height: `${zoomPresentation.hitTargetSize}px`,
+            width: `${zoomPresentation.hitTargetSize}px`,
+          }}
+        >
+          <img
+            alt=""
+            aria-hidden="true"
+            className="block"
+            data-testid="map-company-marker-glyph"
+            draggable={false}
+            src={COMPANY_MARKER_ICON_SRC}
+            style={getCompanyMarkerGlyphStyle(zoomPresentation)}
+          />
+        </div>
+      ) : null}
       {mapLevel <= MARKER_VISIBILITY_THRESHOLD ? visiblePlaces.map((place) => {
         const isSelected = selectedPlaceId === place.id
         const top = clamp(
@@ -289,16 +412,7 @@ const FallbackMapPane = ({
               onClick={() => onMarkerSelect(place.id)}
               type="button"
             >
-              <img
-                alt=""
-                aria-hidden="true"
-                data-testid={`map-marker-glyph-${place.id}`}
-                src={toMarkerImageSource(place.place_type)}
-                style={{
-                  height: `${zoomPresentation.markerSize}px`,
-                  width: `${zoomPresentation.markerSize}px`,
-                }}
-              />
+              <MapMarkerGlyph placeType={place.place_type} presentation={zoomPresentation} testId={`map-marker-glyph-${place.id}`} />
               <span className="sr-only">{markerPalette[place.place_type].label}</span>
             </button>
             {mapLevel <= LEVEL_LABEL_THRESHOLD ? (
@@ -362,10 +476,9 @@ export const MapPane = ({
   const { retry, status } = useKakaoScript()
   const mapRef = useRef<HTMLDivElement | null>(null)
   const kakaoMapRef = useRef<KakaoMapInstance | null>(null)
-  const markerRefs = useRef<KakaoMarkerInstance[]>([])
   const overlayRefs = useRef<KakaoOverlayInstance[]>([])
   const visiblePlaces = useMemo(
-    () => places.filter(hasCoordinates),
+    () => places.filter(hasCoordinates).filter((place) => !shouldHidePlaceFromMap(place)),
     [places],
   )
   const zoomPresentation = useMemo(
@@ -398,29 +511,35 @@ export const MapPane = ({
       return
     }
 
-    markerRefs.current.forEach((marker) => marker.setMap(null))
     overlayRefs.current.forEach((overlay) => overlay.setMap(null))
-    markerRefs.current = []
     overlayRefs.current = []
 
     if (mapLevel > MARKER_VISIBILITY_THRESHOLD) {
       return
     }
 
+    const companyPosition = new kakao.maps.LatLng(COMPANY_LOCATION.latitude, COMPANY_LOCATION.longitude)
+    const companyMarker = new kakao.maps.CustomOverlay({
+      content: createCompanyMarkerElement(zoomPresentation),
+      map,
+      position: companyPosition,
+      xAnchor: 0.5,
+      yAnchor: 0.5,
+    })
+    overlayRefs.current.push(companyMarker)
+
     visiblePlaces.forEach((place) => {
       const position = new kakao.maps.LatLng(place.latitude, place.longitude)
-      const markerImage = new kakao.maps.MarkerImage(
-        toMarkerImageSource(place.place_type),
-        new kakao.maps.Size(zoomPresentation.markerSize, zoomPresentation.markerSize),
-      )
-      const marker = new kakao.maps.Marker({
-        position,
-        image: markerImage,
+
+      const marker = new kakao.maps.CustomOverlay({
+        content: createMapMarkerElement(place, zoomPresentation, onMarkerSelect),
         map,
+        position,
+        xAnchor: 0.5,
+        yAnchor: 0.5,
       })
 
-      kakao.maps.event.addListener(marker, 'click', () => onMarkerSelect(place.id))
-      markerRefs.current.push(marker)
+      overlayRefs.current.push(marker)
 
       if (mapLevel <= LEVEL_LABEL_THRESHOLD) {
         const label = createMapLabelElement(place.name, `map-label-${place.id}`, zoomPresentation)

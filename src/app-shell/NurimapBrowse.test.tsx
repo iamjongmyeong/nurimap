@@ -206,6 +206,76 @@ describe('Sprint 16 browse refresh', () => {
     expect(screen.getByTestId('map-marker-place-restaurant-1')).toHaveAttribute('data-marker-variant', 'user-added')
   })
 
+  it('renders the company location marker at the map center using the provided building icon', () => {
+    setViewport(1280)
+    render(<App />)
+
+    const companyMarker = screen.getByTestId('map-company-marker')
+    const companyGlyph = screen.getByTestId('map-company-marker-glyph')
+
+    expect(companyMarker).toBeInTheDocument()
+    expect(companyMarker).toHaveClass('pointer-events-none')
+    expect(companyGlyph).toHaveAttribute('src', '/assets/icons/icon-map-company-24.svg')
+    expect(companyGlyph).toHaveAttribute('draggable', 'false')
+    expect(companyGlyph).toHaveStyle({
+      height: '20px',
+      width: '20px',
+    })
+  })
+
+  it('hides the known direct-entry test place from the map so the company marker stays visible', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url === '/api/place-list') {
+        return new Response(JSON.stringify({
+          status: 'success',
+          places: [
+            ...MOCK_PLACES,
+            {
+              id: 'place-direct-entry-123456789',
+              naver_place_id: 'direct-entry-123456789',
+              naver_place_url: 'https://map.naver.com/p/entry/place/direct-entry-123456789',
+              name: '등록 테스트 장소',
+              road_address: '서울 마포구 등록로 1',
+              latitude: 37.558721,
+              longitude: 126.92444,
+              place_type: 'restaurant',
+              zeropay_status: 'available',
+              average_rating: 5,
+              review_count: 1,
+              added_by_name: '테스트 사용자',
+              my_review: null,
+              reviews: [],
+            },
+          ],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      if (url === '/api/auth/session') {
+        return new Response(JSON.stringify({
+          status: 'authenticated',
+          user: {
+            id: 'user-1',
+            email: 'tester@nurimedia.co.kr',
+            name: '테스트 사용자',
+          },
+          csrfHeaderName: 'x-nurimap-csrf-token',
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+
+      return new Response(JSON.stringify({ error: { message: 'unexpected request' } }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+    })
+
+    globalThis.fetch = fetchMock as typeof fetch
+    setViewport(1280)
+    render(<App />)
+
+    expect(await screen.findByTestId('map-company-marker')).toBeInTheDocument()
+    expect(screen.queryByTestId('map-marker-place-direct-entry-123456789')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-label-place-direct-entry-123456789')).not.toBeInTheDocument()
+  })
+
   it('renders outlined user-added place labels for visible map markers', () => {
     setViewport(1280)
     render(<App />)
@@ -215,30 +285,68 @@ describe('Sprint 16 browse refresh', () => {
     expect(label).toHaveTextContent('누리 식당')
     expect(label).toHaveStyle({
       color: 'rgb(88, 98, 251)',
-      fontSize: '12px',
+      fontSize: '10px',
       fontWeight: '500',
       lineHeight: '100%',
     })
     expect(label).toHaveStyle('-webkit-text-stroke: 2px #FFFFFF')
   })
 
-  it('scales marker and label up at closer zoom levels', () => {
+  it('matches the level 1 figma marker and label baseline', () => {
     setViewport(1280)
     useAppShellStore.setState({ mapLevel: 1 })
     render(<App />)
 
-    expect(screen.getByTestId('map-marker-glyph-place-restaurant-1')).toHaveStyle({
-      height: '48px',
-      width: '48px',
+    const markerGlyph = screen.getByTestId('map-marker-glyph-place-restaurant-1')
+    const innerCircle = markerGlyph.firstElementChild as HTMLElement | null
+
+    expect(markerGlyph.getAttribute('style')).toContain('background: rgb(88, 98, 251);')
+    expect(markerGlyph.getAttribute('style')).toContain('border: 2px solid rgb(255, 255, 255);')
+    expect(markerGlyph.getAttribute('style')).toContain('border-radius: 24px;')
+    expect(markerGlyph.getAttribute('style')).toContain('box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.08);')
+    expect(markerGlyph).toHaveStyle({
+      height: '24px',
+      width: '24px',
+    })
+    expect(innerCircle).not.toBeNull()
+    expect(innerCircle).toHaveStyle({
+      background: 'rgb(255, 255, 255)',
+      height: '8px',
+      width: '8px',
+    })
+    expect(screen.getByTestId('map-company-marker-glyph')).toHaveStyle({
+      height: '24px',
+      width: '24px',
     })
     expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle({
       color: 'rgb(88, 98, 251)',
       fontSize: '14px',
       fontWeight: '500',
+      lineHeight: '100%',
     })
     expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle('-webkit-text-stroke: 3px #FFFFFF')
     expect(screen.getByTestId('map-label-anchor-place-restaurant-1')).toHaveStyle({
-      top: '20px',
+      top: '44px',
+    })
+  })
+
+  it('applies the level 2 marker and label sizing from the zoom table', () => {
+    setViewport(1280)
+    useAppShellStore.setState({ mapLevel: 2 })
+    render(<App />)
+
+    expect(screen.getByTestId('map-marker-glyph-place-restaurant-1')).toHaveStyle({
+      height: '22px',
+      width: '22px',
+    })
+    expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle({
+      fontSize: '12px',
+      fontWeight: '500',
+      lineHeight: '100%',
+    })
+    expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle('-webkit-text-stroke: 3px #FFFFFF')
+    expect(screen.getByTestId('map-label-anchor-place-restaurant-1')).toHaveStyle({
+      top: '39px',
     })
   })
 
@@ -249,28 +357,33 @@ describe('Sprint 16 browse refresh', () => {
 
     expect(screen.getByTestId('map-marker-place-restaurant-1')).toBeInTheDocument()
     expect(screen.getByTestId('map-marker-glyph-place-restaurant-1')).toHaveStyle({
-      height: '28px',
-      width: '28px',
+      height: '18px',
+      width: '18px',
+    })
+    expect(screen.getByTestId('map-company-marker-glyph')).toHaveStyle({
+      height: '18px',
+      width: '18px',
     })
     expect(screen.queryByTestId('map-label-place-restaurant-1')).not.toBeInTheDocument()
   })
 
-  it('applies the intermediate level 3 marker and overlap sizing from the zoom table', () => {
+  it('applies the level 3 marker and label sizing from the zoom table', () => {
     setViewport(1280)
     useAppShellStore.setState({ mapLevel: 3 })
     render(<App />)
 
     expect(screen.getByTestId('map-marker-glyph-place-restaurant-1')).toHaveStyle({
-      height: '32px',
-      width: '32px',
+      height: '20px',
+      width: '20px',
     })
     expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle({
-      fontSize: '12px',
+      fontSize: '10px',
       fontWeight: '500',
+      lineHeight: '100%',
     })
     expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle('-webkit-text-stroke: 2px #FFFFFF')
     expect(screen.getByTestId('map-label-anchor-place-restaurant-1')).toHaveStyle({
-      top: '8px',
+      top: '30px',
     })
   })
 
@@ -299,6 +412,7 @@ describe('Sprint 16 browse refresh', () => {
 
     expect(screen.queryByTestId('map-marker-place-restaurant-1')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-label-place-restaurant-1')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-company-marker')).not.toBeInTheDocument()
   })
 
   it('hides markers and labels at level 6', () => {
@@ -308,6 +422,7 @@ describe('Sprint 16 browse refresh', () => {
 
     expect(screen.queryByTestId('map-marker-place-restaurant-1')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-label-place-restaurant-1')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-company-marker')).not.toBeInTheDocument()
   })
 
   it('hides map level chrome and zoom buttons from the map surface', () => {

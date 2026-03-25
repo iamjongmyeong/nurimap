@@ -1,8 +1,14 @@
 import type { PlaceSummary } from './types'
 
-export const MAP_INITIAL_CENTER = {
+export const COMPANY_LOCATION = {
   latitude: 37.558721,
   longitude: 126.92444,
+  roadAddress: '서울 마포구 양화로19길 22-16',
+} as const
+
+export const MAP_INITIAL_CENTER = {
+  latitude: COMPANY_LOCATION.latitude,
+  longitude: COMPANY_LOCATION.longitude,
 } as const
 
 export const MOCK_PLACES: PlaceSummary[] = [

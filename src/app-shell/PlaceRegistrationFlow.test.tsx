@@ -621,7 +621,7 @@ describe('Plan 06 place registration flow', () => {
     await user.click(screen.getByTestId('place-submit-button'))
 
     expect(await screen.findByTestId('desktop-detail-panel')).toHaveTextContent('등록 테스트 장소')
-    expect(screen.getByTestId('map-marker-place-direct-entry-123456789')).toBeInTheDocument()
+    expect(screen.queryByTestId('map-marker-place-direct-entry-123456789')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '목록으로 돌아가기' }))
 
