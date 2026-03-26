@@ -582,7 +582,6 @@ export const submitReviewForPlace = async ({
       [csrfHeaderName]: csrfToken,
     },
     body: JSON.stringify({
-      placeId,
       ratingScore: draft.rating_score,
       reviewContent: draft.review_content,
     }),

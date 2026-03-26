@@ -8,6 +8,15 @@ import { defineConfig } from 'vitest/config'
 type DevApiRouteHandler = (req: VercelRequest, res: VercelResponse) => Promise<void> | void
 type DevApiQuery = Record<string, string | string[]>
 type DevApiRouteModule = { default: DevApiRouteHandler }
+type DevApiRequestOverrides = {
+  body?: unknown
+  method?: string
+  query?: DevApiQuery
+}
+type ResolvedDevApiRoute = {
+  handlerPath: string
+  requestOverrides?: DevApiRequestOverrides
+}
 
 const readRequestBody = async (req: IncomingMessage) => {
   return await new Promise<string>((resolve, reject) => {
@@ -63,6 +72,25 @@ const parseRequestBody = (req: IncomingMessage, rawBody: string) => {
   }
 }
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+
+const decodeBase64Url = (value: string) => {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padding = (4 - (normalized.length % 4)) % 4
+  return Buffer.from(`${normalized}${'='.repeat(padding)}`, 'base64').toString('utf8')
+}
+
+const decodePlaceSubmissionId = (submissionId: string) => {
+  try {
+    return asRecord(JSON.parse(decodeBase64Url(decodeURIComponent(submissionId))))
+  } catch {
+    return null
+  }
+}
+
 const DEV_API_ROUTE_LOADERS = new Map<string, () => Promise<DevApiRouteModule>>([
   ['/api/auth/logout', () => import('./api/auth/logout')],
   ['/api/auth/profile', () => import('./api/auth/profile')],
@@ -95,14 +123,116 @@ const loadDevApiRouteHandler = (path: string) => {
   return loadedHandler
 }
 
+const resolveDevApiRoute = async (req: IncomingMessage): Promise<ResolvedDevApiRoute | null> => {
+  const requestUrl = new URL(req.url ?? '/', 'http://localhost')
+  const pathname = requestUrl.pathname
+  const method = (req.method ?? 'GET').toUpperCase()
+
+  if (method === 'DELETE' && pathname === '/api/auth/session') {
+    return {
+      handlerPath: '/api/auth/logout',
+      requestOverrides: {
+        method: 'POST',
+      },
+    }
+  }
+
+  if (method === 'PATCH' && pathname === '/api/auth/profile') {
+    return {
+      handlerPath: '/api/auth/profile',
+      requestOverrides: {
+        method: 'POST',
+      },
+    }
+  }
+
+  if (method === 'GET' && pathname === '/api/places') {
+    return { handlerPath: '/api/place-list' }
+  }
+
+  const placeDetailMatch = pathname.match(/^\/api\/places\/([^/]+)$/)
+  if (method === 'GET' && placeDetailMatch) {
+    return {
+      handlerPath: '/api/place-detail',
+      requestOverrides: {
+        query: {
+          placeId: decodeURIComponent(placeDetailMatch[1]),
+        },
+      },
+    }
+  }
+
+  if (method === 'POST' && pathname === '/api/place-lookups') {
+    return { handlerPath: '/api/place-lookup' }
+  }
+
+  if (method === 'POST' && pathname === '/api/place-submissions') {
+    const rawBody = await readRequestBody(req)
+    const parsedBody = asRecord(parseRequestBody(req, rawBody))
+
+    return {
+      handlerPath: '/api/place-entry',
+      requestOverrides: {
+        body: {
+          ...parsedBody,
+          confirmDuplicate: false,
+        },
+      },
+    }
+  }
+
+  const confirmationMatch = pathname.match(/^\/api\/place-submissions\/([^/]+)\/confirmations$/)
+  if (method === 'POST' && confirmationMatch) {
+    const decodedDraft = decodePlaceSubmissionId(confirmationMatch[1])
+    if (!decodedDraft) {
+      return null
+    }
+
+    return {
+      handlerPath: '/api/place-entry',
+      requestOverrides: {
+        body: {
+          ...decodedDraft,
+          confirmDuplicate: true,
+        },
+      },
+    }
+  }
+
+  const placeReviewMatch = pathname.match(/^\/api\/places\/([^/]+)\/reviews$/)
+  if (method === 'POST' && placeReviewMatch) {
+    const rawBody = await readRequestBody(req)
+    const parsedBody = asRecord(parseRequestBody(req, rawBody))
+
+    return {
+      handlerPath: '/api/place-review',
+      requestOverrides: {
+        body: {
+          ...parsedBody,
+          allowOverwrite: false,
+          placeId: decodeURIComponent(placeReviewMatch[1]),
+        },
+      },
+    }
+  }
+
+  if (DEV_API_ROUTE_LOADERS.has(pathname)) {
+    return { handlerPath: pathname }
+  }
+
+  return null
+}
+
 const runDevApiRoute = async ({
   handler,
   req,
   res,
+  requestOverrides,
 }: {
   handler: DevApiRouteHandler
   req: IncomingMessage
   res: ServerResponse<IncomingMessage>
+  requestOverrides?: DevApiRequestOverrides
 }) => {
   const vercelRequest = req as VercelRequest & {
     body?: unknown
@@ -131,8 +261,19 @@ const runDevApiRoute = async ({
     }
   }
 
-  vercelRequest.query = parseRequestQuery(req.url)
-  if (vercelRequest.body === undefined && req.method !== 'GET' && req.method !== 'HEAD') {
+  if (requestOverrides?.method) {
+    vercelRequest.method = requestOverrides.method
+  }
+
+  vercelRequest.query = {
+    ...parseRequestQuery(req.url),
+    ...(requestOverrides?.query ?? {}),
+  }
+  if (requestOverrides?.body !== undefined) {
+    vercelRequest.body = requestOverrides.body
+  }
+
+  if (vercelRequest.body === undefined && vercelRequest.method !== 'GET' && vercelRequest.method !== 'HEAD') {
     const rawBody = await readRequestBody(req)
     vercelRequest.body = parseRequestBody(req, rawBody)
   }
@@ -143,22 +284,25 @@ const runDevApiRoute = async ({
 const apiDevPlugin = (): Plugin => ({
   name: 'nurimap-api-dev-plugin',
   configureServer(server) {
-    const registerDevApiRoute = (path: string, handler: DevApiRouteHandler) => {
-      server.middlewares.use(path, async (req, res, next) => {
-        try {
-          await runDevApiRoute({ handler, req, res })
-        } catch (error) {
-          next(error as Error)
-        }
-      })
-    }
+    server.middlewares.use('/api', async (req, res, next) => {
+      const resolvedRoute = await resolveDevApiRoute(req)
+      if (!resolvedRoute) {
+        next()
+        return
+      }
 
-    for (const path of DEV_API_ROUTE_LOADERS.keys()) {
-      registerDevApiRoute(path, async (req, res) => {
-        const handler = await loadDevApiRouteHandler(path)
-        await handler(req, res)
-      })
-    }
+      try {
+        const handler = await loadDevApiRouteHandler(resolvedRoute.handlerPath)
+        await runDevApiRoute({
+          handler,
+          req,
+          res,
+          requestOverrides: resolvedRoute.requestOverrides,
+        })
+      } catch (error) {
+        next(error as Error)
+      }
+    })
   },
 })
 
