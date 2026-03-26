@@ -37,7 +37,7 @@ describe('/api/auth/request-link', () => {
     vi.clearAllMocks()
   })
 
-  it('forwards the same canonical request fields to requestLoginOtp as the request-otp route', async () => {
+  it('keeps request-link as a bounded legacy adapter over the canonical request-otp workflow', async () => {
     requestLoginOtpMock.mockResolvedValue({
       status: 'success',
       mode: 'otp',

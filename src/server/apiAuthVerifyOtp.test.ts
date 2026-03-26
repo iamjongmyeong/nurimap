@@ -54,6 +54,25 @@ describe('/api/auth/verify-otp', () => {
     serializeCsrfCookieMock.mockReturnValue('nurimap_csrf=csrf-123')
   })
 
+  it('keeps verify-otp as a POST-only workflow endpoint', async () => {
+    const { response, state } = createResponse()
+
+    await handler({
+      method: 'GET',
+      headers: {},
+      body: undefined,
+    } as unknown as VercelRequest, response)
+
+    expect(verifyLoginOtpMock).not.toHaveBeenCalled()
+    expect(state.statusCode).toBe(405)
+    expect(state.body).toEqual({
+      error: {
+        code: 'method_not_allowed',
+        message: 'Method not allowed',
+      },
+    })
+  })
+
   it('sets app session + csrf cookies on successful verify', async () => {
     verifyLoginOtpMock.mockResolvedValue({
       status: 'success',
@@ -101,5 +120,42 @@ describe('/api/auth/verify-otp', () => {
       },
       csrfHeaderName: 'x-nurimap-csrf-token',
     })
+  })
+
+  it('passes tokenHash + verificationType through for local bypass compatibility', async () => {
+    verifyLoginOtpMock.mockResolvedValue({
+      status: 'success',
+      sessionId: 'session-123',
+      csrfToken: 'csrf-123',
+      nextPhase: 'authenticated',
+      user: {
+        id: 'user-1',
+        email: 'bypass.user@example.com',
+        name: '테스트 사용자',
+      },
+    })
+
+    const { response, state } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {
+        origin: 'http://localhost:5173',
+      },
+      body: {
+        email: 'bypass.user@example.com',
+        token: '',
+        tokenHash: 'token-hash',
+        verificationType: 'magiclink',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(verifyLoginOtpMock).toHaveBeenCalledWith({
+      email: 'bypass.user@example.com',
+      runtimeOrigin: 'http://localhost:5173',
+      token: '',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })
+    expect(state.statusCode).toBe(200)
   })
 })

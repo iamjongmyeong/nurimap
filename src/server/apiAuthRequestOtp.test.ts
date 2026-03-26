@@ -37,6 +37,24 @@ describe('/api/auth/request-otp', () => {
     vi.clearAllMocks()
   })
 
+  it('keeps request-otp as a POST-only workflow endpoint', async () => {
+    const { response, state } = createResponse()
+
+    await handler({
+      method: 'GET',
+      headers: {},
+      body: undefined,
+    } as unknown as VercelRequest, response)
+
+    expect(requestLoginOtpMock).not.toHaveBeenCalled()
+    expect(state.statusCode).toBe(405)
+    expect(state.body).toEqual({
+      error: {
+        code: 'method_not_allowed',
+      },
+    })
+  })
+
   it('forwards send payload fields to requestLoginOtp', async () => {
     requestLoginOtpMock.mockResolvedValue({
       status: 'success',
