@@ -1,56 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
+import { saveAuthenticatedUserName } from '../../src/server-core/auth/authService.js'
 import {
-  findActiveAppSessionById,
-  isValidCsrfTokenPair,
-  readCsrfTokenFromCookieHeader,
-  readCsrfTokenFromHeaders,
-  readSessionIdFromCookieHeader,
-} from '../../src/server-core/auth/appSessionService.js'
-import { getAuthenticatedSession, saveAuthenticatedUserName } from '../../src/server-core/auth/authService.js'
+  getAuthenticatedRequestContext,
+  METHOD_NOT_ALLOWED_RESPONSE_BODY,
+} from '../../src/server-core/auth/requestContext.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: { code: 'method_not_allowed', message: 'Method not allowed' } })
+  if (req.method !== 'PATCH' && req.method !== 'POST') {
+    res.status(405).json(METHOD_NOT_ALLOWED_RESPONSE_BODY)
     return
   }
 
-  const sessionId = readSessionIdFromCookieHeader(req.headers.cookie)
-  const session = sessionId ? await findActiveAppSessionById({ sessionId }) : null
-  if (!sessionId || !session) {
-    res.status(401).json({
-      error: {
-        code: 'unauthorized',
-        message: 'Unauthorized',
-      },
-    })
-    return
-  }
-
-  const cookieCsrfToken = readCsrfTokenFromCookieHeader(req.headers.cookie)
-  const headerCsrfToken = readCsrfTokenFromHeaders(req.headers)
-  if (!isValidCsrfTokenPair({
-    cookieToken: cookieCsrfToken,
-    headerToken: headerCsrfToken,
-    expectedHash: session.csrf_token_hash,
-  })) {
-    res.status(403).json({
-      error: {
-        code: 'csrf_invalid',
-        message: 'Invalid CSRF token.',
-      },
-    })
-    return
-  }
-
-  const authSession = await getAuthenticatedSession(sessionId)
-  if (authSession.status === 'missing') {
-    res.status(401).json({
-      error: {
-        code: 'unauthorized',
-        message: 'Unauthorized',
-      },
-    })
+  const requestContext = await getAuthenticatedRequestContext({
+    req,
+    requireCsrf: true,
+  })
+  if (requestContext.status === 'error') {
+    res.status(requestContext.statusCode).json(requestContext.body)
     return
   }
 
@@ -58,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const result = await saveAuthenticatedUserName({
-      userId: authSession.user.id,
+      userId: requestContext.authSession.user.id,
       name,
     })
 
