@@ -140,7 +140,7 @@ const createInitialDraft = (): RegistrationDraft => ({
 
 type PlaceEntryResponse =
   | PlaceRegistrationResult
-  | PlaceRegistrationPreparationResult
+  | (PlaceRegistrationPreparationResult & { submissionId?: string })
   | {
       status: 'error'
       error: {
@@ -175,6 +175,26 @@ const hasCompletedRequiredFields = (draft: RegistrationDraft) =>
 const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
 const formatDialogMessage = (message: string) => message.replace(/([.!?])\s+/g, '$1\n')
 const getDetailRoutePath = (placeId: string) => `/places/${encodeURIComponent(placeId)}`
+const encodePlaceSubmissionId = (draft: {
+  name: string
+  roadAddress: string
+  placeType: PlaceType
+  reviewContent: string
+  ratingScore: number
+  zeropayStatus: ZeropayStatus
+}) => {
+  const json = JSON.stringify(draft)
+  const bytes = new TextEncoder().encode(json)
+  let binary = ''
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
+  }
+
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/u, '')
+}
 
 const resizeReviewTextarea = (textarea: HTMLTextAreaElement, minHeight: number) => {
   textarea.style.height = `${minHeight}px`
@@ -233,22 +253,23 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
     setFieldErrors({})
 
     try {
-      const submitRequest = async (confirmDuplicate: boolean) => {
-        const response = await fetch('/api/place-entry', {
+      const submissionDraft = {
+        name: draft.name.trim(),
+        roadAddress: draft.road_address.trim(),
+        placeType: draft.place_type,
+        zeropayStatus: draft.zeropay_status,
+        ratingScore: draft.rating_score,
+        reviewContent: draft.review_content,
+      }
+
+      const createSubmission = async () => {
+        const response = await fetch('/api/place-submissions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(csrfHeaderName && csrfToken ? { [csrfHeaderName]: csrfToken } : {}),
           },
-          body: JSON.stringify({
-            name: draft.name.trim(),
-            roadAddress: draft.road_address.trim(),
-            placeType: draft.place_type,
-            zeropayStatus: draft.zeropay_status,
-            ratingScore: draft.rating_score,
-            reviewContent: draft.review_content,
-            confirmDuplicate,
-          }),
+          body: JSON.stringify(submissionDraft),
         })
 
         return {
@@ -257,7 +278,21 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
         }
       }
 
-      let { response, payload } = await submitRequest(false)
+      const confirmSubmission = async (submissionId: string) => {
+        const response = await fetch(`/api/place-submissions/${encodeURIComponent(submissionId)}/confirmations`, {
+          method: 'POST',
+          headers: {
+            ...(csrfHeaderName && csrfToken ? { [csrfHeaderName]: csrfToken } : {}),
+          },
+        })
+
+        return {
+          response,
+          payload: (await response.json()) as PlaceEntryResponse,
+        }
+      }
+
+      let { response, payload } = await createSubmission()
 
       if ('status' in payload && payload.status === 'confirm_required') {
         const confirmed = window.confirm(formatDialogMessage(payload.confirmMessage))
@@ -266,7 +301,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
           return
         }
 
-        const confirmedResult = await submitRequest(true)
+        const confirmedResult = await confirmSubmission(payload.submissionId ?? encodePlaceSubmissionId(submissionDraft))
         response = confirmedResult.response
         payload = confirmedResult.payload
       }

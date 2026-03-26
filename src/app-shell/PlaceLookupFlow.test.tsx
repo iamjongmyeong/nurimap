@@ -23,6 +23,11 @@ const cloneMockPlaces = () =>
     reviews: place.reviews.map((review) => ({ ...review })),
   }))
 
+const getPlaceIdFromDetailUrl = (url: string) => {
+  const match = url.match(/^\/api\/places\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 const buildCreatedPlacePayload = (body: Record<string, unknown>) => {
   const reviewContent = typeof body.reviewContent === 'string' ? body.reviewContent : ''
   const ratingScore = typeof body.ratingScore === 'number' ? body.ratingScore : 5
@@ -79,15 +84,15 @@ const createFetchMock = () =>
   vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
 
-    if (url === '/api/place-list') {
+    if (url === '/api/places') {
       return new Response(JSON.stringify({ status: 'success', places: MOCK_PLACES }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
     }
 
-    if (url.startsWith('/api/place-detail?placeId=')) {
-      const placeId = decodeURIComponent(url.split('=')[1] ?? '')
+    const placeId = getPlaceIdFromDetailUrl(url)
+    if (placeId) {
       const place = cloneMockPlace(placeId)
       return new Response(JSON.stringify(place ? { status: 'success', place } : { error: { message: 'not found' } }), {
         status: place ? 200 : 404,
@@ -95,7 +100,7 @@ const createFetchMock = () =>
       })
     }
 
-    if (url === '/api/place-entry') {
+    if (url === '/api/place-submissions') {
       const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
       return mockPlaceEntrySuccess(buildCreatedPlacePayload(body))
     }
@@ -219,10 +224,9 @@ describe('Plan 05 direct place entry shell flow', () => {
 
     const firstCall = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit | undefined] | undefined
     expect(firstCall).toBeDefined()
-    const [requestUrl, requestInit] = firstCall ?? ['/api/place-entry', undefined]
-    expect(requestUrl).toBe('/api/place-entry')
+    const [requestUrl, requestInit] = firstCall ?? ['/api/place-submissions', undefined]
+    expect(requestUrl).toBe('/api/place-submissions')
     expect(JSON.parse(String(requestInit?.body))).toEqual({
-      confirmDuplicate: false,
       name: '등록 테스트 장소',
       placeType: 'restaurant',
       ratingScore: 5,

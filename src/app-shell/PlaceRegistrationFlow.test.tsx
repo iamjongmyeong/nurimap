@@ -27,6 +27,15 @@ const cloneMockPlaces = () =>
     reviews: place.reviews.map((review) => ({ ...review })),
   }))
 
+const getPlaceIdFromDetailUrl = (url: string) => {
+  const match = url.match(/^\/api\/places\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const isPlaceSubmissionRequest = (url: string) =>
+  url === '/api/place-submissions'
+  || /^\/api\/place-submissions\/[^/]+\/confirmations$/.test(url)
+
 const replacePlaceInList = (nextPlace: ReturnType<typeof cloneMockPlace>) =>
   cloneMockPlaces().map((place) => (place.id === nextPlace?.id ? (nextPlace as typeof place) : place))
 
@@ -86,15 +95,15 @@ const createRegistrationFetchMock = (placeEntryResponse?: Response | ((input: Re
   vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
 
-    if (url === '/api/place-list') {
+    if (url === '/api/places') {
       return new Response(JSON.stringify({ status: 'success', places: MOCK_PLACES }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
     }
 
-    if (url.startsWith('/api/place-detail?placeId=')) {
-      const placeId = decodeURIComponent(url.split('=')[1] ?? '')
+    const placeId = getPlaceIdFromDetailUrl(url)
+    if (placeId) {
       const place = cloneMockPlace(placeId)
       return new Response(JSON.stringify(place ? { status: 'success', place } : { error: { message: 'not found' } }), {
         status: place ? 200 : 404,
@@ -102,7 +111,7 @@ const createRegistrationFetchMock = (placeEntryResponse?: Response | ((input: Re
       })
     }
 
-    if (url === '/api/place-entry') {
+    if (isPlaceSubmissionRequest(url)) {
       if (typeof placeEntryResponse === 'function') {
         return placeEntryResponse(input, init)
       }

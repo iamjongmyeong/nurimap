@@ -236,14 +236,14 @@ describe('authApi', () => {
       signal: undefined,
     }))
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/auth/profile', expect.objectContaining({
-      method: 'POST',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         'x-nurimap-csrf-token': 'csrf-123',
       },
     }))
-    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/auth/logout', {
-      method: 'POST',
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/auth/session', {
+      method: 'DELETE',
       headers: {
         'x-nurimap-csrf-token': 'csrf-123',
       },

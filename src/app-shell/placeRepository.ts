@@ -409,7 +409,7 @@ const clonePlace = (place: PlaceSummary): PlaceSummary => ({
 const parseJson = async <T>(response: Response) => response.json() as Promise<T>
 
 export const loadPlaceList = async () => {
-  const response = await fetch('/api/place-list')
+  const response = await fetch('/api/places')
   const payload = await parseJson<PlaceListResponse>(response)
 
   if (!response.ok || !('status' in payload) || payload.status !== 'success') {
@@ -420,7 +420,7 @@ export const loadPlaceList = async () => {
 }
 
 export const loadPlaceDetail = async (placeId: string) => {
-  const response = await fetch(`/api/place-detail?placeId=${encodeURIComponent(placeId)}`)
+  const response = await fetch(`/api/places/${encodeURIComponent(placeId)}`)
   const payload = await parseJson<PlaceDetailResponse>(response)
 
   if (!response.ok || !('status' in payload) || payload.status !== 'success') {
@@ -575,14 +575,13 @@ export const submitReviewForPlace = async ({
     }
   }
 
-  const response = await fetch('/api/place-review', {
+  const response = await fetch(`/api/places/${encodeURIComponent(placeId)}/reviews`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       [csrfHeaderName]: csrfToken,
     },
     body: JSON.stringify({
-      placeId,
       ratingScore: draft.rating_score,
       reviewContent: draft.review_content,
     }),
