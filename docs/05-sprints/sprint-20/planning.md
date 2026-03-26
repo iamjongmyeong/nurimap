@@ -11,6 +11,7 @@
 - backend session foundation 정리
 - backend OTP verify + session bootstrap contract 도입
 - place list/detail, place create, review create/overwrite의 real-data 전환
+- canonical place route/resource contract(`GET /api/places`, `POST /api/place-lookups`, `POST /api/place-submissions`, `POST /api/place-submissions/:submissionId/confirmations`, `POST /api/places/:placeId/reviews`)와 compatibility-wrapper deprecation gate 문서화
 - recommendation 제거 상태 유지 및 재도입 방지
 - `dev / test / production` 분리 기준 정리
 - browse 지도 surface에서 level HUD / zoom button 비노출 정리
@@ -63,6 +64,7 @@
 - environment는 `dev / test / production`으로 구분한다.
 - recommendation은 현재 제거된 상태를 유지한다.
 - email OTP UX와 90일 same-browser session UX는 유지한다.
+- OTP `request-otp` / `verify-otp`는 workflow exception으로 유지하되, auth session/profile edge와 place write routes는 canonical resource contract + CSRF/session 보호를 문서와 구현에서 함께 유지한다.
 - 구현의 상세 SSOT는 `.omx/plans/plan-supabase-place-auth-real-data-migration-consensus.md` 및 관련 PRD/test spec이다.
 - 이 문서와 `.omx` 구현 계획이 충돌하면 `.omx` 계획 문서를 우선한다.
 
@@ -81,6 +83,7 @@
 - recommendation이 재도입되지 않는다.
 - browse 지도의 사용자 추가 장소 marker / label이 current Figma handoff와 같은 시각 언어를 사용한다.
 - sprint 문서와 QA evidence가 현재 상태와 일치한다.
+- canonical route inventory와 compatibility-wrapper deprecation gate가 specs/runtime/sprint docs에 함께 기록된다.
 
 # QA Plan
 
@@ -101,6 +104,7 @@
 ## AI Agent Interactive QA
 - 대상 시나리오:
   - auth/session bootstrap contract 설명 가능 여부
+  - canonical route inventory + compatibility-wrapper deprecation gate 설명 가능 여부
   - duplicate place/review overwrite semantics 보존 여부
   - recommendation 제거 invariant 유지 여부
   - browse 지도 marker / label이 Figma handoff의 핵심 visual language(동심원 marker + outlined place-name label)와 맞는지

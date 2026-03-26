@@ -28,12 +28,20 @@
   - 이때 `review_content`가 비어 있으면 기존 후기 내용은 유지하고 `rating_score`만 갱신한다.
   - `place_type`, `zeropay_status`도 같은 확인 흐름에서 함께 반영한다.
 
+## Canonical Runtime / API Contract
+- duplicate merge 판정과 overwrite negotiation은 canonical `POST /api/place-submissions`에서 시작한다. 이 요청은 authenticated app session + CSRF cookie/header pair를 요구한다.
+- duplicate가 감지되면 서버는 기존 place를 바로 mutate하지 않고 `409 { status: 'confirm_required', submissionId, reason, place, confirmMessage }` payload를 반환한다. `reason`은 `merge_place | overwrite_review`다.
+- 실제 merge/update materialization은 `POST /api/place-submissions/:submissionId/confirmations`에서만 수행한다. `취소`는 confirmation resource를 만들지 않는 local decision이다.
+- confirmation path는 `(place_id, author_user_id)` uniqueness를 server-owned invariant로 유지하면서 merge/update를 적용한다.
+- legacy `POST /api/place-entry`는 migration 동안만 canonical submission flow를 감싸는 compatibility-only wrapper다. removal gate는 canonical callers/tests/docs migration + sprint evidence refresh다.
+
 ## Acceptance Criteria
 - 같은 canonical duplicate key는 place 1건으로 유지된다.
 - 충돌 필드는 우선순위 규칙대로 병합된다.
 - 사용자 기여 데이터는 누적/갱신된다.
 - 병합 후 같은 사용자에 대한 중복 review가 생성되지 않는다.
 - 병합 과정에서 사용자는 기존 장소에 반영할지 판단할 수 있다.
+- confirm_required 응답은 `submissionId`를 반환하고 explicit confirmation 전에는 기존 place를 바꾸지 않는다.
 - confirm `취소` 시 현재 등록 화면에 머무르고 입력값이 유지된다.
 - 병합 또는 업데이트 성공 시 새 place를 만들지 않고 기존 place 결과가 반영된다.
 
@@ -61,6 +69,7 @@
 - 별점/리뷰 누적 처리
 - 병합 후 review uniqueness 유지
 - 중복 장소 확인 흐름 표시
+- confirm_required payload가 `submissionId`를 포함함
 - 중복 장소 확인 `확인` 처리
 - 중복 장소 확인 `취소` 유지
 - 기존 review overwrite
@@ -72,6 +81,7 @@
 - 병합 후 상세 데이터가 기대값과 맞다.
 - 병합 후 같은 사용자의 review가 중복 생성되지 않는다.
 - 중복 장소가 발견되면 기존 장소 반영 여부를 확인할 수 있다.
+- duplicate 확인 단계에서는 explicit confirm 전까지 기존 place가 바뀌지 않는다.
 - 내 review가 이미 있으면 overwrite 여부를 묻는 확인 흐름이 보인다.
 - 후기를 비워 두고 overwrite하면 기존 후기 내용은 유지되고 평가만 갱신된다.
 - 병합 또는 업데이트 성공 시 기존 place 결과가 열린다.

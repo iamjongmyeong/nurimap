@@ -43,6 +43,14 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - 등록 성공 시 별도 완료 화면은 두지 않는다.
 - 저장 상태는 `place_submit = idle | submitting | error`로 관리한다.
 
+## Canonical Runtime / API Contract
+- canonical direct-entry normalization/lookup endpoint는 `POST /api/place-lookups`다. raw 입력(`name`, `roadAddress`, `landLotAddress?`)을 받아 backend가 geocoding/정규화/좌표 확보를 수행한다.
+- canonical place registration endpoint는 `POST /api/place-submissions`다. 이 요청은 authenticated app session + CSRF cookie/header pair가 있을 때만 허용한다.
+- `POST /api/place-submissions`는 lookup 결과와 draft(`place_type`, `zeropay_status`, `rating_score`, `review_content`)를 받아 새 place 생성 또는 bounded duplicate conflict를 반환한다.
+- duplicate가 감지되면 서버는 기존 place를 즉시 mutate하지 않고 `409 { status: 'confirm_required', submissionId, reason, place, confirmMessage }` shape로 확인 흐름을 반환한다.
+- duplicate confirm canonical endpoint는 `POST /api/place-submissions/:submissionId/confirmations`다. 사용자가 `취소`하면 confirmation resource를 만들지 않고 local draft만 유지한다.
+- legacy `POST /api/place-entry`는 migration 동안만 `place-lookups` + `place-submissions` contract에 맞추는 compatibility-only wrapper다. removal gate는 canonical callers/tests/docs가 모두 `submissionId` flow로 이전되고 sprint evidence가 갱신되는 시점이다.
+
 ## Acceptance Criteria
 - place 등록은 같은 목록 영역 안의 단일 폼으로 진행된다.
 - 이름, 주소, 장소 구분, 제로페이, 평가 입력이 가능하다.
@@ -56,6 +64,7 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - 현재 사용자가 대상 place에 review가 없을 때만 초기 후기 저장이 가능하다.
 - place 등록 성공 시 입력한 초기 별점과 후기가 등록자의 첫 review로 저장된다.
 - 중복 장소가 발견되면 기존 장소 반영 여부를 사용자가 판단할 수 있다.
+- duplicate conflict는 `submissionId`와 기존 place 요약을 반환하고 explicit confirmation 전에는 기존 place를 바꾸지 않는다.
 - confirm에서 `취소`를 누르면 등록 화면이 닫히지 않고 입력값이 유지된다.
 - 현재 사용자가 대상 place에 이미 review가 있고 후기를 비워 두면 기존 후기 내용은 유지되고 평가만 바뀐다.
 - 저장 중에는 제출 버튼을 다시 누를 수 없다.
@@ -104,7 +113,9 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - geocoding 실패 시 현재 등록 맥락 유지
 - 초기 리뷰가 등록자의 첫 review로 저장됨
 - 중복 장소 확인 흐름 표시
+- `POST /api/place-submissions` duplicate conflict가 `submissionId`를 포함하고 즉시 mutation하지 않음
 - 중복 장소 확인 `확인` 처리
+- `POST /api/place-submissions/:submissionId/confirmations` confirm 후 create/merge/update를 반영함
 - 중복 장소 확인 `취소` 시 입력 유지
 - 기존 review overwrite
 - 후기 비어 있음 시 평가만 갱신
@@ -129,6 +140,7 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - geocoding 실패 시 현재 등록 화면에서 주소를 수정하고 다시 시도할 수 있다.
 - 저장 중에는 진행 중 상태가 보이고 별도 안내 박스는 보이지 않는다.
 - 같은 place가 이미 있으면 기존 장소에 반영할지 확인할 수 있다.
+- duplicate 확인 단계에서는 기존 place 요약이 먼저 보이고, `취소` 시 별도 저장 없이 현재 draft가 유지된다.
 - 같은 place에 이미 내 review가 있으면 overwrite 여부를 묻는 확인 흐름이 보인다.
 - 후기를 비워 두고 overwrite하면 기존 후기 내용은 유지되고 평가만 바뀐다.
 - 저장 중 제출 버튼이 비활성화된다.

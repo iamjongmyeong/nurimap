@@ -41,6 +41,30 @@ flowchart LR
 | Place add surface | internal `place_add_open` state | 별도 `/add-place` route를 만들지 않는다. 등록 성공 후에는 결과 place의 `/places/:placeId`로 이동한다. |
 | Mobile place list surface | internal `mobile_place_list_open` state | 모바일 전용 목록 surface다. |
 
+## Canonical Server Route Contract
+| Concern | Canonical route | Protection | Notes |
+|---|---|---|---|
+| Auth request | `POST /api/auth/request-otp` | pre-session workflow | intentional workflow exception이다. |
+| Auth verify | `POST /api/auth/verify-otp` | pre-session workflow | 성공 시 app session + CSRF cookie를 설정한다. |
+| Auth session read | `GET /api/auth/session` | backend-issued app session | bootstrap read source of truth다. |
+| Auth session delete | `DELETE /api/auth/session` | backend-issued app session + CSRF pair | canonical logout/session termination contract다. |
+| Auth profile update | `PATCH /api/auth/profile` | backend-issued app session + CSRF pair | 이름 온보딩과 current-user profile update를 수행한다. |
+| Place list | `GET /api/places` | backend-issued app session | protected collection read다. |
+| Place detail | `GET /api/places/:placeId` | backend-issued app session | protected item read다. |
+| Place lookup | `POST /api/place-lookups` | backend-issued app session + CSRF pair | direct-entry / URL normalization 결과를 만든다. |
+| Place submission create | `POST /api/place-submissions` | backend-issued app session + CSRF pair | duplicate 시 `confirm_required + submissionId`를 반환하고 즉시 mutate하지 않는다. |
+| Place submission confirm | `POST /api/place-submissions/:submissionId/confirmations` | backend-issued app session + CSRF pair | confirmed merge/update를 materialize하고 review uniqueness를 유지한다. |
+| Place review create | `POST /api/places/:placeId/reviews` | backend-issued app session + CSRF pair | 일반 리뷰 생성 전용이며 duplicate review는 conflict로 반환한다. |
+
+## Compatibility Wrapper Gate
+- legacy wrappers `/api/place-list`, `/api/place-detail`, `/api/place-lookup`, `/api/place-entry`, `/api/place-review`, `/api/auth/request-link`는 migration 동안만 허용한다.
+- wrapper는 canonical handler를 감싸는 thin adapter여야 하며, 독자적인 business logic surface가 되면 안 된다.
+- removal gate는 다음 네 가지를 모두 충족할 때만 닫는다.
+  1. primary caller가 canonical route inventory만 사용한다.
+  2. tests/docs가 canonical contract와 `submissionId` confirmation flow로 옮겨간다.
+  3. Vercel `api/*` handler와 Vite dev middleware parity evidence가 갱신된다.
+  4. sprint QA/review evidence가 wrapper deprecation 상태를 다시 기록한다.
+
 ## Route And State Ownership
 - durable/shareable state는 route가 관리한다.
   - `/`
@@ -137,14 +161,16 @@ flowchart LR
 - 검증 실패 시 inline error를 표시하고 현재 surface에 머문다.
 
 ### Write Sequence
-1. 클라이언트가 `name`, `road_address`, `place_type`, `zeropay_status`, `rating_score`와 선택 입력을 제출한다.
-2. 서버가 필수 입력과 enum 값을 검증한다.
-3. 서버가 좌표 확보를 아래 우선순위로 시도한다.
+1. 클라이언트가 raw 입력(`name`, `road_address`, `land_lot_address?`)을 `POST /api/place-lookups`로 보낸다.
+2. 서버가 필수 입력을 검증하고 geocoding을 아래 우선순위로 시도한다.
    - 1순위: `road_address` geocoding
    - 2순위: `land_lot_address` geocoding
-4. 최종 좌표를 확보한 경우에만 place 저장을 진행한다.
-5. 저장 성공 후 browse 데이터와 선택 상태를 갱신하고 결과 place의 `/places/:placeId` route로 이동한다.
-6. geocoding이나 저장이 실패하면 현재 surface와 사용자가 입력한 값을 유지한 채 실패 상태를 반환한다.
+3. 좌표를 확보하면 클라이언트가 lookup 결과와 draft(`place_type`, `zeropay_status`, `rating_score`, `review_content`)를 `POST /api/place-submissions`로 보낸다. 이 요청은 backend-issued app session + CSRF pair를 사용한다.
+4. duplicate가 없으면 서버가 새 place/review를 저장하고 success 결과를 반환한다.
+5. duplicate가 있으면 서버는 `confirm_required + submissionId + existing place summary`를 반환하고, explicit confirmation 전에는 기존 place를 mutate하지 않는다.
+6. 사용자가 `확인`하면 클라이언트가 `POST /api/place-submissions/:submissionId/confirmations`를 호출해 merge/update를 materialize한다. `취소`하면 confirmation resource를 만들지 않고 현재 surface/draft만 유지한다.
+7. 저장 성공 후 browse 데이터와 선택 상태를 갱신하고 결과 place의 `/places/:placeId` route로 이동한다.
+8. geocoding이나 저장이 실패하면 현재 surface와 사용자가 입력한 값을 유지한 채 실패 상태를 반환한다.
 
 ### Failure Cases
 - 이름이 비어 있음
@@ -179,4 +205,5 @@ flowchart LR
 - auth bootstrap은 refresh, hard refresh, logout 후 재로그인에서도 `auth_required`, `otp_required`, `auth_failure`, `name_required`, `authenticated` 중 하나의 terminal state로 수렴해야 한다.
 - `verifying`는 transient phase이며, OTP verify failure가 무한 대기로 남아서는 안 된다.
 - 로그인 성공 시 backend-issued app session cookie를 같은 브라우저 프로필에서 복원하고, 앱 시작 시 `GET /api/auth/session` 또는 보호된 API 확인으로 유효성을 재검증한다.
+- logout은 `DELETE /api/auth/session`, 이름/프로필 저장은 `PATCH /api/auth/profile` authenticated session + CSRF contract를 사용한다.
 - 세션 절대 만료와 token refresh 정책의 상세 보안 규칙은 [Security And Ops](./security-and-ops.md)를 따른다.

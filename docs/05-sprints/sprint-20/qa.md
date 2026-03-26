@@ -8,6 +8,7 @@
 - 2026-03-24 production auth recovery slice에서는 production login failure를 deploy alias, TLS/env, DB schema gate로 분리해 확인하고, recovery 뒤 실제 production login success까지 검증한다.
 - 2026-03-25 local bypass recovery slice에서는 `make dev` 실행 중 Vercel dev worker가 `PUBLIC_APP_URL`을 production origin으로 덮어써도 local bypass가 loopback request origin 기준으로 다시 동작하는지 검증한다.
 - 2026-03-25 private-schema hardening slice에서는 server-owned app persistence를 `public`에서 `app_private`로 이동하고, remote migration 적용 및 Data API disable 상태까지 검증한다.
+- 2026-03-27 restfulness docs/evidence slice에서는 canonical resource route inventory, compatibility-wrapper deprecation gate, auth/session CSRF contract, duplicate merge/review uniqueness wording이 live docs와 plan에 맞는지 검증한다.
 
 # Automated Checks Result
 
@@ -87,6 +88,7 @@
   - auth bootstrap이 frontend Supabase listener가 아니라 `GET /api/auth/session` + app session cookie 기반인지 확인했다.
   - empty-state browse가 test mode mock seed가 아니라 실제 빈 `/api/place-list` 응답에서 오는지 확인했다.
   - duplicate place / review overwrite 규칙이 backend persistence 경계 안에서 유지되는지 확인했다.
+  - canonical route inventory(`places`, `place-lookups`, `place-submissions`, nested reviews)와 compatibility-wrapper deprecation gate가 specs/runtime/sprint docs에 반영됐는지 점검했다.
   - recommendation runtime이 재도입되지 않았는지 현재 verified surface 기준으로 점검했다.
   - browse 지도 surface에서 level HUD / zoom button 비노출 구현과 live docs가 일치하는지 확인했다.
   - Figma node `61:18` thumbnail과 marker preview artifact를 비교해 사용자 추가 장소 marker / label visual language를 점검했다.
@@ -95,6 +97,7 @@
   - PASS — production/dev runtime path에서 frontend direct Supabase session listener는 제거된 상태다.
   - PASS — clean DB에서는 browse가 valid empty state로 내려오고, place/review write 후에는 persisted data를 다시 읽는다.
   - PASS — duplicate place / overwrite review semantics는 backend API 응답(`confirm_required`, `updated`)으로 유지된다.
+  - PASS — canonical route inventory와 compatibility-wrapper deprecation gate가 docs/plan 사이에서 일치하고, write routes의 app session + CSRF 보호 규칙이 유지된다.
   - PASS — 이번에 검증한 local runtime surface에서는 recommendation UI/action 재도입이 보이지 않았다.
   - PASS — browse 지도 surface는 별도 level HUD / zoom button 없이 유지되고, map level state는 기존 browse/detail 동작과 함께 유지된다.
   - PASS — marker visual refresh는 24px concentric marker + 10px place-name label + 0.5px white stroke라는 Figma handoff 핵심 언어를 유지한다. 남는 차이는 type 색상 분기와 preview magnification 방식 수준이다.
@@ -227,6 +230,7 @@
 - 2026-03-26 server-core unification slice에서 duplicated server implementation ownership을 `src/server-core/{auth,place,runtime,http}` + `src/shared/**`로 정리하고, `api/*` routes가 legacy `api/_lib/*` 대신 canonical server-core/shared 경로를 직접 참조하도록 재배선했다.
 - 같은 slice에서 route contract tests + canonical module tests를 새 경계 기준으로 정리했고, `pnpm lint`, targeted Vitest(17 tests + 78 tests), full `pnpm test:run`(31 files / 242 tests), `pnpm exec tsc -p tsconfig.api.json --noEmit`, `pnpm build`, `pnpm exec vercel build`, local bypass login/session/logout smoke를 모두 통과했다. smoke artifact는 `artifacts/qa/sprint-20/server-core-unification-local-auth-smoke.json`에 저장했다.
 - Data API는 현재 disabled 상태이며, Exposed schemas / Extra search path에는 app data schema가 남아 있지 않다.
+- legacy `/api/place-*` / `/api/auth/request-link` surface는 restfulness migration 동안 compatibility-only wrapper로 남아 있고, removal gate는 canonical caller/tests/docs migration + parity evidence refresh가 끝날 때까지 열린 상태다.
 
 # QA Verdict
 
@@ -236,6 +240,7 @@
 
 - 현재 local execution evidence를 기준으로 사용자 QA handoff와 push / rollout 판단을 이어간다.
 - canonical server-core topology는 local integrated auth/session smoke(`artifacts/qa/sprint-20/server-core-unification-local-auth-smoke.json`)와 local `pnpm exec vercel build` proof까지 확인했으므로, 이후 follow-up은 구조 회귀(`api/_lib` 재도입, `src/server -> app-shell` 역의존 재도입) 감시 위주로 둔다.
+- compatibility wrapper removal gate는 아직 열려 있으므로, canonical route migration이 끝날 때까지 `place-entry`/`place-review`/`place-list`류 action path를 새 primary contract로 되돌리지 않는다.
 - hosted Supabase `Confirm sign up` 템플릿을 `{{ .Token }}` 기반 OTP UX로 바꾸는 option 1은 local confirmation-enabled reproduction에서 PASS였으므로, 실제 dashboard 적용 전에는 production/non-local mailbox에서 한 번 더 확인한다.
 - `test`는 당분간 reset 가능한 local DB 재사용 모델로 유지하고, remote dev/test rollout이 안정화되면 dedicated `TEST_DATABASE_URL` / separate target 승격을 재검토한다.
 - Preview deploy blocker는 해소됐고 authenticated smoke 절차도 확보됐으므로, 다음 판단은 Preview를 계속 auth-protected smoke로 유지할지, 별도 public smoke path까지 열 필요가 있는지 결정하는 것이다.
