@@ -23,7 +23,7 @@ const buildConfirmationRequest = (req: VercelRequest, submissionId: string) => (
     ...req.query,
     submissionId,
   },
-}) as VercelRequest
+}) as unknown as VercelRequest
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

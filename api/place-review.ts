@@ -13,7 +13,7 @@ const buildCanonicalRequest = (req: VercelRequest, placeId: string) => ({
     ...req.query,
     placeId,
   },
-}) as VercelRequest
+}) as unknown as VercelRequest
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

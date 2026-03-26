@@ -53,5 +53,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  res.status(201).json(result)
+  res.status(200).json(result)
 }
