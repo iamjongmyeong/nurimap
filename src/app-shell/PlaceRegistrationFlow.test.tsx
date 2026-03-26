@@ -218,6 +218,22 @@ describe('Plan 06 place registration flow', () => {
     expect(screen.getByTestId('rating-star-5')).toHaveClass('text-slate-300')
   })
 
+  it('keeps the mobile place-add top gap inside the scrollable content', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openDirectEntryForm(user)
+
+    const formContent = screen.getByTestId('place-add-form-content')
+    const scrollRegion = formContent.parentElement as HTMLElement
+
+    expect(screen.getByTestId('place-add-header')).toHaveClass('sticky', 'top-0', 'h-14')
+    expect(scrollRegion).toHaveClass('flex-1', 'overflow-auto', 'px-6', 'pb-4')
+    expect(scrollRegion).not.toHaveClass('mt-6')
+    expect(formContent).toHaveClass('mt-6')
+  })
+
   it('applies the updated place-add field styles and back-only header affordance', async () => {
     setViewport(1280)
     const user = userEvent.setup()

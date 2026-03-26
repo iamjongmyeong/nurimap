@@ -251,7 +251,11 @@ describe('Sprint 16 place detail refresh', () => {
     await user.click(screen.getByRole('button', { name: '평가 남기기' }))
 
     expect(await screen.findByTestId('mobile-review-add-page')).toBeInTheDocument()
+    const addRatingScrollRegion = screen.getByTestId('detail-add-rating-scroll-region')
     expect(await screen.findByTestId('review-add-surface')).toHaveTextContent('평가')
+    expect(addRatingScrollRegion).toHaveClass('flex-1', 'overflow-y-auto', 'overscroll-contain', 'px-6', 'pb-6')
+    expect(addRatingScrollRegion).not.toHaveClass('pt-6')
+    expect(screen.getByTestId('review-add-surface')).toHaveClass('mt-6')
     expect(screen.getByTestId('review-add-surface')).toHaveTextContent('후기(선택)')
     expect(screen.getByText('평가')).toHaveClass("font-['Pretendard']", 'text-[12px]', 'font-medium', 'leading-[18px]', 'tracking-[-0.3px]', 'text-[#1c1c1c]')
     expect(screen.getByText('후기(선택)')).toHaveClass("font-['Pretendard']", 'text-[12px]', 'font-medium', 'leading-[18px]', 'tracking-[-0.3px]', 'text-[#1c1c1c]')

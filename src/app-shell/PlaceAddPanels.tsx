@@ -328,8 +328,8 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
       </div>
       <h2 className="sr-only">직접 장소 등록</h2>
 
-      <div className="mt-6 flex-1 overflow-auto px-6 pb-4">
-        <div data-testid="place-add-form-content">
+      <div className="flex-1 overflow-auto px-6 pb-4">
+        <div className="mt-6" data-testid="place-add-form-content">
           <div className="space-y-6" data-testid="place-add-form-fields">
             <div className="w-full" data-testid="place-name-field">
               <label className="block" htmlFor="place-name-input">

@@ -676,8 +676,8 @@ const AddRatingScreen = ({
   return (
     <div className="flex h-full min-h-0 flex-col bg-white" data-testid="mobile-review-add-page">
       <DetailHeader ariaLabel="뒤로 가기" onBack={onBack} title="평가 남기기" />
-      <div className={`${MOBILE_SCROLL_REGION_CLASS} px-6 pb-6 pt-6`} data-testid="detail-add-rating-scroll-region">
-        <div className="mx-auto flex w-full flex-col" data-testid="review-add-surface">
+      <div className={`${MOBILE_SCROLL_REGION_CLASS} px-6 pb-6`} data-testid="detail-add-rating-scroll-region">
+        <div className="mx-auto mt-6 flex w-full flex-col" data-testid="review-add-surface">
           {place ? (
             <>
               <section className="flex w-full flex-col items-start gap-6" data-testid="review-add-form">
