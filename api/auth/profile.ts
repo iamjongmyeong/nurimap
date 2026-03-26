@@ -7,7 +7,7 @@ import {
 } from '../../src/server-core/auth/requestContext.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'PATCH' && req.method !== 'POST') {
+  if (req.method !== 'PATCH') {
     res.status(405).json(METHOD_NOT_ALLOWED_RESPONSE_BODY)
     return
   }
