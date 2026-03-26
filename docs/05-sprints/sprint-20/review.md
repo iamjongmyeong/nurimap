@@ -10,6 +10,7 @@
 - auth first-login slice에서는 첫 로그인 OTP 요청을 implicit signup 대신 server pre-provision + normal OTP delivery로 고정했고, verify 단계의 허용 이메일 경계를 다시 검사하도록 보강했다.
 - 2026-03-24 production auth recovery slice에서는 login failure 원인을 deploy alias, TLS/env, DB schema gate로 분리해 추적했고, root cert rollout + phase1 migration 적용 뒤 production login success를 확인했다.
 - 2026-03-25 local bypass recovery slice에서는 `make dev`의 Vercel dev worker가 `PUBLIC_APP_URL`을 production origin으로 덮어써도 local request origin 기준으로 bypass가 다시 동작하도록 고쳤고, Vite dev middleware parity를 보강해 `/api/auth/verify-otp`와 `/api/place-list`까지 local integrated runtime에서 정상 응답하도록 맞췄다.
+- 2026-03-27 restfulness docs/evidence slice에서는 canonical place/auth route inventory와 compatibility-wrapper deprecation gate를 specs/runtime/sprint docs에 고정하고, auth session/CSRF 및 duplicate merge/review uniqueness wording을 함께 보존했다.
 
 # Completed
 
@@ -23,6 +24,7 @@
 - Preview blocker resolution slice에서 `api/` 밖으로 API route tests 5개를 이동하고 `.vercelignore`를 추가해 deploy surface를 정리했다.
 - structural fix 이후 `pnpm exec vercel deploy --yes`가 성공했고, before/after API inventory, Preview smoke evidence, deploy log를 `artifacts/qa/sprint-20/`에 저장했다.
 - authenticated `pnpm exec vercel curl` smoke로 Preview root, `/places/smoke-place` rewrite, built JS asset 응답을 확인했다.
+- specs/runtime/sprint docs에 canonical route inventory와 compatibility-wrapper deprecation gate를 반영해, auth session/CSRF 및 duplicate merge/review uniqueness wording이 refactor plan과 어긋나지 않도록 잠갔다.
 - 2026-03-23 auth hotfix slice에서 일반 OTP request/verify를 publishable auth client 경로로 복구하고, bypass와 분리된 `AUTH_ALLOWED_EMAILS` exact allowlist 정책을 추가했다.
 - 2026-03-23 auth hardening slice에서 first-login OTP는 `auth.admin.createUser` pre-provision 뒤 `signInWithOtp({ shouldCreateUser: false })`로 보내도록 바꾸고, provisioning failure를 canonical `delivery_failed` 응답으로 수렴시켰다.
 - 같은 slice에서 `verifyLoginOtp`는 verified email에 대해 허용 도메인 / explicit allowlist / local bypass 경계를 다시 확인한 뒤에만 app session을 발급하도록 보강했고, focused auth tests + build를 다시 green으로 맞췄다.
@@ -34,6 +36,7 @@
 - 2026-03-24 production에서 user-confirmed login success를 확인했다.
 - 2026-03-25 local bypass recovery slice에서 request-origin-aware bypass gating, verify-otp dev middleware, place-list dev middleware를 추가했고, Playwright mobile smoke로 `make dev` 첫 진입 bypass success를 확인했다.
 - 2026-03-26 server-core unification slice에서 `api/_lib/*` duplicated implementation layer와 `src/server/*` duplicate runtime 구현을 제거하고, route contract tests(legacy location 유지) + canonical unit tests(`src/server-core/**`) + boundary test + local login/session/logout smoke(`artifacts/qa/sprint-20/server-core-unification-local-auth-smoke.json`)를 모두 green으로 맞췄다. 이어서 `pnpm exec vercel build`도 통과해 `.vercel/output` 기반 local hosted-build proof까지 확보했다.
+- restfulness migration 문서에서는 `GET /api/places`, `POST /api/place-lookups`, `POST /api/place-submissions`, `POST /api/place-submissions/:submissionId/confirmations`, `POST /api/places/:placeId/reviews`, `DELETE /api/auth/session`, `PATCH /api/auth/profile`를 canonical contract로 고정했다. legacy `place-*` / `request-link`는 compatibility-only wrapper로만 남긴다.
 
 # Not Completed
 
@@ -41,6 +44,7 @@
 - dedicated test target 승격 여부 재검토
 - 사용자 직접 QA handoff 종료
 - public schema hardening migration rollout
+- compatibility-only wrapper removal gate 종료
 
 # Carry-over
 
@@ -50,6 +54,7 @@
 - 사용자에게 auth UX, empty-state browse, overwrite 체감 확인을 handoff한다.
 - auth/session server-only tables에 대한 RLS / revoke 또는 private schema hardening rollout을 별도 후속 작업으로 마무리한다.
 - hosted Supabase confirmation template를 OTP UX로 맞추는 option 1은 follow-up rollout 후보로 남긴다. local confirmation-enabled matrix 결과는 `.omx/plans/result-option-1-confirmation-template-otp-ux-validation.md`를 따른다.
+- legacy `place-*` / `request-link` wrappers는 canonical caller/tests/docs migration과 parity evidence refresh가 끝난 뒤에만 제거한다.
 
 # Environment Readiness Snapshot
 
@@ -110,6 +115,7 @@
 - dedicated test target 없이 destructive verification을 늘리면 local validation과 test semantics가 섞일 수 있다. 현재는 reset 가능한 local DB reuse 범위로만 제한한다.
 - recommendation은 현재 제거 상태지만, 이후 follow-up에서 실수로 재도입될 위험은 계속 감시해야 한다.
 - Vercel build log에 `api/_lib/_authService.ts`의 타입 export 관련 메시지가 찍히지만 local diagnostics/deploy success와 충돌하지 않는다. 지금은 non-blocking 관찰 항목이지만, 향후 deploy fail로 승격되면 별도 slice로 추적해야 한다.
+- compatibility-only wrapper를 너무 오래 유지하면 action-style route가 다시 사실상 canonical surface가 될 수 있다. caller/tests/docs migration과 deprecation evidence를 함께 닫아야 한다.
 - first-login workaround는 여전히 Supabase user를 `email_confirm: true`로 pre-provision하는 설계 제약을 갖고 있다. local validation 기준 option 1(template token화)이 viable하므로, actual hosted template rollout 이후에만 이 값을 `false`로 내리는 후속 변경을 검토한다.
 
 # Retrospective

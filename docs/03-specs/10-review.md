@@ -37,6 +37,13 @@
 - add-rating 저장 성공 후 사용자는 같은 place detail로 복귀하고, 최신 리뷰 목록/평균 별점/별점 수/내 리뷰 상태가 즉시 갱신된 결과를 본다.
 - place 등록 경로에서 review overwrite 시 후기를 비워 두면 기존 후기 내용은 유지하고 별점만 갱신한다.
 
+## Canonical Runtime / API Contract
+- 일반 리뷰 작성의 canonical endpoint는 `POST /api/places/:placeId/reviews`다. place identity는 request body가 아니라 URI로 전달한다.
+- 이 요청은 authenticated app session + CSRF cookie/header pair를 요구한다.
+- 일반 리뷰 route는 현재 사용자의 첫 review 생성만 담당한다. 이미 같은 place에 review가 있으면 `409 { status: 'existing_review', place, message }` conflict를 반환하고 둘째 review를 만들지 않는다.
+- 기존 review overwrite는 일반 review route의 별도 RPC flag가 아니라 `place-submissions/:submissionId/confirmations` 흐름 안에서만 허용한다.
+- legacy `POST /api/place-review`는 migration 동안만 nested review contract를 감싸는 compatibility-only wrapper다. removal gate는 canonical callers/tests/docs migration + sprint evidence refresh다.
+
 ## Acceptance Criteria
 - review가 없는 로그인 사용자는 detail CTA를 통해 리뷰와 별점 평가를 함께 작성할 수 있다.
 - `my_review === null`일 때만 `평가 남기기` CTA가 보인다.
@@ -45,6 +52,7 @@
 - 리뷰 작성 시 입력된 별점은 평균 별점과 별점 수에 반영된다.
 - 저장 성공 후 detail로 복귀하고 새 리뷰가 즉시 보인다.
 - place 등록 시 입력한 초기 리뷰와 별점이 같은 review 규칙으로 저장된다.
+- 일반 리뷰 작성은 `POST /api/places/:placeId/reviews` nested route로 식별되고 place identity를 body에 중복 전달하지 않는다.
 - place 등록 경로에서 이미 review가 있는 사용자는 확인 단계를 통해 기존 review를 업데이트할 수 있다.
 - 이미 review를 작성한 사용자는 새 review를 추가할 수 없다.
 - 리뷰는 작성자와 작성일과 함께 상세에 표시된다.
@@ -80,6 +88,7 @@
 - 저장 성공 후 detail 즉시 반영
 - place 등록 초기 review 연동
 - place 등록 경로의 중복 리뷰 확인 단계
+- `POST /api/places/:placeId/reviews`가 URI-carried place identity와 duplicate-review conflict를 사용함
 - 이미 review가 있는 사용자의 추가 review 차단
 - 작성자/작성일 표시
 - 리뷰 저장 중 진행 상태 표시
