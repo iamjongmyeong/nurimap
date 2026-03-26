@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 
 import type { PoolClient } from 'pg'
 
-import { withDatabaseConnection } from './_database.js'
+import { withDatabaseConnection } from '../runtime/database.js'
 
 export const APP_SESSION_COOKIE_NAME = process.env.NODE_ENV === 'production'
   ? '__Host-nurimap_session'

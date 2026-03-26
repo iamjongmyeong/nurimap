@@ -42,6 +42,11 @@
   - `supabase db push --local --dry-run --yes`
   - `supabase db push --local --yes`
   - `supabase db dump --linked --schema app_private -f /tmp/app_private_remote.sql`
+  - `pnpm exec tsc --noEmit -p tsconfig.api.json`
+  - `pnpm test:run`
+  - `pnpm lint`
+  - `pnpm build`
+  - `pnpm exec vercel build`
 - 결과:
   - PASS — `src/app-shell/NurimapBrowse.test.tsx`, `src/app-shell/NurimapDetail.test.tsx` 2 files / 26 tests 통과
   - PASS — `src/server/authPolicy.test.ts`, `src/server/authService.test.ts` 2 files / 27 tests 통과
@@ -70,6 +75,9 @@
   - PASS — `supabase db push --local --yes`로 local DB에 private-schema hardening migration을 적용했다.
   - PASS — `supabase db push --linked --yes`로 linked remote project에 `20260323153330_harden_public_data_api_access.sql`, `20260325130500_move_server_only_tables_to_app_private.sql`를 적용했다.
   - PASS — `supabase db dump --linked --schema app_private` 결과로 remote `app_private` schema에 `user_profiles`, `app_sessions`, `places`, `place_reviews`가 존재함을 확인했다.
+  - PASS — server-core unification slice에서 `pnpm exec tsc --noEmit -p tsconfig.api.json` 통과
+  - PASS — server-core unification slice에서 full `pnpm test:run` 31 files / 242 tests 통과
+  - PASS — server-core unification slice에서 `pnpm lint`, `pnpm build`, `pnpm exec vercel build`가 모두 통과했고 `.vercel/output` 생성까지 확인했다.
 
 # Manual QA Result
 
@@ -167,6 +175,7 @@
   - Local bypass recovery result: `artifacts/qa/sprint-20/local-bypass-make-dev-result.json`
   - Private-schema hardening smoke result: `artifacts/qa/private-schema-hardening/local-smoke-result.json`
   - Private-schema hardening detail screenshot: `artifacts/qa/private-schema-hardening/local-smoke-mobile-detail-success.png`
+  - Server-core unification auth smoke: `artifacts/qa/sprint-20/server-core-unification-local-auth-smoke.json`
   - Historical blocker log: `artifacts/qa/sprint-20/preview-deploy-blocker.txt`
 
 ## User QA Required
@@ -215,6 +224,8 @@
 - 같은 slice에서 request origin 기반 local runtime 판정과 Vite auth/place-list middleware parity를 추가한 뒤, Playwright mobile smoke로 local bypass 회복을 확인했다.
 - 2026-03-25 private-schema hardening slice에서 `app_private` migration과 runtime SQL refactor를 적용한 뒤, linked remote project migration 적용과 local/remote verification을 마쳤다.
 - 같은 slice에서 `make dev` 기준 `/api/place-detail` dev middleware parity gap을 발견했고, `vite.config.ts` middleware + `src/server/apiPlaceDetailRoute.test.ts` 추가로 보정한 뒤 mobile detail smoke까지 재통과시켰다.
+- 2026-03-26 server-core unification slice에서 duplicated server implementation ownership을 `src/server-core/{auth,place,runtime,http}` + `src/shared/**`로 정리하고, `api/*` routes가 legacy `api/_lib/*` 대신 canonical server-core/shared 경로를 직접 참조하도록 재배선했다.
+- 같은 slice에서 route contract tests + canonical module tests를 새 경계 기준으로 정리했고, `pnpm lint`, targeted Vitest(17 tests + 78 tests), full `pnpm test:run`(31 files / 242 tests), `pnpm exec tsc -p tsconfig.api.json --noEmit`, `pnpm build`, `pnpm exec vercel build`, local bypass login/session/logout smoke를 모두 통과했다. smoke artifact는 `artifacts/qa/sprint-20/server-core-unification-local-auth-smoke.json`에 저장했다.
 - Data API는 현재 disabled 상태이며, Exposed schemas / Extra search path에는 app data schema가 남아 있지 않다.
 
 # QA Verdict
@@ -224,6 +235,7 @@
 # Follow-ups
 
 - 현재 local execution evidence를 기준으로 사용자 QA handoff와 push / rollout 판단을 이어간다.
+- canonical server-core topology는 local integrated auth/session smoke(`artifacts/qa/sprint-20/server-core-unification-local-auth-smoke.json`)와 local `pnpm exec vercel build` proof까지 확인했으므로, 이후 follow-up은 구조 회귀(`api/_lib` 재도입, `src/server -> app-shell` 역의존 재도입) 감시 위주로 둔다.
 - hosted Supabase `Confirm sign up` 템플릿을 `{{ .Token }}` 기반 OTP UX로 바꾸는 option 1은 local confirmation-enabled reproduction에서 PASS였으므로, 실제 dashboard 적용 전에는 production/non-local mailbox에서 한 번 더 확인한다.
 - `test`는 당분간 reset 가능한 local DB 재사용 모델로 유지하고, remote dev/test rollout이 안정화되면 dedicated `TEST_DATABASE_URL` / separate target 승격을 재검토한다.
 - Preview deploy blocker는 해소됐고 authenticated smoke 절차도 확보됐으므로, 다음 판단은 Preview를 계속 auth-protected smoke로 유지할지, 별도 public smoke path까지 열 필요가 있는지 결정하는 것이다.

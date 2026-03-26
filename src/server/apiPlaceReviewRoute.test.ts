@@ -19,11 +19,11 @@ const {
   submitPersistedPlaceReviewMock: vi.fn(),
 }))
 
-vi.mock('../../api/_lib/_authService.js', () => ({
+vi.mock('../server-core/auth/authService.js', () => ({
   getAuthenticatedSession: getAuthenticatedSessionMock,
 }))
 
-vi.mock('../../api/_lib/_appSessionService.js', () => ({
+vi.mock('../server-core/auth/appSessionService.js', () => ({
   findActiveAppSessionById: findActiveAppSessionByIdMock,
   isValidCsrfTokenPair: isValidCsrfTokenPairMock,
   readCsrfTokenFromCookieHeader: readCsrfTokenFromCookieHeaderMock,
@@ -31,7 +31,7 @@ vi.mock('../../api/_lib/_appSessionService.js', () => ({
   readSessionIdFromCookieHeader: readSessionIdFromCookieHeaderMock,
 }))
 
-vi.mock('../../api/_lib/_placeDataService.js', () => ({
+vi.mock('../server-core/place/placeDataService.js', () => ({
   submitPersistedPlaceReview: submitPersistedPlaceReviewMock,
 }))
 

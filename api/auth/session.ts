@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { APP_CSRF_HEADER_NAME, readSessionIdFromCookieHeader } from '../_lib/_appSessionService.js'
-import { getAuthenticatedSession } from '../_lib/_authService.js'
+import { APP_CSRF_HEADER_NAME, readSessionIdFromCookieHeader } from '../../src/server-core/auth/appSessionService.js'
+import { getAuthenticatedSession } from '../../src/server-core/auth/authService.js'
 
 const setNoStoreHeaders = (res: VercelResponse) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')

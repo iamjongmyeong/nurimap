@@ -10,17 +10,17 @@ import {
   recordVerifiedOtpState,
   type LoginOtpState,
   type LoginOtpRequestReceipt,
-} from './_authPolicy.js'
+} from './authPolicy.js'
 import {
   createAppSession,
   createAppSessionTokens,
   findActiveAppSessionById,
   revokeAppSession,
   touchAppSession,
-} from './_appSessionService.js'
-import { withDatabaseConnection, withDatabaseTransaction } from './_database.js'
-import { logAuthBypassLogin, logAuthRequestAccepted, logAuthRequestFailure } from './_opsLogger.js'
-import { createSupabaseAdminClient, createSupabaseAuthClient } from './_supabaseAdmin.js'
+} from './appSessionService.js'
+import { withDatabaseConnection, withDatabaseTransaction } from '../runtime/database.js'
+import { logAuthBypassLogin, logAuthRequestAccepted, logAuthRequestFailure } from '../runtime/opsLogger.js'
+import { createSupabaseAdminClient, createSupabaseAuthClient } from '../runtime/supabaseAdmin.js'
 
 type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'delivery_failed' | 'bypass_required'
 type AuthVerifyType = 'magiclink' | 'signup' | 'invite'

@@ -1,8 +1,8 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { requestLoginOtp } from './authService'
-import { lookupPlaceFromRawUrl } from './placeLookupService'
+import { requestLoginOtp } from '../server-core/auth/authService'
+import { lookupPlaceFromRawUrl } from '../server-core/place/placeLookupService'
 
 const originalEnv = { ...process.env }
 
@@ -12,7 +12,8 @@ const collectClientFiles = (dir: string): string[] =>
     const stats = statSync(fullPath)
 
     if (stats.isDirectory()) {
-      if (fullPath.includes(`${path.sep}server`) || fullPath.includes(`${path.sep}test`)) {
+      const directoryName = path.basename(fullPath)
+      if (directoryName === 'server' || directoryName === 'server-core' || directoryName === 'test') {
         return []
       }
 

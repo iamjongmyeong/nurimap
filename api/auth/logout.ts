@@ -8,8 +8,8 @@ import {
   readSessionIdFromCookieHeader,
   serializeClearedAppSessionCookie,
   serializeClearedCsrfCookie,
-} from '../_lib/_appSessionService.js'
-import { signOutAppSession } from '../_lib/_authService.js'
+} from '../../src/server-core/auth/appSessionService.js'
+import { signOutAppSession } from '../../src/server-core/auth/authService.js'
 
 const isSecureRequest = (req: VercelRequest) =>
   process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https'

@@ -6,8 +6,8 @@ import {
   readCsrfTokenFromCookieHeader,
   readCsrfTokenFromHeaders,
   readSessionIdFromCookieHeader,
-} from '../_lib/_appSessionService.js'
-import { getAuthenticatedSession, saveAuthenticatedUserName } from '../_lib/_authService.js'
+} from '../../src/server-core/auth/appSessionService.js'
+import { getAuthenticatedSession, saveAuthenticatedUserName } from '../../src/server-core/auth/authService.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

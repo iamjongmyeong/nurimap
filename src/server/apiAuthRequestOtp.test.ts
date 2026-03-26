@@ -7,7 +7,7 @@ const {
   requestLoginOtpMock: vi.fn(),
 }))
 
-vi.mock('../../api/_lib/_authService.js', () => ({
+vi.mock('../server-core/auth/authService.js', () => ({
   requestLoginOtp: requestLoginOtpMock,
 }))
 

@@ -1,7 +1,7 @@
-import { NAVER_URL_ERROR_MESSAGE, normalizeNaverMapUrl } from './_naverUrl.js'
-import { logPlaceLookupFailure } from './_opsLogger.js'
-import { GEOCODE_FIXTURES, PLACE_LOOKUP_FIXTURES } from './_placeLookupFixtures.js'
-import type { PlaceLookupError, PlaceLookupResult, PlaceLookupSourceRecord, PlaceLookupSuccess } from './_placeLookupTypes.js'
+import { NAVER_URL_ERROR_MESSAGE, normalizeNaverMapUrl } from '../../shared/naverUrl.js'
+import { GEOCODE_FIXTURES, PLACE_LOOKUP_FIXTURES } from './placeLookupFixtures.js'
+import { logPlaceLookupFailure } from '../runtime/opsLogger.js'
+import type { PlaceLookupError, PlaceLookupResult, PlaceLookupSourceRecord, PlaceLookupSuccess } from '../../shared/placeLookupTypes.js'
 
 const LOOKUP_FAILED_MESSAGE = '장소 정보를 가져오지 못했어요. 다시 시도해 주세요.'
 const COORDINATES_FAILED_MESSAGE = '좌표를 확인하지 못했어요. 다시 시도해 주세요.'
@@ -202,4 +202,30 @@ export const lookupPlaceFromRawUrl = async (rawUrl: string): Promise<PlaceLookup
   }
   writeCachedValue(lookupResultCache, normalized.canonicalUrl, result)
   return result
+}
+
+export const __resetPlaceLookupCaches = () => {
+  lookupResultCache.clear()
+  geocodeCache.clear()
+}
+
+export const __getPlaceLookupCacheSizesForTests = () => ({
+  lookup: lookupResultCache.size,
+  geocode: geocodeCache.size,
+})
+
+export const __primePlaceLookupCachesForTests = ({
+  geocodeEntries = [],
+  lookupEntries = [],
+}: {
+  geocodeEntries?: Array<{ key: string; value: { latitude: number; longitude: number } | null }>
+  lookupEntries?: Array<{ key: string; value: PlaceLookupResult }>
+}) => {
+  for (const entry of geocodeEntries) {
+    writeCachedValue(geocodeCache, entry.key, entry.value)
+  }
+
+  for (const entry of lookupEntries) {
+    writeCachedValue(lookupResultCache, entry.key, entry.value)
+  }
 }

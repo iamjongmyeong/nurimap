@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const withDatabaseConnectionMock = vi.hoisted(() => vi.fn())
 const withDatabaseTransactionMock = vi.hoisted(() => vi.fn())
 
-vi.mock('./database.js', () => ({
+vi.mock('../runtime/database.js', () => ({
   withDatabaseConnection: withDatabaseConnectionMock,
   withDatabaseTransaction: withDatabaseTransactionMock,
 }))

@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { readSessionIdFromCookieHeader } from './_lib/_appSessionService.js'
-import { getAuthenticatedSession } from './_lib/_authService.js'
-import { getPlaceDetailForUser } from './_lib/_placeDataService.js'
+import { readSessionIdFromCookieHeader } from '../src/server-core/auth/appSessionService.js'
+import { getAuthenticatedSession } from '../src/server-core/auth/authService.js'
+import { getPlaceDetailForUser } from '../src/server-core/place/placeDataService.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {

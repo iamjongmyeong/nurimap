@@ -5,12 +5,12 @@ import {
   readCsrfTokenFromCookieHeader,
   readCsrfTokenFromHeaders,
   readSessionIdFromCookieHeader,
-} from './_lib/_appSessionService.js'
-import { getAuthenticatedSession } from './_lib/_authService.js'
-import { persistPlaceRegistration } from './_lib/_placeDataService.js'
-import { logPlaceEntryFailure } from './_lib/_opsLogger.js'
-import { preparePlaceEntryFromDraft } from './_lib/_placeEntryService.js'
-import { checkUserScopedRateLimit } from './_lib/_requestRateLimit.js'
+} from '../src/server-core/auth/appSessionService.js'
+import { getAuthenticatedSession } from '../src/server-core/auth/authService.js'
+import { persistPlaceRegistration } from '../src/server-core/place/placeDataService.js'
+import { logPlaceEntryFailure } from '../src/server-core/runtime/opsLogger.js'
+import { preparePlaceEntryFromDraft } from '../src/server-core/place/placeEntryService.js'
+import { checkUserScopedRateLimit } from '../src/server-core/http/requestRateLimit.js'
 
 const GENERIC_PLACE_ENTRY_ERROR_MESSAGE = '등록하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const PLACE_ENTRY_RATE_LIMIT_MESSAGE = '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.'

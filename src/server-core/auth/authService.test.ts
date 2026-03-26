@@ -34,7 +34,7 @@ const {
   touchAppSessionMock: vi.fn(),
 }))
 
-vi.mock('./supabaseAdmin.js', () => ({
+vi.mock('../runtime/supabaseAdmin.js', () => ({
   createSupabaseAdminClient: () => ({
     auth: {
       admin: {
@@ -55,7 +55,7 @@ vi.mock('./supabaseAdmin.js', () => ({
   }),
 }))
 
-vi.mock('./database.js', () => ({
+vi.mock('../runtime/database.js', () => ({
   withDatabaseConnection: withDatabaseConnectionMock,
   withDatabaseTransaction: withDatabaseTransactionMock,
 }))

@@ -7,15 +7,15 @@ const { getAuthenticatedSessionMock, listPlacesForUserMock, readSessionIdFromCoo
   readSessionIdFromCookieHeaderMock: vi.fn(),
 }))
 
-vi.mock('../../api/_lib/_authService.js', () => ({
+vi.mock('../server-core/auth/authService.js', () => ({
   getAuthenticatedSession: getAuthenticatedSessionMock,
 }))
 
-vi.mock('../../api/_lib/_appSessionService.js', () => ({
+vi.mock('../server-core/auth/appSessionService.js', () => ({
   readSessionIdFromCookieHeader: readSessionIdFromCookieHeaderMock,
 }))
 
-vi.mock('../../api/_lib/_placeDataService.js', () => ({
+vi.mock('../server-core/place/placeDataService.js', () => ({
   listPlacesForUser: listPlacesForUserMock,
 }))
 

@@ -11,11 +11,11 @@ const {
   serializeCsrfCookieMock: vi.fn(),
 }))
 
-vi.mock('../../api/_lib/_authService.js', () => ({
+vi.mock('../server-core/auth/authService.js', () => ({
   verifyLoginOtp: verifyLoginOtpMock,
 }))
 
-vi.mock('../../api/_lib/_appSessionService.js', () => ({
+vi.mock('../server-core/auth/appSessionService.js', () => ({
   APP_CSRF_HEADER_NAME: 'x-nurimap-csrf-token',
   serializeAppSessionCookie: serializeAppSessionCookieMock,
   serializeCsrfCookie: serializeCsrfCookieMock,

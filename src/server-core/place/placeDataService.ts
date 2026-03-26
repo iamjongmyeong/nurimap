@@ -1,31 +1,8 @@
 import type { PoolClient } from 'pg'
 
-type ReviewSummary = {
-  id: string
-  author_name: string
-  content: string
-  created_at: string
-  rating_score: number
-}
-
- type PlaceSummary = {
-  id: string
-  naver_place_id: string
-  naver_place_url: string
-  name: string
-  road_address: string
-  latitude?: number
-  longitude?: number
-  place_type: 'restaurant' | 'cafe'
-  zeropay_status: 'available' | 'unavailable' | 'needs_verification'
-  average_rating: number
-  review_count: number
-  added_by_name: string
-  my_review: ReviewSummary | null
-  reviews: ReviewSummary[]
-}
-import type { PlaceLookupSuccess } from './_placeLookupTypes.js'
-import { withDatabaseConnection, withDatabaseTransaction } from './_database.js'
+import type { PlaceSummary, ReviewSummary } from '../../shared/placeTypes.js'
+import type { PlaceLookupSuccess } from '../../shared/placeLookupTypes.js'
+import { withDatabaseConnection, withDatabaseTransaction } from '../runtime/database.js'
 
 const DUPLICATE_PLACE_CONFIRM_MESSAGE = '이미 등록된 장소예요. 지금 입력한 정보를 이 장소에 반영할까요?'
 const OVERWRITE_REVIEW_CONFIRM_MESSAGE = '이미 내가 리뷰를 남긴 장소예요. 지금 입력한 정보를 반영할까요?'

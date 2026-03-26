@@ -5,12 +5,12 @@ import {
   readCsrfTokenFromCookieHeader,
   readCsrfTokenFromHeaders,
   readSessionIdFromCookieHeader,
-} from './_lib/_appSessionService.js'
-import { getAuthenticatedSession } from './_lib/_authService.js'
-import { lookupPlaceFromRawUrl } from './_lib/_placeLookupService.js'
-import { NAVER_URL_ERROR_MESSAGE } from './_lib/_naverUrl.js'
-import { logPlaceLookupFailure } from './_lib/_opsLogger.js'
-import { checkUserScopedRateLimit } from './_lib/_requestRateLimit.js'
+} from '../src/server-core/auth/appSessionService.js'
+import { getAuthenticatedSession } from '../src/server-core/auth/authService.js'
+import { lookupPlaceFromRawUrl } from '../src/server-core/place/placeLookupService.js'
+import { NAVER_URL_ERROR_MESSAGE } from '../src/shared/naverUrl.js'
+import { logPlaceLookupFailure } from '../src/server-core/runtime/opsLogger.js'
+import { checkUserScopedRateLimit } from '../src/server-core/http/requestRateLimit.js'
 
 const PLACE_LOOKUP_RATE_LIMIT_MESSAGE = '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.'
 const PLACE_LOOKUP_RATE_LIMIT = {

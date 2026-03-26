@@ -2,7 +2,13 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const apiRoot = path.resolve(process.cwd(), 'api')
+const projectRoot = process.cwd()
+const apiRoot = path.resolve(projectRoot, 'api')
+const srcRoot = path.resolve(projectRoot, 'src')
+const allowedSrcImportRoots = [
+  path.resolve(projectRoot, 'src/server-core'),
+  path.resolve(projectRoot, 'src/shared'),
+]
 
 const collectTsFiles = (dir: string): string[] => {
   return readdirSync(dir).flatMap((entry) => {
@@ -45,10 +51,14 @@ const resolveRelativeImport = (fromFile: string, specifier: string) => {
   })
 }
 
+const isAllowedSrcImport = (resolvedImportPath: string) =>
+  allowedSrcImportRoots.some((allowedRoot) =>
+    resolvedImportPath === allowedRoot || resolvedImportPath.startsWith(`${allowedRoot}${path.sep}`))
+
 describe('api import boundary', () => {
   const apiFiles = collectTsFiles(apiRoot)
 
-  it('keeps route and helper imports inside api/ or external packages', () => {
+  it('keeps route imports inside api/, approved shared server roots, or external packages', () => {
     for (const file of apiFiles) {
       const source = readFileSync(file, 'utf8')
       const imports = extractImportSpecifiers(source)
@@ -58,11 +68,22 @@ describe('api import boundary', () => {
           continue
         }
 
-        expect(specifier, `${path.relative(apiRoot, file)} imports from src`).not.toMatch(/(^|\/)\.\.\/src\//)
-        expect(specifier, `${path.relative(apiRoot, file)} imports from src`).not.toMatch(/(^|\/)\.\.\/\.\.\/src\//)
+        expect(specifier, `${path.relative(apiRoot, file)} should not use legacy api/_lib`).not.toContain('/_lib/')
 
         const resolved = resolveRelativeImport(file, specifier)
         expect(resolved, `${path.relative(apiRoot, file)} has unresolved import ${specifier}`).toBeTruthy()
+
+        if (!resolved) {
+          continue
+        }
+
+        const normalizedResolved = path.resolve(resolved)
+        if (normalizedResolved.startsWith(`${srcRoot}${path.sep}`)) {
+          expect(
+            isAllowedSrcImport(normalizedResolved),
+            `${path.relative(apiRoot, file)} imports disallowed src module ${specifier}`,
+          ).toBe(true)
+        }
       }
     }
   })

@@ -1,6 +1,6 @@
 import { MOCK_PLACES } from './mockPlaces'
 import type { PlaceSummary, ReviewSummary, ZeropayStatus } from './types'
-import type { PlaceLookupSuccess } from '../server/placeLookupTypes'
+import type { PlaceLookupSuccess } from '../shared/placeLookupTypes.js'
 
 export const CURRENT_USER_NAME = '테스트 사용자'
 const REVIEW_LIMIT = 500

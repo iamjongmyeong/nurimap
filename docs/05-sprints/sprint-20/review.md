@@ -4,6 +4,7 @@
 - 구현 기준의 상세 SSOT는 `.omx/plans/plan-supabase-place-auth-real-data-migration-consensus.md`와 관련 PRD/test spec이며, Preview blocker 해소 실행은 `.omx/plans/plan-sprint-20-vercel-function-limit-consensus.md`를 따랐다.
 - 현재 local Supabase 기준으로 auth/session/place/review가 backend-owned runtime으로 동작하고, integrated `make dev` / `make agentation` 진입점도 정리됐다.
 - Preview deployment는 구조 수정 후 다시 성공했고, authenticated `vercel curl` smoke로 `/`, `/places/:placeId`, static asset boot까지 확인했다. 현재 남은 sprint-level 항목은 사용자 직접 QA와 push 판단이다.
+- 2026-03-26 server-core unification slice에서는 duplicated server ownership을 `src/server-core/{auth,place,runtime,http}` + `src/shared/**`로 통합하고, `api/*` routes / route tests / canonical module tests 경계를 새 topology 기준으로 정리했다. local bypass login/session/logout smoke artifact와 local `vercel build` proof까지 확보했다.
 - browse 지도 surface에서는 별도 level HUD / zoom button을 제거해 지도 chrome을 더 단순하게 정리했다.
 - browse 지도 surface의 사용자 추가 장소 marker / label은 Figma handoff(node `61:18`) 기준으로 concentric marker + outlined name label 스타일로 새로 정리했다.
 - auth first-login slice에서는 첫 로그인 OTP 요청을 implicit signup 대신 server pre-provision + normal OTP delivery로 고정했고, verify 단계의 허용 이메일 경계를 다시 검사하도록 보강했다.
@@ -32,6 +33,7 @@
 - production incident 분석 결과, auth/login rollout은 코드 배포·runtime env·DB schema를 각각 별도 gate로 봐야 하며, 실제 blocker가 `SELF_SIGNED_CERT_IN_CHAIN` → `relation "public.user_profiles" does not exist` 순으로 이동했다.
 - 2026-03-24 production에서 user-confirmed login success를 확인했다.
 - 2026-03-25 local bypass recovery slice에서 request-origin-aware bypass gating, verify-otp dev middleware, place-list dev middleware를 추가했고, Playwright mobile smoke로 `make dev` 첫 진입 bypass success를 확인했다.
+- 2026-03-26 server-core unification slice에서 `api/_lib/*` duplicated implementation layer와 `src/server/*` duplicate runtime 구현을 제거하고, route contract tests(legacy location 유지) + canonical unit tests(`src/server-core/**`) + boundary test + local login/session/logout smoke(`artifacts/qa/sprint-20/server-core-unification-local-auth-smoke.json`)를 모두 green으로 맞췄다. 이어서 `pnpm exec vercel build`도 통과해 `.vercel/output` 기반 local hosted-build proof까지 확보했다.
 
 # Not Completed
 

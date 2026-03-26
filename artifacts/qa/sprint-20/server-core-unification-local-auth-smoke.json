@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-03-26T12:13:17.785518+00:00",
+  "baseUrl": "http://localhost:5173",
+  "passed": true,
+  "steps": {
+    "requestOtp": "{\"status\": \"success\", \"mode\": \"bypass\", \"message\": \"테스트 계정으로 바로 로그인합니다.\", \"tokenHash\": \"[REDACTED_TOKEN_HASH]\", \"verificationType\": \"magiclink\"}",
+    "verifyOtp": "{\"status\": \"success\", \"nextPhase\": \"authenticated\", \"user\": {\"id\": \"cb515f2e-43d8-47a9-ac37-6bb5dcc7ec0f\", \"email\": \"[REDACTED_EMAIL]\", \"name\": \"테스트\"}, \"csrfHeaderName\": \"x-nurimap-csrf-token\"}",
+    "sessionAuthenticated": "{\"status\": \"authenticated\", \"user\": {\"id\": \"cb515f2e-43d8-47a9-ac37-6bb5dcc7ec0f\", \"email\": \"[REDACTED_EMAIL]\", \"name\": \"테스트\"}, \"csrfHeaderName\": \"x-nurimap-csrf-token\"}",
+    "logout": "{\"status\": \"success\"}",
+    "sessionAfterLogout": "{\"status\": \"missing\"}"
+  }
+}

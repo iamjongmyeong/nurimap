@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { requestLoginOtp } from '../_lib/_authService.js'
-import { getRequestRuntimeOrigin } from '../_lib/_requestOrigin.js'
+import { requestLoginOtp } from '../../src/server-core/auth/authService.js'
+import { getRequestRuntimeOrigin } from '../../src/server-core/http/requestOrigin.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
