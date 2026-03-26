@@ -1,0 +1,69 @@
+{
+  "checkedAt": "2026-03-26T13:05:57.099Z",
+  "runStartedAt": "2026-03-26T13:05:56.760Z",
+  "baseUrl": "http://localhost:5175",
+  "email": "[REDACTED_EMAIL]",
+  "profileName": "플레이라이트",
+  "placeName": "플레이라이트 테스트 356761",
+  "placeAddress": "서울 마포구 등록로 1",
+  "passed": true,
+  "finalState": "logged_out_after_place_detail",
+  "dialogs": [
+    {
+      "type": "alert",
+      "message": "장소를 추가했어요."
+    },
+    {
+      "type": "confirm",
+      "message": "로그아웃하시겠어요?"
+    }
+  ],
+  "apiResponses": [
+    {
+      "url": "http://localhost:5175/api/auth/session",
+      "status": 200,
+      "body": "{\"status\":\"missing\"}"
+    },
+    {
+      "url": "http://localhost:5175/api/auth/session",
+      "status": 200,
+      "body": "{\"status\":\"missing\"}"
+    },
+    {
+      "url": "http://localhost:5175/api/auth/request-otp",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"mode\":\"otp\",\"message\":\"인증 코드를 보냈어요.\"}"
+    },
+    {
+      "url": "http://localhost:5175/api/auth/verify-otp",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"nextPhase\":\"name_required\",\"user\":{\"id\":\"2049ad25-95b0-44f4-ad3d-bde999d31362\",\"email\":\"[REDACTED_EMAIL]\",\"name\":null},\"csrfHeaderName\":\"x-nurimap-csrf-token\"}"
+    },
+    {
+      "url": "http://localhost:5175/api/auth/profile",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"name\":\"플레이라이트\"}"
+    },
+    {
+      "url": "http://localhost:5175/api/place-list",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"places\":[{\"id\":\"58ecb79c-2444-4d52-912c-790f1e6df1eb\",\"naver_place_id\":\"direct-entry-1kxk9tu\",\"naver_place_url\":\"https://map.naver.com/p/search/%ED%94%8C%EB%A0%88%EC%9D%B4%EB%9D%BC%EC%9D%B4%ED%8A%B8%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20288832%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EB%93%B1%EB%A1%9D%EB%A1%9C%201\",\"name\":\"플레이라이트 테스트 288832\",\"road_address\":\"서울 마포구 등록로 1\",\"latitude\":37.558721,\"longitude\":126.92444,\"place_type\":\"restaurant\",\"zeropay_status\":\"available\",\"average_rating\":5,\"review_count\":1,\"added_by_name\":\"플레이라이트\",\"my_review\":null,\"reviews\":[{\"id\":\"13411812-da21-40d6-b2b4-51ebffcf1cb7\",\"author_name\":\"플레이라이트\",\"content\":\"Playwright 등록 확인 288832\",\"created_at\":\"2026-03-26\",\"rating_score\":5}]},{\"id\":\"8fa670a5-7a6a-419f-8406-cb4d49bea56b\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EC%96%91%ED%99%94%EB%A1%9C19%EA%B8%B8%2016\",\"name\":\"동보성\",\"road_address\":\"서울 마포구 양화로19길 16\",\"latitude\":37.5582707910458,\"longitude\":126.924177784891,\"place_type\":\"restaurant\",\"zeropay_status\":\"unavailable\",\"average_rating\":5,\"review_count\":1,\"added_by_name\":\"테스트\",\"my_review\":null,\"reviews\":[{\"id\":\"13fd1fff-d206-4683-b515-5bcbbffbd4ef\",\"author_name\":\"테스트\",\"content\":\"\",\"created_at\":\"2026-03-22\",\"rating_score\":5}]},{\"id\":\"736a8ad5-62aa-48ab-a120-214f7347a001\",\"naver_place_id\":\"direct-entry-1rijvfk\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%93%B1%EB%A1%9D%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EC%9E%A5%EC%86%8C%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EB%93%B1%EB%A1%9D%EB%A1%9C%201\",\"name\":\"등록 테스트 장소\",\"road_address\":\"서울 마포구 등록로 1\",\"latitude\":37.558721,\"longitude\":126.92444,\"place_type\":\"restaurant\",\"zeropay_status\":\"available\",\"average_rating\":3,\"review_count\":1,\"added_by_name\":\"테스트\",\"my_review\":null,\"reviews\":[{\"id\":\"8fb26c9d-bdee-4017-b18e-f3432a5e2bb4\",\"author_name\":\"테스트\",\"content\":\"새 장소 첫 리뷰\",\"created_at\":\"2026-03-22\",\"rating_score\":3}]}]}"
+    },
+    {
+      "url": "http://localhost:5175/api/place-list",
+      "status": 200,
+      "body": "{\"status\":\"success\",\"places\":[{\"id\":\"58ecb79c-2444-4d52-912c-790f1e6df1eb\",\"naver_place_id\":\"direct-entry-1kxk9tu\",\"naver_place_url\":\"https://map.naver.com/p/search/%ED%94%8C%EB%A0%88%EC%9D%B4%EB%9D%BC%EC%9D%B4%ED%8A%B8%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20288832%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EB%93%B1%EB%A1%9D%EB%A1%9C%201\",\"name\":\"플레이라이트 테스트 288832\",\"road_address\":\"서울 마포구 등록로 1\",\"latitude\":37.558721,\"longitude\":126.92444,\"place_type\":\"restaurant\",\"zeropay_status\":\"available\",\"average_rating\":5,\"review_count\":1,\"added_by_name\":\"플레이라이트\",\"my_review\":null,\"reviews\":[{\"id\":\"13411812-da21-40d6-b2b4-51ebffcf1cb7\",\"author_name\":\"플레이라이트\",\"content\":\"Playwright 등록 확인 288832\",\"created_at\":\"2026-03-26\",\"rating_score\":5}]},{\"id\":\"8fa670a5-7a6a-419f-8406-cb4d49bea56b\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EC%96%91%ED%99%94%EB%A1%9C19%EA%B8%B8%2016\",\"name\":\"동보성\",\"road_address\":\"서울 마포구 양화로19길 16\",\"latitude\":37.5582707910458,\"longitude\":126.924177784891,\"place_type\":\"restaurant\",\"zeropay_status\":\"unavailable\",\"average_rating\":5,\"review_count\":1,\"added_by_name\":\"테스트\",\"my_review\":null,\"reviews\":[{\"id\":\"13fd1fff-d206-4683-b515-5bcbbffbd4ef\",\"author_name\":\"테스트\",\"content\":\"\",\"created_at\":\"2026-03-22\",\"rating_score\":5}]},{\"id\":\"736a8ad5-62aa-48ab-a120-214f7347a001\",\"naver_place_id\":\"direct-entry-1rijvfk\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%93%B1%EB%A1%9D%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EC%9E%A5%EC%86%8C%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EB%93%B1%EB%A1%9D%EB%A1%9C%201\",\"name\":\"등록 테스트 장소\",\"road_address\":\"서울 마포구 등록로 1\",\"latitude\":37.558721,\"longitude\":126.92444,\"place_type\":\"restaurant\",\"zeropay_status\":\"available\",\"average_rating\":3,\"review_count\":1,\"added_by_name\":\"테스트\",\"my_review\":null,\"reviews\":[{\"id\":\"8fb26c9d-bdee-4017-b18e-f3432a5e2bb4\",\"author_name\":\"테스트\",\"content\":\"새 장소 첫 리뷰\",\"created_at\":\"2026-03-22\",\"rating_score\":3}]}]}"
+    },
+    {
+      "url": "http://localhost:5175/api/place-entry",
+      "status": 200,
+      "body": "{\"status\":\"created\",\"place\":{\"id\":\"e5134b48-ae69-428c-b8d2-e2e18a1cd167\",\"naver_place_id\":\"direct-entry-1gelbzv\",\"naver_place_url\":\"https://map.naver.com/p/search/%ED%94%8C%EB%A0%88%EC%9D%B4%EB%9D%BC%EC%9D%B4%ED%8A%B8%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20356761%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EB%93%B1%EB%A1%9D%EB%A1%9C%201\",\"name\":\"플레이라이트 테스트 356761\",\"road_address\":\"서울 마포구 등록로 1\",\"latitude\":37.558721,\"longitude\":126.92444,\"place_type\":\"restaurant\",\"zeropay_status\":\"available\",\"average_rating\":5,\"review_count\":1,\"added_by_name\":\"플레이라이트\",\"my_review\":{\"id\":\"8465fbe9-04ef-490e-a3a1-ff5497fc9181\",\"author_name\":\"플레이라이트\",\"content\":\"Playwright 등록 확인 356761\",\"created_at\":\"2026-03-26\",\"rating_score\":5},\"reviews\":[{\"id\":\"8465fbe9-04ef-490e-a3a1-ff5497fc9181\",\"author_name\":\"플레이라이트\",\"content\":\"Playwright 등록 확인 356761\",\"created_at\":\"2026-03-26\",\"rating_score\":5}]},\"places\":[{\"id\":\"e5134b48-ae69-428c-b8d2-e2e18a1cd167\",\"naver_place_id\":\"direct-entry-1gelbzv\",\"naver_place_url\":\"https://map.naver.com/p/search/%ED%94%8C%EB%A0%88%EC%9D%B4%EB%9D%BC%EC%9D%B4%ED%8A%B8%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20356761%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EB%93%B1%EB%A1%9D%EB%A1%9C%201\",\"name\":\"플레이라이트 테스트 356761\",\"road_address\":\"서울 마포구 등록로 1\",\"latitude\":37.558721,\"longitude\":126.92444,\"place_type\":\"restaurant\",\"zeropay_status\":\"available\",\"average_rating\":5,\"review_count\":1,\"added_by_name\":\"플레이라이트\",\"my_review\":{\"id\":\"8465fbe9-04ef-490e-a3a1-ff5497fc9181\",\"author_name\":\"플레이라이트\",\"content\":\"Playwright 등록 확인 356761\",\"created_at\":\"2026-03-26\",\"rating_score\":5},\"reviews\":[{\"id\":\"8465fbe9-04ef-490e-a3a1-ff5497fc9181\",\"author_name\":\"플레이라이트\",\"content\":\"Playwright 등록 확인 356761\",\"created_at\":\"2026-03-26\",\"rating_score\":5}]},{\"id\":\"58ecb79c-2444-4d52-912c-790f1e6df1eb\",\"naver_place_id\":\"direct-entry-1kxk9tu\",\"naver_place_url\":\"https://map.naver.com/p/search/%ED%94%8C%EB%A0%88%EC%9D%B4%EB%9D%BC%EC%9D%B4%ED%8A%B8%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20288832%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EB%93%B1%EB%A1%9D%EB%A1%9C%201\",\"name\":\"플레이라이트 테스트 288832\",\"road_address\":\"서울 마포구 등록로 1\",\"latitude\":37.558721,\"longitude\":126.92444,\"place_type\":\"restaurant\",\"zeropay_status\":\"available\",\"average_rating\":5,\"review_count\":1,\"added_by_name\":\"플레이라이트\",\"my_review\":null,\"reviews\":[{\"id\":\"13411812-da21-40d6-b2b4-51ebffcf1cb7\",\"author_name\":\"플레이라이트\",\"content\":\"Playwright 등록 확인 288832\",\"created_at\":\"2026-03-26\",\"rating_score\":5}]},{\"id\":\"8fa670a5-7a6a-419f-8406-cb4d49bea56b\",\"naver_place_id\":\"direct-entry-153lfk8\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%8F%99%EB%B3%B4%EC%84%B1%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EC%96%91%ED%99%94%EB%A1%9C19%EA%B8%B8%2016\",\"name\":\"동보성\",\"road_address\":\"서울 마포구 양화로19길 16\",\"latitude\":37.5582707910458,\"longitude\":126.924177784891,\"place_type\":\"restaurant\",\"zeropay_status\":\"unavailable\",\"average_rating\":5,\"review_count\":1,\"added_by_name\":\"테스트\",\"my_review\":null,\"reviews\":[{\"id\":\"13fd1fff-d206-4683-b515-5bcbbffbd4ef\",\"author_name\":\"테스트\",\"content\":\"\",\"created_at\":\"2026-03-22\",\"rating_score\":5}]},{\"id\":\"736a8ad5-62aa-48ab-a120-214f7347a001\",\"naver_place_id\":\"direct-entry-1rijvfk\",\"naver_place_url\":\"https://map.naver.com/p/search/%EB%93%B1%EB%A1%9D%20%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EC%9E%A5%EC%86%8C%20%EC%84%9C%EC%9A%B8%20%EB%A7%88%ED%8F%AC%EA%B5%AC%20%EB%93%B1%EB%A1%9D%EB%A1%9C%201\",\"name\":\"등록 테스트 장소\",\"road_address\":\"서울 마포구 등록로 1\",\"latitude\":37.558721,\"longitude\":126.92444,\"place_type\":\"restaurant\",\"zeropay_status\":\"available\",\"average_rating\":3,\"review_count\":1,\"added_by_name\":\"테스트\",\"my_review\":null,\"reviews\":[{\"id\":\"8fb26c9d-bdee-4017-b18e-f3432a5e2bb4\",\"author_name\":\"테스트\",\"content\":\"새 장소 첫 리뷰\",\"created_at\":\"2026-03-22\",\"rating_score\":3}]}],\"message\":\"장소를 추가했어요.\"}"
+    }
+  ],
+  "notes": [
+    "OTP email observed in local Mailpit API",
+    "Authenticated shell reached",
+    "Place registration and detail view confirmed",
+    "Logout returned to auth screen"
+  ]
+}
