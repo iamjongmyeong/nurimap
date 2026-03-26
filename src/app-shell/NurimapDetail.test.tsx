@@ -237,7 +237,7 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('detail-review-cta-container')).toHaveClass('px-6', 'pb-6', 'pt-0', 'items-center', 'justify-center')
     expect(screen.getByTestId('detail-review-cta-container').className).not.toContain('border-t')
     expect(screen.getByTestId('detail-review-cta')).toBeInTheDocument()
-    expect(screen.getByTestId('detail-review-cta')).toHaveClass('h-10', 'w-full', 'shrink-0', 'gap-[10px]', 'px-0', 'py-2', 'text-sm', 'rounded-[12px]', 'bg-[#5862fb]')
+    expect(screen.getByTestId('detail-review-cta')).toHaveClass('h-12', 'w-full', 'shrink-0', 'gap-[10px]', 'px-0', 'py-3', 'text-sm', 'rounded-[12px]', 'bg-[#5862fb]')
     expect(screen.getByRole('button', { name: '평가 남기기' })).toBeInTheDocument()
   })
 
@@ -255,7 +255,9 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('review-add-surface')).toHaveTextContent('후기(선택)')
     expect(screen.getByText('평가')).toHaveClass("font-['Pretendard']", 'text-[12px]', 'font-medium', 'leading-[18px]', 'tracking-[-0.3px]', 'text-[#1c1c1c]')
     expect(screen.getByText('후기(선택)')).toHaveClass("font-['Pretendard']", 'text-[12px]', 'font-medium', 'leading-[18px]', 'tracking-[-0.3px]', 'text-[#1c1c1c]')
+    expect(screen.getByTestId('review-add-content-input')).toHaveClass('h-[96px]', 'min-h-[96px]', 'px-3', 'py-3')
     expect(screen.getByTestId('review-add-submit-button')).toHaveTextContent('등록')
+    expect(screen.getByTestId('review-add-submit-button')).toHaveClass('h-12', 'py-3', 'font-semibold')
     expect(window.location.pathname).toBe('/places/place-cafe-1')
 
     await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
@@ -441,7 +443,7 @@ describe('Sprint 16 place detail refresh', () => {
     render(<App />)
 
     expect(screen.getByTestId('place-detail-error')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '다시 시도' })).toHaveClass('h-12', 'py-3', 'font-semibold')
   })
 
   it('leaves the review section body empty when there are no reviews', () => {

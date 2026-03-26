@@ -459,7 +459,7 @@ const MapErrorPane = ({ onRetry }: { onRetry: () => void }) => (
     <div className="relative z-10 w-full max-w-sm rounded-[32px] bg-white px-6 py-7 text-center shadow-[0_24px_72px_rgba(15,23,42,0.12)]" data-testid="map-error-state">
       <p className="text-base font-semibold text-slate-800">{MAP_FAILURE_TITLE}</p>
       <p className="mt-3 text-sm leading-6 text-slate-600">{MAP_FAILURE_BODY}</p>
-      <button className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#5862fb] px-6 text-sm font-semibold text-white transition hover:bg-[#4953f1]" onClick={onRetry} type="button">
+      <button className="mt-6 inline-flex h-12 items-center justify-center rounded-full bg-[#5862fb] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#4953f1]" onClick={onRetry} type="button">
         {MAP_RETRY_LABEL}
       </button>
     </div>

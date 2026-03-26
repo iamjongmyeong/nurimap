@@ -168,8 +168,15 @@ const AuthBrand = () => (
   </div>
 )
 
-const AUTH_INPUT_CLASSES = 'h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none'
-const AUTH_PRIMARY_BUTTON_CLASSES = 'inline-flex h-10 w-full items-center justify-center rounded-xl bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none transition-opacity'
+const AUTH_INPUT_BASE_CLASSES = 'w-full rounded-xl border border-gray-200 bg-white px-3 text-base leading-6 text-zinc-900 placeholder:text-stone-300 focus:border-gray-300 focus:outline-none focus:ring-0 focus:shadow-none'
+const AUTH_INPUT_CLASSES = `h-10 ${AUTH_INPUT_BASE_CLASSES}`
+const AUTH_REQUEST_INPUT_CLASSES = `h-12 py-3 ${AUTH_INPUT_BASE_CLASSES}`
+const AUTH_OTP_INPUT_CLASSES = `h-12 py-3 ${AUTH_INPUT_BASE_CLASSES}`
+const AUTH_PRIMARY_BUTTON_BASE_CLASSES = 'inline-flex w-full items-center justify-center rounded-xl bg-indigo-500 text-base font-semibold leading-6 text-white shadow-none transition-opacity'
+const AUTH_PRIMARY_BUTTON_CLASSES = `h-12 py-3 ${AUTH_PRIMARY_BUTTON_BASE_CLASSES}`
+const AUTH_REQUEST_BUTTON_CLASSES = `h-12 py-3 ${AUTH_PRIMARY_BUTTON_BASE_CLASSES}`
+const AUTH_OTP_BUTTON_CLASSES = `h-12 py-3 ${AUTH_PRIMARY_BUTTON_BASE_CLASSES}`
+const AUTH_TEXT_BUTTON_CLASSES = 'inline-flex h-12 items-center justify-center text-center text-[14px] font-normal leading-5 text-neutral-500'
 const AUTH_ERROR_TEXT_CLASSES = 'text-[#e53935]'
 const OTP_INPUT_ERROR_BORDER_CLASSES = 'border-[#E52E30] focus:border-[#E52E30]'
 const OTP_ERROR_TEXT_CLASSES = 'text-[12px] leading-[150%] text-[#E52E30]'
@@ -240,7 +247,7 @@ const EmailRequestShell = ({
         <label className="flex w-full max-w-[320px] flex-col gap-2">
           <span className="sr-only">이메일</span>
           <input
-            className={`${AUTH_INPUT_CLASSES} ${cooldownActive ? '!text-neutral-400 placeholder:!text-neutral-400' : ''} ${
+            className={`${AUTH_REQUEST_INPUT_CLASSES} ${cooldownActive ? '!text-neutral-400 placeholder:!text-neutral-400' : ''} ${
               hasInlineError ? 'border-[#e53935] focus:border-[#e53935]' : ''
             }`}
             onChange={(event) => onEmailChange(event.target.value)}
@@ -257,7 +264,7 @@ const EmailRequestShell = ({
 
         <button
           aria-label="인증 코드 전송"
-          className={`${AUTH_PRIMARY_BUTTON_CLASSES} max-w-[320px] ${
+          className={`${AUTH_REQUEST_BUTTON_CLASSES} max-w-[320px] ${
             buttonDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
           }`}
           data-testid="auth-request-button"
@@ -314,7 +321,7 @@ const OtpShell = ({
           <span className="sr-only">인증 코드</span>
           <input
             aria-label="인증 코드"
-            className={`${AUTH_INPUT_CLASSES} text-center tracking-[0.3em] ${hasErrorMessage ? OTP_INPUT_ERROR_BORDER_CLASSES : ''}`}
+            className={`${AUTH_OTP_INPUT_CLASSES} text-center tracking-[0.3em] ${hasErrorMessage ? OTP_INPUT_ERROR_BORDER_CLASSES : ''}`}
             inputMode="numeric"
             maxLength={6}
             onChange={(event) => onCodeChange(event.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -329,7 +336,7 @@ const OtpShell = ({
 
         <button
           aria-label="인증"
-          className={`${AUTH_PRIMARY_BUTTON_CLASSES} max-w-[320px] ${
+          className={`${AUTH_OTP_BUTTON_CLASSES} max-w-[320px] ${
             buttonDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
           }`}
           data-testid="auth-verify-button"
@@ -340,7 +347,7 @@ const OtpShell = ({
           {submitting ? <span aria-hidden="true" className="ui-spinner ui-spinner-sm" data-testid="auth-verify-spinner" /> : '인증'}
         </button>
         <button
-          className="cursor-pointer text-center text-[14px] font-normal leading-5 text-neutral-500"
+          className={`${AUTH_TEXT_BUTTON_CLASSES} cursor-pointer`}
           onClick={onReset}
           type="button"
         >
@@ -380,16 +387,15 @@ const AuthFailureScreen = ({
         </div>
         <div className="flex w-full flex-col items-center gap-4">
           <button
-            className="inline-flex h-10 w-40 cursor-pointer items-center justify-center rounded-xl bg-indigo-500 text-base font-semibold leading-6 text-white"
+            className="inline-flex h-12 w-40 cursor-pointer items-center justify-center rounded-xl bg-indigo-500 py-3 text-base font-semibold leading-6 text-white"
             onClick={onRetry}
             type="button"
           >
             새로운 코드 받기
           </button>
           <button
-            className="cursor-pointer text-center text-[14px] font-normal leading-5 text-neutral-500"
+            className={`${AUTH_TEXT_BUTTON_CLASSES} cursor-pointer`}
             onClick={onReset}
-            style={{ fontSize: '14px' }}
             type="button"
           >
             이메일 다시 입력

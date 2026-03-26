@@ -67,6 +67,14 @@ describe('Sprint 18 OTP auth flow', () => {
     expect(screen.getByText('이메일')).toHaveClass('sr-only')
   })
 
+  it('renders the login email input and request button at the figma height', () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    render(<App />)
+
+    expect(screen.getByLabelText('이메일')).toHaveClass('h-12', 'py-3')
+    expect(screen.getByRole('button', { name: '인증 코드 전송' })).toHaveClass('h-12', 'py-3', 'font-semibold')
+  })
+
   it('keeps the request button disabled until the email format is valid', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
@@ -166,7 +174,7 @@ describe('Sprint 18 OTP auth flow', () => {
     expect(screen.getByLabelText('인증 코드')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '인증' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '다시 전송하기' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '이메일 다시 입력' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '이메일 다시 입력' })).toHaveClass('h-12')
   })
 
   it('shows the email copy when directly entering the otp-required state', () => {
@@ -182,6 +190,19 @@ describe('Sprint 18 OTP auth flow', () => {
     expect(screen.getByTestId('auth-requested-email')).toHaveClass('auth-plain-email')
     expect(screen.getByText('로그인 코드를 보냈어요.')).toBeInTheDocument()
     expect(screen.getByText('5분 안에 입력해 주세요.')).toBeInTheDocument()
+  })
+
+  it('renders the otp input and verify button at the figma height', () => {
+    setTestAuthState({
+      phase: 'otp_required',
+      user: { email: 'tester@nurimedia.co.kr', name: null },
+      message: '인증 코드를 보냈어요.',
+      failureReason: null,
+    })
+    render(<App />)
+
+    expect(screen.getByLabelText('인증 코드')).toHaveClass('h-12', 'py-3')
+    expect(screen.getByRole('button', { name: '인증' })).toHaveClass('h-12', 'py-3', 'font-semibold')
   })
 
   it('immediately enters the onboarding flow for a bypass test account', async () => {
@@ -506,6 +527,8 @@ describe('Sprint 18 OTP auth flow', () => {
 
     expect(screen.getByTestId('auth-failure-screen')).toBeInTheDocument()
     expect(screen.getByTestId('auth-failure-body')).toHaveTextContent(GENERIC_AUTH_FAILURE_MESSAGE)
+    expect(screen.getByRole('button', { name: '새로운 코드 받기' })).toHaveClass('h-12', 'py-3', 'font-semibold')
+    expect(screen.getByRole('button', { name: '이메일 다시 입력' })).toHaveClass('h-12')
     await user.click(screen.getByRole('button', { name: '새로운 코드 받기' }))
 
     expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
@@ -521,6 +544,7 @@ describe('Sprint 18 OTP auth flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
+    expect(screen.getByRole('button', { name: '저장' })).toHaveClass('h-12', 'py-3', 'font-semibold')
     await user.click(screen.getByRole('button', { name: '저장' }))
     expect(screen.getByText('이름을 입력해 주세요.')).toBeInTheDocument()
 

@@ -69,7 +69,7 @@ const LOGOUT_CONFIRM_MESSAGE = '로그아웃하시겠어요?'
 const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const DETAIL_ROUTE_PREFIX = '/places/'
 const REVIEW_LIMIT = 500
-const ADD_RATING_TEXTAREA_MIN_HEIGHT = 88
+const ADD_RATING_TEXTAREA_MIN_HEIGHT = 96
 const BROWSE_BOOTSTRAP_LOADING_TITLE = '데이터를 불러오는 중이에요.'
 const BROWSE_BOOTSTRAP_LOADING_BODY = '잠시만 기다려 주세요.'
 const BROWSE_BOOTSTRAP_ERROR_TITLE = '데이터를 불러오지 못했어요.'
@@ -77,7 +77,7 @@ const BROWSE_BOOTSTRAP_ERROR_BODY = '네트워크 상태를 확인한 뒤 다시
 const BROWSE_BOOTSTRAP_RETRY_LABEL = '다시 시도'
 const STAR_PATH =
   'M11.9995 19.3643L6.46613 22.6977C6.22168 22.8532 5.96613 22.9199 5.69946 22.8977C5.4328 22.8754 5.19946 22.7865 4.99946 22.631C4.79946 22.4754 4.64391 22.2812 4.5328 22.0483C4.42168 21.8154 4.39946 21.5541 4.46613 21.2643L5.9328 14.9643L1.0328 10.731C0.810573 10.531 0.671906 10.303 0.616795 10.047C0.561684 9.79099 0.578129 9.54121 0.666129 9.29766C0.754129 9.0541 0.887462 8.8541 1.06613 8.69766C1.2448 8.54121 1.48924 8.44121 1.79946 8.39766L8.26613 7.83099L10.7661 1.89766C10.8772 1.63099 11.0497 1.43099 11.2835 1.29766C11.5172 1.16432 11.7559 1.09766 11.9995 1.09766C12.243 1.09766 12.4817 1.16432 12.7155 1.29766C12.9492 1.43099 13.1217 1.63099 13.2328 1.89766L15.7328 7.83099L22.1995 8.39766C22.5106 8.4421 22.755 8.5421 22.9328 8.69766C23.1106 8.85321 23.2439 9.05321 23.3328 9.29766C23.4217 9.5421 23.4386 9.79232 23.3835 10.0483C23.3284 10.3043 23.1892 10.5319 22.9661 10.731L18.0661 14.9643L19.5328 21.2643C19.5995 21.5532 19.5772 21.8145 19.4661 22.0483C19.355 22.2821 19.1995 22.4763 18.9995 22.631C18.7995 22.7857 18.5661 22.8745 18.2995 22.8977C18.0328 22.9208 17.7772 22.8541 17.5328 22.6977L11.9995 19.3643Z'
-const SECONDARY_BUTTON_CLASSES = 'inline-flex items-center justify-center rounded-full border border-[#d9d8e6] bg-white px-4 py-3 text-sm font-semibold text-[#222127] transition hover:border-[#c8c7d7] hover:bg-[#fafaff] disabled:cursor-not-allowed disabled:opacity-50'
+const SECONDARY_BUTTON_CLASSES = 'inline-flex h-12 items-center justify-center rounded-full border border-[#d9d8e6] bg-white px-4 py-3 text-sm font-semibold text-[#222127] transition hover:border-[#c8c7d7] hover:bg-[#fafaff] disabled:cursor-not-allowed disabled:opacity-50'
 const MOBILE_SHELL_CLASS = 'relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-white md:hidden'
 const MOBILE_SURFACE_CLASS = 'absolute inset-0 flex h-full min-h-0 flex-col bg-white overflow-hidden'
 const MOBILE_SCROLL_REGION_CLASS = 'flex-1 overflow-y-auto overscroll-contain'
@@ -126,7 +126,7 @@ const BrowseBootstrapState = ({
           <p className="text-base font-semibold text-slate-800">{BROWSE_BOOTSTRAP_ERROR_TITLE}</p>
           <p className="mt-3 text-sm leading-6 text-slate-600">{BROWSE_BOOTSTRAP_ERROR_BODY}</p>
           <button
-            className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#5862fb] px-6 text-sm font-semibold text-white transition hover:bg-[#4953f1]"
+            className="mt-6 inline-flex h-12 items-center justify-center rounded-full bg-[#5862fb] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#4953f1]"
             onClick={onRetry}
             type="button"
           >
@@ -564,7 +564,7 @@ const DetailHeader = ({
 const DetailFooterCta = ({ onClick }: { onClick: () => void }) => (
   <div className="flex items-center justify-center bg-white px-6 pb-6 pt-0" data-testid="detail-review-cta-container">
     <button
-      className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-[10px] rounded-[12px] bg-[#5862fb] px-0 py-2 text-sm font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-12 w-full shrink-0 items-center justify-center gap-[10px] rounded-[12px] bg-[#5862fb] px-0 py-3 text-sm font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50"
       data-testid="detail-review-cta"
       onClick={onClick}
       type="button"
@@ -693,7 +693,7 @@ const AddRatingScreen = ({
                     후기(선택)
                   </label>
                   <textarea
-                    className="h-[88px] min-h-[88px] w-full resize-none overflow-hidden rounded-xl border border-[#ebe7f1] bg-white px-3 py-2 text-sm leading-6 text-[#1f1f1f] placeholder:text-[#b3afbf] focus:border-[#5862fb] focus:outline-none focus:ring-0 focus:shadow-none"
+                    className="h-[96px] min-h-[96px] w-full resize-none overflow-hidden rounded-xl border border-[#ebe7f1] bg-white px-3 py-3 text-sm leading-6 text-[#1f1f1f] placeholder:text-[#b3afbf] focus:border-[#5862fb] focus:outline-none focus:ring-0 focus:shadow-none"
                     data-testid="review-add-content-input"
                     id="review-add-content-input"
                     maxLength={REVIEW_LIMIT}
@@ -714,7 +714,7 @@ const AddRatingScreen = ({
                 ) : null}
 
                 <button
-                  className="inline-flex h-10 w-full items-center justify-center rounded-[12px] bg-[#5862fb] px-0 py-2 text-sm font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-12 w-full items-center justify-center rounded-[12px] bg-[#5862fb] px-0 py-3 text-sm font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50"
                   data-testid="review-add-submit-button"
                   disabled={submitState === 'submitting'}
                   onClick={() => {
@@ -748,7 +748,7 @@ const DesktopBrowseTopBar = ({ onOpenPlaceAdd }: { onOpenPlaceAdd: () => void })
     </div>
     <button
       aria-label="장소 추가"
-      className="absolute right-6 top-6 inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl bg-[#5862fb] px-4 text-base font-[600] text-white"
+      className="absolute right-6 top-6 inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl bg-[#5862fb] px-4 text-base font-semibold text-white"
       data-testid="desktop-add-button"
       onClick={onOpenPlaceAdd}
       type="button"
@@ -791,9 +791,9 @@ const DesktopBrowseSidebar = ({
         />
       </div>
 
-      <div className="relative -mx-6 -mb-6 h-9 shrink-0 overflow-hidden bg-white" data-testid="desktop-browse-footer">
+      <div className="relative -mb-6 flex h-9 shrink-0 items-center overflow-hidden bg-white" data-testid="desktop-browse-footer">
         <button
-          className="absolute inset-y-0 left-6 inline-flex cursor-pointer items-center text-xs font-medium text-[#7a7a7a] transition-colors hover:text-[#e52e30]"
+          className="inline-flex cursor-pointer items-center text-xs font-medium text-[#7a7a7a] transition-colors hover:text-[#e52e30]"
           onClick={handleSignOut}
           type="button"
         >

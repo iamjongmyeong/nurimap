@@ -31,9 +31,8 @@ type SegmentedOption<T extends string> = {
 const GENERIC_SUBMIT_ERROR_MESSAGE = '등록하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const REVIEW_LIMIT = 500
 const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-white px-3 text-base text-[#1f1f1f] placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
-const INPUT_CLASSES = `h-10 ${BASE_TEXT_FIELD_CLASSES}`
-const TEXTAREA_CLASSES = `min-h-[88px] resize-none overflow-hidden py-2 ${BASE_TEXT_FIELD_CLASSES}`
-const REVIEW_TEXTAREA_MIN_HEIGHT = 88
+const MOBILE_REVIEW_TEXTAREA_MIN_HEIGHT = 88
+const DESKTOP_REVIEW_TEXTAREA_MIN_HEIGHT = 96
 const PLACE_ADD_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 
 const PLACE_TYPE_OPTIONS: SegmentedOption<PlaceType>[] = [
@@ -52,12 +51,14 @@ const BackArrowIcon = () => (
 )
 
 const SegmentedField = <T extends string>({
+  buttonSizeClasses,
   label,
   onChange,
   options,
   testId,
   value,
 }: {
+  buttonSizeClasses: string
   label: string
   onChange: (value: T) => void
   options: SegmentedOption<T>[]
@@ -71,7 +72,7 @@ const SegmentedField = <T extends string>({
         const isSelected = option.value === value
         return (
           <button
-            className={`h-10 min-w-[101px] cursor-pointer rounded-xl border px-4 text-base transition-colors ${
+            className={`${buttonSizeClasses} min-w-[101px] cursor-pointer rounded-xl border px-4 text-base transition-colors ${
               isSelected
                 ? 'border-[#5862FB] bg-[#EEF] font-medium text-[#5862FB]'
                 : 'border-[#EBEBEB] bg-white text-[#C9C9C9]'
@@ -175,15 +176,20 @@ const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_
 const formatDialogMessage = (message: string) => message.replace(/([.!?])\s+/g, '$1\n')
 const getDetailRoutePath = (placeId: string) => `/places/${encodeURIComponent(placeId)}`
 
-const resizeReviewTextarea = (textarea: HTMLTextAreaElement) => {
-  textarea.style.height = `${REVIEW_TEXTAREA_MIN_HEIGHT}px`
-  textarea.style.height = `${Math.max(textarea.scrollHeight, REVIEW_TEXTAREA_MIN_HEIGHT)}px`
+const resizeReviewTextarea = (textarea: HTMLTextAreaElement, minHeight: number) => {
+  textarea.style.height = `${minHeight}px`
+  textarea.style.height = `${Math.max(textarea.scrollHeight, minHeight)}px`
 }
 
 const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   const { csrfHeaderName, csrfToken } = useAuth()
   const { isDesktop } = useViewportMode()
   const applyRegistrationResult = useAppShellStore((state) => state.applyRegistrationResult)
+  const inputClasses = `${isDesktop ? 'h-12 py-3' : 'h-10'} ${BASE_TEXT_FIELD_CLASSES}`
+  const segmentedButtonSizeClasses = 'h-12 py-3'
+  const submitButtonSizeClasses = 'h-12 py-3'
+  const textareaClasses = `${isDesktop ? 'min-h-[96px] py-3' : 'min-h-[88px] py-2'} resize-none overflow-hidden ${BASE_TEXT_FIELD_CLASSES}`
+  const reviewTextareaMinHeight = isDesktop ? DESKTOP_REVIEW_TEXTAREA_MIN_HEIGHT : MOBILE_REVIEW_TEXTAREA_MIN_HEIGHT
 
   const [draft, setDraft] = useState<RegistrationDraft>(createInitialDraft)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -193,8 +199,8 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 
   useEffect(() => {
     if (!reviewTextareaRef.current) return
-    resizeReviewTextarea(reviewTextareaRef.current)
-  }, [draft.review_content])
+    resizeReviewTextarea(reviewTextareaRef.current, reviewTextareaMinHeight)
+  }, [draft.review_content, reviewTextareaMinHeight])
 
   const updateDraft = (patch: Partial<RegistrationDraft>) => {
     setDraft((current) => ({ ...current, ...patch }))
@@ -331,7 +337,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
               </label>
               <input
                 aria-label="이름"
-                className={`${INPUT_CLASSES} mt-2 ${fieldErrors.name ? 'border-error focus:border-error' : ''}`}
+                className={`${inputClasses} mt-2 ${fieldErrors.name ? 'border-error focus:border-error' : ''}`}
                 id="place-name-input"
                 onChange={(event) => updateDraft({ name: event.target.value })}
                 placeholder="누리미디어"
@@ -347,7 +353,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
               </label>
               <input
                 aria-label="주소"
-                className={`${INPUT_CLASSES} mt-2 ${fieldErrors.road_address ? 'border-error focus:border-error' : ''}`}
+                className={`${inputClasses} mt-2 ${fieldErrors.road_address ? 'border-error focus:border-error' : ''}`}
                 id="place-address-input"
                 onChange={(event) => updateDraft({ road_address: event.target.value })}
                 placeholder="서울 마포구 양화로19길 22-16"
@@ -357,8 +363,8 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
               {fieldErrors.road_address ? <span className="mt-2 block text-xs text-[#e53935]">{fieldErrors.road_address}</span> : null}
             </div>
 
-            <SegmentedField label="장소 구분" onChange={(place_type) => updateDraft({ place_type })} options={PLACE_TYPE_OPTIONS} testId="place-type-field" value={draft.place_type} />
-            <SegmentedField label="제로페이" onChange={(zeropay_status) => updateDraft({ zeropay_status })} options={ZEROPAY_OPTIONS} testId="zeropay-field" value={draft.zeropay_status} />
+            <SegmentedField buttonSizeClasses={segmentedButtonSizeClasses} label="장소 구분" onChange={(place_type) => updateDraft({ place_type })} options={PLACE_TYPE_OPTIONS} testId="place-type-field" value={draft.place_type} />
+            <SegmentedField buttonSizeClasses={segmentedButtonSizeClasses} label="제로페이" onChange={(zeropay_status) => updateDraft({ zeropay_status })} options={ZEROPAY_OPTIONS} testId="zeropay-field" value={draft.zeropay_status} />
             <StarRatingField isDesktop={isDesktop} rating={draft.rating_score} onChange={(rating_score) => updateDraft({ rating_score })} />
 
             <div className="w-full" data-testid="review-field">
@@ -366,14 +372,14 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
                 <span className="block text-xs font-medium leading-none text-[#1f1f1f]">후기(선택)</span>
               </label>
               <textarea
-                className={`${TEXTAREA_CLASSES} mt-2`}
+                className={`${textareaClasses} mt-2`}
                 data-testid="review-content-input"
                 id="place-review-input"
                 onChange={(event) => {
                   const nextReviewContent = clampReviewContent(event.target.value)
                   event.currentTarget.value = nextReviewContent
                   updateDraft({ review_content: nextReviewContent })
-                  resizeReviewTextarea(event.currentTarget)
+                  resizeReviewTextarea(event.currentTarget, reviewTextareaMinHeight)
                 }}
                 maxLength={REVIEW_LIMIT}
                 ref={reviewTextareaRef}
@@ -386,7 +392,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
 
           <button
             aria-label={submitState === 'submitting' ? '등록 중' : '등록'}
-            className="place-submit-button mt-6 inline-flex h-10 w-full items-center justify-center rounded-xl bg-[#5862fb] text-base font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50"
+            className={`place-submit-button mt-6 inline-flex ${submitButtonSizeClasses} w-full items-center justify-center rounded-xl bg-[#5862fb] text-base font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50`}
             data-required-fields={hasRequiredFields ? 'complete' : 'incomplete'}
             data-testid="place-submit-button"
             disabled={submitState === 'submitting'}
