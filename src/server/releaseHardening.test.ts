@@ -6,21 +6,42 @@ import { lookupPlaceFromRawUrl } from '../server-core/place/placeLookupService'
 
 const originalEnv = { ...process.env }
 
-const collectClientFiles = (dir: string): string[] =>
+const collectTsFiles = ({
+  dir,
+  excludedDirectories,
+}: {
+  dir: string
+  excludedDirectories: string[]
+}): string[] =>
   readdirSync(dir).flatMap((entry) => {
     const fullPath = path.join(dir, entry)
     const stats = statSync(fullPath)
 
     if (stats.isDirectory()) {
       const directoryName = path.basename(fullPath)
-      if (directoryName === 'server' || directoryName === 'server-core' || directoryName === 'test') {
+      if (excludedDirectories.includes(directoryName)) {
         return []
       }
 
-      return collectClientFiles(fullPath)
+      return collectTsFiles({
+        dir: fullPath,
+        excludedDirectories,
+      })
     }
 
-    return fullPath.match(/\.(ts|tsx)$/) ? [fullPath] : []
+    return fullPath.match(/\.(ts|tsx)$/) && !fullPath.match(/\.test\.(ts|tsx)$/) ? [fullPath] : []
+  })
+
+const collectClientFiles = (dir: string) =>
+  collectTsFiles({
+    dir,
+    excludedDirectories: ['server', 'server-core', 'test'],
+  })
+
+const collectRuntimeFiles = (dir: string) =>
+  collectTsFiles({
+    dir,
+    excludedDirectories: ['test'],
   })
 
 describe('Plan 11 release hardening', () => {
@@ -59,6 +80,21 @@ describe('Plan 11 release hardening', () => {
     )
   })
 
+  it('preserves the /auth/verify fallback rewrite in Vercel config', () => {
+    const vercelConfig = JSON.parse(readFileSync(path.resolve(process.cwd(), 'vercel.json'), 'utf8')) as {
+      rewrites?: Array<{ source: string; destination: string }>
+    }
+
+    expect(vercelConfig.rewrites).toEqual(
+      expect.arrayContaining([
+        {
+          source: '/auth/verify',
+          destination: '/',
+        },
+      ]),
+    )
+  })
+
   it('does not reference sensitive server env vars from client code', () => {
     const clientFiles = collectClientFiles(path.resolve(process.cwd(), 'src'))
     const forbiddenEnvNames = [
@@ -73,6 +109,25 @@ describe('Plan 11 release hardening', () => {
       const source = readFileSync(file, 'utf8')
       for (const envName of forbiddenEnvNames) {
         expect(source, `${path.relative(process.cwd(), file)} references ${envName}`).not.toContain(envName)
+      }
+    }
+  })
+
+  it('keeps runtime source free of recommendation implementation tokens', () => {
+    const runtimeFiles = [
+      ...collectRuntimeFiles(path.resolve(process.cwd(), 'src')),
+      ...collectRuntimeFiles(path.resolve(process.cwd(), 'api')),
+    ]
+    const forbiddenRecommendationTokens = [
+      'recommendation_toggle',
+      'my_recommendation_active',
+      'recommendation_count',
+    ]
+
+    for (const file of runtimeFiles) {
+      const source = readFileSync(file, 'utf8')
+      for (const token of forbiddenRecommendationTokens) {
+        expect(source, `${path.relative(process.cwd(), file)} reintroduced ${token}`).not.toContain(token)
       }
     }
   })

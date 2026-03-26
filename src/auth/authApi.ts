@@ -1,3 +1,5 @@
+// Canonical FE auth stays on the OTP request/verify routes. The bypass-shaped
+// fields below remain only for local compatibility flows.
 export type RequestOtpResponse =
   | { status: 'success'; mode: 'otp'; message: string; requestResolution?: 'accepted' }
   | {

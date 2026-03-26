@@ -19,6 +19,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const email = typeof req.body?.email === 'string' ? req.body.email : ''
   const token = typeof req.body?.token === 'string' ? req.body.token : ''
+  // Compatibility-only bypass adoption: canonical OTP verify uses `{ email, token }`,
+  // while local bypass still adopts a provider session via token-hash fields.
   const tokenHash = typeof req.body?.tokenHash === 'string' ? req.body.tokenHash : undefined
   const verificationType = req.body?.verificationType === 'magiclink'
     || req.body?.verificationType === 'signup'

@@ -120,6 +120,39 @@ describe('authApi', () => {
     })
   })
 
+  it('passes tokenHash and verificationType through verify-otp for local bypass compatibility', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        status: 'success',
+        nextPhase: 'authenticated',
+        user: {
+          id: 'user-1',
+          email: 'bypass.user@example.com',
+          name: '테스트 사용자',
+        },
+        csrfHeaderName: 'x-nurimap-csrf-token',
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await verifyOtpViaApi({
+      email: 'bypass.user@example.com',
+      token: '',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      email: 'bypass.user@example.com',
+      token: '',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })
+  })
+
   it('calls session endpoint with explicit no-store cookie-aware options', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ status: 'missing' }), {

@@ -822,6 +822,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setPhase('verifying')
         setMessage(payload.message)
 
+        // Compatibility-only local bypass adoption. Normal FE auth continues on the OTP flow.
         const verification = await resolveBypassVerification({
           tokenHash: payload.tokenHash,
           verificationType: payload.verificationType,

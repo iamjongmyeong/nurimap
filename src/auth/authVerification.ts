@@ -6,6 +6,7 @@ export const AUTH_SESSION_RECOVERY_DELAY_MS = 400
 export const GENERIC_AUTH_FAILURE_MESSAGE = '새로운 코드로 다시 시도해주세요.'
 export const OTP_ENTRY_FAILURE_MESSAGE = '이 코드는 사용할 수 없어요.'
 
+// Compatibility-only bypass verify types. Canonical FE auth stays on email OTP.
 export type AuthVerificationType = 'magiclink' | 'signup' | 'invite'
 
 export type AuthVerificationResult =

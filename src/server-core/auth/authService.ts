@@ -23,6 +23,7 @@ import { logAuthBypassLogin, logAuthRequestAccepted, logAuthRequestFailure } fro
 import { createSupabaseAdminClient, createSupabaseAuthClient } from '../runtime/supabaseAdmin.js'
 
 type AuthRequestErrorCode = 'invalid_domain' | 'cooldown' | 'delivery_failed' | 'bypass_required'
+// Compatibility-only verify types for the retained local bypass adoption seam.
 type AuthVerifyType = 'magiclink' | 'signup' | 'invite'
 type AuthRequestResolution = 'accepted' | 'rejected' | 'unknown'
 type RequestLoginOtpIntent = 'send' | 'status'
@@ -352,6 +353,7 @@ const generateImmediateBypassPayload = async (
   publicAppUrl: string,
 ): Promise<AuthRequestSuccess | { status: 'error'; code: AuthRequestErrorCode; message: string }> => {
   const auth = getAdminAuthClient()
+  // Canonical auth is OTP-first; this legacy-shaped payload only exists for local bypass compatibility.
   const { data, error } = await auth.admin.generateLink({
     type: 'magiclink',
     email,
@@ -886,6 +888,7 @@ export const verifyLoginOtp = async ({
   const normalizedEmail = normalizeEmail(email)
   const now = new Date()
 
+  // Canonical verify uses `{ email, token }`. Token-hash verify remains for local bypass compatibility only.
   if (tokenHash && !isLocalBypassRuntime(runtimeOrigin)) {
     return {
       status: 'error',
