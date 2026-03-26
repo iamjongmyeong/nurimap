@@ -125,4 +125,28 @@ describe('/api/auth/request-otp', () => {
       requestResolution: 'accepted',
     })
   })
+
+  it('maps delivery_failed to 502 so the workflow exception still exposes transport failure distinctly', async () => {
+    requestLoginOtpMock.mockResolvedValue({
+      status: 'error',
+      code: 'delivery_failed',
+      message: '메일 전송에 실패했어요.',
+    })
+
+    const { response, state } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {},
+      body: {
+        email: 'tester@nurimedia.co.kr',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(502)
+    expect(state.body).toEqual({
+      status: 'error',
+      code: 'delivery_failed',
+      message: '메일 전송에 실패했어요.',
+    })
+  })
 })
