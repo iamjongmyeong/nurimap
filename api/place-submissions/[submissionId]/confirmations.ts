@@ -1,46 +1,28 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import confirmSubmissionHandler from './place-submissions/[submissionId]/confirmations.js'
-import createSubmissionHandler from './place-submissions/index.js'
 import {
   getAuthenticatedRequestContext,
   METHOD_NOT_ALLOWED_RESPONSE_BODY,
-} from '../src/server-core/auth/requestContext.js'
-import { persistPlaceRegistration } from '../src/server-core/place/placeDataService.js'
-import { logPlaceEntryFailure } from '../src/server-core/runtime/opsLogger.js'
-import { checkUserScopedRateLimit } from '../src/server-core/http/requestRateLimit.js'
+} from '../../../src/server-core/auth/requestContext.js'
+import { checkUserScopedRateLimit } from '../../../src/server-core/http/requestRateLimit.js'
+import { confirmPlaceSubmission } from '../../../src/server-core/place/placeSubmissionService.js'
+import { logPlaceEntryFailure } from '../../../src/server-core/runtime/opsLogger.js'
 import {
   GENERIC_PLACE_SUBMISSION_ERROR_MESSAGE,
-  getPlaceRegistrationDraftFromBody,
   PLACE_SUBMISSION_RATE_LIMIT,
   PLACE_SUBMISSION_RATE_LIMIT_MESSAGE,
-  resolvePlaceLookupDataFromBody,
-} from './place-submissions/shared.js'
+} from '../shared.js'
 
-const buildConfirmationRequest = (req: VercelRequest, submissionId: string) => ({
-  ...req,
-  query: {
-    ...req.query,
-    submissionId,
-  },
-}) as unknown as VercelRequest
+const readSubmissionId = (req: VercelRequest) =>
+  Array.isArray(req.query?.submissionId)
+    ? req.query.submissionId[0] ?? ''
+    : typeof req.query?.submissionId === 'string'
+      ? req.query.submissionId
+      : ''
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json(METHOD_NOT_ALLOWED_RESPONSE_BODY)
-    return
-  }
-
-  const confirmDuplicate = req.body?.confirmDuplicate === true
-  const submissionId = typeof req.body?.submissionId === 'string' ? req.body.submissionId : ''
-
-  if (!confirmDuplicate) {
-    await createSubmissionHandler(req, res)
-    return
-  }
-
-  if (submissionId) {
-    await confirmSubmissionHandler(buildConfirmationRequest(req, submissionId), res)
     return
   }
 
@@ -78,18 +60,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const lookupResult = await resolvePlaceLookupDataFromBody(req.body)
-    if (lookupResult.status === 'error') {
-      res.status(422).json(lookupResult)
+    const result = await confirmPlaceSubmission({
+      submissionId: readSubmissionId(req),
+      userId: requestContext.authSession.user.id,
+    })
+
+    if (result.status === 'error' && 'code' in result) {
+      res.status(409).json({
+        error: {
+          code: result.code,
+          message: result.message,
+        },
+      })
       return
     }
-
-    const result = await persistPlaceRegistration({
-      userId: requestContext.authSession.user.id,
-      confirmDuplicate: true,
-      draft: getPlaceRegistrationDraftFromBody(req.body),
-      lookupData: lookupResult.data,
-    })
 
     if (result.status === 'error') {
       res.status(422).json({
@@ -101,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
 
-    res.status(200).json(result)
+    res.status(201).json(result)
   } catch (error) {
     logPlaceEntryFailure({
       code: 'internal_error',
