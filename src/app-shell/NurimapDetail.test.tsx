@@ -17,19 +17,29 @@ const cloneMockPlace = (placeId: string) => {
   }
 }
 
+const getPlaceIdFromDetailUrl = (url: string) => {
+  const match = url.match(/^\/api\/places\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const getPlaceIdFromReviewUrl = (url: string) => {
+  const match = url.match(/^\/api\/places\/([^/]+)\/reviews$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 const createDetailFetchMock = () =>
   vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
 
-    if (url === '/api/place-list') {
+    if (url === '/api/places') {
       return new Response(JSON.stringify({
         status: 'success',
         places: MOCK_PLACES,
       }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
 
-    if (url.startsWith('/api/place-detail?placeId=')) {
-      const placeId = decodeURIComponent(url.split('=')[1] ?? '')
+    const placeId = getPlaceIdFromDetailUrl(url)
+    if (placeId) {
       const place = cloneMockPlace(placeId)
       if (!place) {
         return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: { 'Content-Type': 'application/json' } })
@@ -37,9 +47,10 @@ const createDetailFetchMock = () =>
       return new Response(JSON.stringify({ status: 'success', place }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
 
-    if (url === '/api/place-review') {
+    const reviewPlaceId = getPlaceIdFromReviewUrl(url)
+    if (reviewPlaceId) {
       const body = init?.body ? JSON.parse(String(init.body)) : {}
-      const place = cloneMockPlace(body.placeId)
+      const place = cloneMockPlace(reviewPlaceId)
       if (!place) {
         return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: { 'Content-Type': 'application/json' } })
       }

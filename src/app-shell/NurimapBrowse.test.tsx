@@ -100,11 +100,16 @@ const cloneMockPlace = (placeId: string) => {
   }
 }
 
+const getPlaceIdFromDetailUrl = (url: string) => {
+  const match = url.match(/^\/api\/places\/([^/]+)$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 const createBrowseFetchMock = () =>
   vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
 
-    if (url === '/api/place-list') {
+    if (url === '/api/places') {
       return new Response(JSON.stringify({
         status: 'success',
         places: MOCK_PLACES,
@@ -123,8 +128,8 @@ const createBrowseFetchMock = () =>
       }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
 
-    if (url.startsWith('/api/place-detail?placeId=')) {
-      const placeId = decodeURIComponent(url.split('=')[1] ?? '')
+    const placeId = getPlaceIdFromDetailUrl(url)
+    if (placeId) {
       const place = cloneMockPlace(placeId)
       if (!place) {
         return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404, headers: { 'Content-Type': 'application/json' } })
@@ -229,7 +234,7 @@ describe('Sprint 16 browse refresh', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
 
-      if (url === '/api/place-list') {
+      if (url === '/api/places') {
         return new Response(JSON.stringify({
           status: 'success',
           places: [
