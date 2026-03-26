@@ -153,7 +153,7 @@ export const saveNameViaApi = async ({
   name: string
 }) => {
   const response = await fetch('/api/auth/profile', {
-    method: 'POST',
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       [csrfHeaderName]: csrfToken,
@@ -176,8 +176,8 @@ export const signOutViaApi = async ({
   csrfHeaderName: string
   csrfToken: string
 }) => {
-  const response = await fetch('/api/auth/logout', {
-    method: 'POST',
+  const response = await fetch('/api/auth/session', {
+    method: 'DELETE',
     headers: {
       [csrfHeaderName]: csrfToken,
     },
