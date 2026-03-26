@@ -191,7 +191,7 @@ describe('authApi', () => {
     }))
   })
 
-  it('calls session/profile/logout endpoints with the expected contracts', async () => {
+  it('calls session/profile/logout endpoints with the expected canonical contracts', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(
         new Response(JSON.stringify({

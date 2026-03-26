@@ -37,7 +37,25 @@ describe('/api/auth/request-link', () => {
     vi.clearAllMocks()
   })
 
-  it('forwards the same canonical request fields to requestLoginOtp as the request-otp route', async () => {
+  it('keeps request-link POST-only so the legacy adapter stays bounded', async () => {
+    const { response, state } = createResponse()
+
+    await handler({
+      method: 'GET',
+      headers: {},
+      body: undefined,
+    } as unknown as VercelRequest, response)
+
+    expect(requestLoginOtpMock).not.toHaveBeenCalled()
+    expect(state.statusCode).toBe(405)
+    expect(state.body).toEqual({
+      error: {
+        code: 'method_not_allowed',
+      },
+    })
+  })
+
+  it('keeps request-link as a bounded legacy adapter over the canonical request-otp workflow', async () => {
     requestLoginOtpMock.mockResolvedValue({
       status: 'success',
       mode: 'otp',
@@ -71,6 +89,32 @@ describe('/api/auth/request-link', () => {
       mode: 'otp',
       message: '인증 코드를 보냈어요.',
       requestResolution: 'accepted',
+    })
+  })
+
+  it('preserves cooldown status mapping parity with request-otp', async () => {
+    requestLoginOtpMock.mockResolvedValue({
+      status: 'error',
+      code: 'cooldown',
+      message: '잠시 후 다시 시도해 주세요.',
+      retryAfterSeconds: 42,
+    })
+
+    const { response, state } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {},
+      body: {
+        email: 'tester@nurimedia.co.kr',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(429)
+    expect(state.body).toEqual({
+      status: 'error',
+      code: 'cooldown',
+      message: '잠시 후 다시 시도해 주세요.',
+      retryAfterSeconds: 42,
     })
   })
 })
