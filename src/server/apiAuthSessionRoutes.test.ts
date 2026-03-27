@@ -42,7 +42,6 @@ vi.mock('../server-core/auth/appSessionService.js', () => ({
   serializeClearedCsrfCookie: serializeClearedCsrfCookieMock,
 }))
 
-import logoutHandler from '../../api/auth/logout.js'
 import profileHandler from '../../api/auth/profile.js'
 import sessionHandler from '../../api/auth/session.js'
 
@@ -128,26 +127,6 @@ describe('/api/auth session routes', () => {
 
     const { response, state } = createResponse()
     await sessionHandler({ method: 'DELETE', headers: {} } as unknown as VercelRequest, response)
-
-    expect(signOutAppSessionMock).toHaveBeenCalledWith('session-123')
-    expect(state.headers?.['Set-Cookie']).toEqual([
-      'nurimap_session=',
-      'nurimap_csrf=',
-    ])
-    expect(state.body).toEqual({ status: 'success' })
-  })
-
-  it('keeps POST /api/auth/logout as a compatibility adapter with the same csrf + cookie clearing behavior', async () => {
-    findActiveAppSessionByIdMock.mockResolvedValue({
-      id: 'session-123',
-      csrf_token_hash: 'hashed',
-    })
-    readCsrfTokenFromCookieHeaderMock.mockReturnValue('csrf-123')
-    readCsrfTokenFromHeadersMock.mockReturnValue('csrf-123')
-    isValidCsrfTokenPairMock.mockReturnValue(true)
-
-    const { response, state } = createResponse()
-    await logoutHandler({ method: 'POST', headers: {} } as unknown as VercelRequest, response)
 
     expect(signOutAppSessionMock).toHaveBeenCalledWith('session-123')
     expect(state.headers?.['Set-Cookie']).toEqual([

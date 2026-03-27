@@ -11,7 +11,7 @@ vi.mock('../server-core/auth/authService.js', () => ({
   requestLoginOtp: requestLoginOtpMock,
 }))
 
-import handler from '../../api/auth/request-link.js'
+import handler from '../../api/auth/request-otp.js'
 
 const createResponse = () => {
   const state: { body?: unknown; statusCode?: number } = {}
@@ -32,12 +32,12 @@ const createResponse = () => {
   }
 }
 
-describe('/api/auth/request-link', () => {
+describe('/api/auth/request-otp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('keeps request-link POST-only so the legacy adapter stays bounded', async () => {
+  it('keeps request-otp POST-only so the canonical workflow route stays bounded', async () => {
     const { response, state } = createResponse()
 
     await handler({
@@ -55,7 +55,7 @@ describe('/api/auth/request-link', () => {
     })
   })
 
-  it('keeps request-link as a bounded legacy adapter over the canonical request-otp workflow', async () => {
+  it('keeps request-otp payload forwarding parity for status reconciliation fields', async () => {
     requestLoginOtpMock.mockResolvedValue({
       status: 'success',
       mode: 'otp',
@@ -92,7 +92,7 @@ describe('/api/auth/request-link', () => {
     })
   })
 
-  it('preserves cooldown status mapping parity with request-otp', async () => {
+  it('preserves cooldown status mapping on the canonical request-otp route', async () => {
     requestLoginOtpMock.mockResolvedValue({
       status: 'error',
       code: 'cooldown',

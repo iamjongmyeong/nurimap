@@ -42,7 +42,7 @@
 - 이 요청은 authenticated app session + CSRF cookie/header pair를 요구한다.
 - 일반 리뷰 route는 현재 사용자의 첫 review 생성만 담당한다. 이미 같은 place에 review가 있으면 `409 { status: 'existing_review', place, message }` conflict를 반환하고 둘째 review를 만들지 않는다.
 - 기존 review overwrite는 일반 review route의 별도 RPC flag가 아니라 `place-submissions/:submissionId/confirmations` 흐름 안에서만 허용한다.
-- legacy `POST /api/place-review`는 migration 동안만 nested review contract를 감싸는 compatibility-only wrapper다. removal gate는 canonical callers/tests/docs migration + sprint evidence refresh다.
+- legacy `POST /api/place-review` compatibility wrapper는 제거되었다. 일반 리뷰 작성은 canonical nested review route만 사용한다.
 
 ## Acceptance Criteria
 - review가 없는 로그인 사용자는 detail CTA를 통해 리뷰와 별점 평가를 함께 작성할 수 있다.

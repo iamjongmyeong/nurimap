@@ -33,7 +33,7 @@
 - duplicate가 감지되면 서버는 기존 place를 바로 mutate하지 않고 `409 { status: 'confirm_required', submissionId, reason, place, confirmMessage }` payload를 반환한다. `reason`은 `merge_place | overwrite_review`다.
 - 실제 merge/update materialization은 `POST /api/place-submissions/:submissionId/confirmations`에서만 수행한다. `취소`는 confirmation resource를 만들지 않는 local decision이다.
 - confirmation path는 `(place_id, author_user_id)` uniqueness를 server-owned invariant로 유지하면서 merge/update를 적용한다.
-- legacy `POST /api/place-entry`는 migration 동안만 canonical submission flow를 감싸는 compatibility-only wrapper다. removal gate는 canonical callers/tests/docs migration + sprint evidence refresh다.
+- legacy `POST /api/place-entry` compatibility wrapper는 제거되었다. duplicate merge/overwrite flow는 canonical submission/confirmation routes만 사용한다.
 
 ## Acceptance Criteria
 - 같은 canonical duplicate key는 place 1건으로 유지된다.

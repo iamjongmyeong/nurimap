@@ -35,7 +35,7 @@ vi.mock('../server-core/place/placeDataService.js', () => ({
   submitPersistedPlaceReview: submitPersistedPlaceReviewMock,
 }))
 
-import handler from '../../api/place-review.js'
+import handler from '../../api/places/[placeId]/reviews/index.js'
 
 const createResponse = () => {
   const state: { body?: unknown; statusCode?: number } = {}
@@ -56,7 +56,7 @@ const createResponse = () => {
   }
 }
 
-describe('/api/place-review', () => {
+describe('POST /api/places/:placeId/reviews', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     readSessionIdFromCookieHeaderMock.mockReturnValue('session-123')
@@ -80,8 +80,12 @@ describe('/api/place-review', () => {
     const { response, state } = createResponse()
     await handler({
       method: 'POST',
-      headers: {},
-      body: { placeId: 'place-1', ratingScore: 5, reviewContent: '새 리뷰', allowOverwrite: false },
+      headers: {
+        cookie: '__Host-nurimap_session=session-123; nurimap_csrf=csrf-123',
+        'x-nurimap-csrf-token': 'csrf-123',
+      },
+      query: { placeId: 'place-1' },
+      body: { ratingScore: 5, reviewContent: '새 리뷰' },
     } as unknown as VercelRequest, response)
 
     expect(submitPersistedPlaceReviewMock).toHaveBeenCalledWith({

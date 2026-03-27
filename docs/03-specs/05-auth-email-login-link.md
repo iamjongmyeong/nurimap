@@ -84,7 +84,6 @@
 - canonical logout/session termination endpoint는 `DELETE /api/auth/session`이다. 이 요청은 같은 backend-issued app session을 종료하고 `DELETE` mutation이므로 CSRF cookie/header pair를 요구한다.
 - canonical current-user profile mutation endpoint는 `PATCH /api/auth/profile`이다. 이름 온보딩과 이후 profile 수정은 같은 authenticated session + CSRF contract를 재사용한다.
 - `POST /api/auth/request-otp`와 `POST /api/auth/verify-otp`는 intentional workflow endpoint로 유지한다. auth를 억지로 fake resource mutation으로 재모델링하지 않는다.
-- `POST /api/auth/request-link`는 migration 동안만 허용되는 compatibility-only wrapper다. primary caller/tests/docs가 `request-otp` 계약으로 옮겨가고 sprint evidence가 갱신되면 제거한다.
 - server-side resend/cooldown bookkeeping은 Supabase auth user의 `app_metadata.nurimap_auth` 안에 유지하되 `day_key`, `day_count`, `last_requested_at`, `last_verified_at`, `recent_request_receipts` 같은 OTP-era 필드만 남긴다.
 - bypass 경로는 canonical user auth flow가 아니라 dev/test convenience 예외다. 이 경로는 기존 `tokenHash` + `verificationType` session adoption shape를 유지할 수 있다.
 
@@ -126,7 +125,7 @@
 - verify 성공 시 app session cookie가 설정되고, 앱은 `GET /api/auth/session`을 기준으로 인증 상태를 복원한다.
 - logout은 `DELETE /api/auth/session`으로 동작하고 same-browser session clear contract를 유지한다.
 - 이름 저장/profile update는 `PATCH /api/auth/profile` authenticated session + CSRF contract로 동작한다.
-- `request-link`는 compatibility-only wrapper로만 남고 둘째 canonical auth route가 되지 않는다.
+- `request-otp`는 유일한 canonical OTP request route다. legacy `request-link` compatibility wrapper는 제거되었다.
 - server-side resend/cooldown state는 `app_metadata.nurimap_auth`에 남고 OTP-era 필드로 정리된다.
 
 ## TDD Implementation Order

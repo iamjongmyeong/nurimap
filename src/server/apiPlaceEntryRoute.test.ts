@@ -2,21 +2,23 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
+  confirmPlaceSubmissionMock,
   checkUserScopedRateLimitMock,
   findActiveAppSessionByIdMock,
   getAuthenticatedSessionMock,
+  createPlaceSubmissionMock,
   isValidCsrfTokenPairMock,
-  persistPlaceRegistrationMock,
   preparePlaceEntryFromDraftMock,
   readCsrfTokenFromCookieHeaderMock,
   readCsrfTokenFromHeadersMock,
   readSessionIdFromCookieHeaderMock,
 } = vi.hoisted(() => ({
+  confirmPlaceSubmissionMock: vi.fn(),
   checkUserScopedRateLimitMock: vi.fn(),
   findActiveAppSessionByIdMock: vi.fn(),
   getAuthenticatedSessionMock: vi.fn(),
+  createPlaceSubmissionMock: vi.fn(),
   isValidCsrfTokenPairMock: vi.fn(),
-  persistPlaceRegistrationMock: vi.fn(),
   preparePlaceEntryFromDraftMock: vi.fn(),
   readCsrfTokenFromCookieHeaderMock: vi.fn(),
   readCsrfTokenFromHeadersMock: vi.fn(),
@@ -39,15 +41,17 @@ vi.mock('../server-core/place/placeEntryService.js', () => ({
   preparePlaceEntryFromDraft: preparePlaceEntryFromDraftMock,
 }))
 
-vi.mock('../server-core/place/placeDataService.js', () => ({
-  persistPlaceRegistration: persistPlaceRegistrationMock,
+vi.mock('../server-core/place/placeSubmissionService.js', () => ({
+  confirmPlaceSubmission: confirmPlaceSubmissionMock,
+  createPlaceSubmission: createPlaceSubmissionMock,
 }))
 
 vi.mock('../server-core/http/requestRateLimit.js', () => ({
   checkUserScopedRateLimit: checkUserScopedRateLimitMock,
 }))
 
-import handler from '../../api/place-entry.js'
+import confirmHandler from '../../api/place-submissions/[submissionId]/confirmations.js'
+import createHandler from '../../api/place-submissions/index.js'
 
 const createResponse = () => {
   const state: { body?: unknown; statusCode?: number } = {}
@@ -68,7 +72,7 @@ const createResponse = () => {
   }
 }
 
-describe('/api/place-entry', () => {
+describe('canonical place submission routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     readSessionIdFromCookieHeaderMock.mockReturnValue('session-123')
@@ -90,14 +94,14 @@ describe('/api/place-entry', () => {
     })
   })
 
-  it('returns 429 when place-entry rate limit is exceeded', async () => {
+  it('returns 429 when POST /api/place-submissions rate limit is exceeded', async () => {
     checkUserScopedRateLimitMock.mockReturnValue({
       allowed: false,
       retryAfterSeconds: 9,
     })
 
     const { response, state } = createResponse()
-    await handler({
+    await createHandler({
       method: 'POST',
       headers: {
         cookie: '__Host-nurimap_session=session-123; nurimap_csrf=csrf-123',
@@ -117,10 +121,10 @@ describe('/api/place-entry', () => {
         retryAfterSeconds: 9,
       },
     })
-    expect(preparePlaceEntryFromDraftMock).not.toHaveBeenCalled()
+    expect(createPlaceSubmissionMock).not.toHaveBeenCalled()
   })
 
-  it('returns a JSON 500 error when place-entry preparation throws unexpectedly', async () => {
+  it('returns a JSON 500 error when canonical place submission preparation throws unexpectedly', async () => {
     preparePlaceEntryFromDraftMock.mockRejectedValue(new Error('vercel runtime import failed'))
 
     const request = {
@@ -141,7 +145,7 @@ describe('/api/place-entry', () => {
 
     const { response, state } = createResponse()
 
-    await handler(request, response)
+    await createHandler(request, response)
 
     expect(preparePlaceEntryFromDraftMock).toHaveBeenCalledWith({
       name: '등록 테스트 장소',
@@ -157,7 +161,7 @@ describe('/api/place-entry', () => {
     })
   })
 
-  it('returns confirm_required when backend persistence asks for duplicate confirmation', async () => {
+  it('returns confirm_required with submissionId on POST /api/place-submissions', async () => {
     preparePlaceEntryFromDraftMock.mockResolvedValue({
       status: 'success',
       data: {
@@ -172,11 +176,15 @@ describe('/api/place-entry', () => {
         coordinate_source: 'naver',
       },
     })
-    persistPlaceRegistrationMock.mockResolvedValue({
+    createPlaceSubmissionMock.mockResolvedValue({
       status: 'confirm_required',
       reason: 'merge_place',
       place: { id: 'place-cafe-1' },
       confirmMessage: '이미 등록된 장소예요. 지금 입력한 정보를 이 장소에 반영할까요?',
+      submission: {
+        id: 'submission-123',
+        expiresAt: '2026-03-27T12:00:00.000Z',
+      },
     })
 
     const request = {
@@ -192,12 +200,11 @@ describe('/api/place-entry', () => {
         zeropayStatus: 'available',
         ratingScore: 4,
         reviewContent: '병합 테스트 리뷰',
-        confirmDuplicate: false,
       },
     } as unknown as VercelRequest
 
     const { response, state } = createResponse()
-    await handler(request, response)
+    await createHandler(request, response)
 
     expect(checkUserScopedRateLimitMock).toHaveBeenCalledWith({
       scope: 'place-entry',
@@ -206,9 +213,8 @@ describe('/api/place-entry', () => {
       windowMs: 60_000,
     })
     expect(state.statusCode).toBe(409)
-    expect(persistPlaceRegistrationMock).toHaveBeenCalledWith({
+    expect(createPlaceSubmissionMock).toHaveBeenCalledWith({
       userId: 'user-1',
-      confirmDuplicate: false,
       draft: {
         place_type: 'cafe',
         zeropay_status: 'available',
@@ -218,6 +224,49 @@ describe('/api/place-entry', () => {
       lookupData: expect.objectContaining({
         naver_place_id: '10002',
       }),
+    })
+    expect(state.body).toEqual({
+      status: 'confirm_required',
+      reason: 'merge_place',
+      place: { id: 'place-cafe-1' },
+      confirmMessage: '이미 등록된 장소예요. 지금 입력한 정보를 이 장소에 반영할까요?',
+      submission: {
+        id: 'submission-123',
+        expiresAt: '2026-03-27T12:00:00.000Z',
+      },
+      submissionId: 'submission-123',
+    })
+  })
+
+  it('returns submission_invalid when POST /api/place-submissions/:submissionId/confirmations fails validation', async () => {
+    confirmPlaceSubmissionMock.mockResolvedValue({
+      status: 'error',
+      code: 'submission_invalid',
+      message: '확인 요청이 만료되었어요. 다시 시도해 주세요.',
+    })
+
+    const { response, state } = createResponse()
+    await confirmHandler({
+      method: 'POST',
+      headers: {
+        cookie: '__Host-nurimap_session=session-123; nurimap_csrf=csrf-123',
+        'x-nurimap-csrf-token': 'csrf-123',
+      },
+      query: {
+        submissionId: 'submission-123',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(confirmPlaceSubmissionMock).toHaveBeenCalledWith({
+      submissionId: 'submission-123',
+      userId: 'user-1',
+    })
+    expect(state.statusCode).toBe(409)
+    expect(state.body).toEqual({
+      error: {
+        code: 'submission_invalid',
+        message: '확인 요청이 만료되었어요. 다시 시도해 주세요.',
+      },
     })
   })
 })

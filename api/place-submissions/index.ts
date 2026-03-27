@@ -80,10 +80,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
 
-    if (result.status === 'confirm_required') {
-      res.status(409).json(result)
-      return
-    }
+  if (result.status === 'confirm_required') {
+    res.status(409).json({
+      ...result,
+      submissionId: result.submission.id,
+    })
+    return
+  }
 
     res.status(getSuccessStatusCode(result.status)).json(result)
   } catch (error) {

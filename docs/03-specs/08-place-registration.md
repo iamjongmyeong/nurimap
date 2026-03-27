@@ -49,7 +49,7 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - `POST /api/place-submissions`는 lookup 결과와 draft(`place_type`, `zeropay_status`, `rating_score`, `review_content`)를 받아 새 place 생성 또는 bounded duplicate conflict를 반환한다.
 - duplicate가 감지되면 서버는 기존 place를 즉시 mutate하지 않고 `409 { status: 'confirm_required', submissionId, reason, place, confirmMessage }` shape로 확인 흐름을 반환한다.
 - duplicate confirm canonical endpoint는 `POST /api/place-submissions/:submissionId/confirmations`다. 사용자가 `취소`하면 confirmation resource를 만들지 않고 local draft만 유지한다.
-- legacy `POST /api/place-entry`는 migration 동안만 `place-lookups` + `place-submissions` contract에 맞추는 compatibility-only wrapper다. removal gate는 canonical callers/tests/docs가 모두 `submissionId` flow로 이전되고 sprint evidence가 갱신되는 시점이다.
+- legacy `POST /api/place-entry` compatibility wrapper는 제거되었다. place registration은 canonical `place-lookups` + `place-submissions` + `place-submissions/:submissionId/confirmations` flow만 사용한다.
 
 ## Acceptance Criteria
 - place 등록은 같은 목록 영역 안의 단일 폼으로 진행된다.

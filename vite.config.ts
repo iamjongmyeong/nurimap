@@ -8,11 +8,7 @@ import { defineConfig } from 'vitest/config'
 type DevApiRouteHandler = (req: VercelRequest, res: VercelResponse) => Promise<void> | void
 type DevApiQuery = Record<string, string | string[]>
 type DevApiRouteModule = { default: DevApiRouteHandler }
-type DevApiRequestOverrides = {
-  body?: unknown
-  method?: string
-  query?: DevApiQuery
-}
+type DevApiRequestOverrides = { body?: unknown; query?: DevApiQuery }
 type ResolvedDevApiRoute = {
   handlerPath: string
   requestOverrides?: DevApiRequestOverrides
@@ -72,37 +68,17 @@ const parseRequestBody = (req: IncomingMessage, rawBody: string) => {
   }
 }
 
-const asRecord = (value: unknown): Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {}
-
-const decodeBase64Url = (value: string) => {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
-  const padding = (4 - (normalized.length % 4)) % 4
-  return Buffer.from(`${normalized}${'='.repeat(padding)}`, 'base64').toString('utf8')
-}
-
-const decodePlaceSubmissionId = (submissionId: string) => {
-  try {
-    return asRecord(JSON.parse(decodeBase64Url(decodeURIComponent(submissionId))))
-  } catch {
-    return null
-  }
-}
-
 const DEV_API_ROUTE_LOADERS = new Map<string, () => Promise<DevApiRouteModule>>([
-  ['/api/auth/logout', () => import('./api/auth/logout')],
   ['/api/auth/profile', () => import('./api/auth/profile')],
-  ['/api/auth/request-link', () => import('./api/auth/request-link')],
   ['/api/auth/request-otp', () => import('./api/auth/request-otp')],
   ['/api/auth/session', () => import('./api/auth/session')],
   ['/api/auth/verify-otp', () => import('./api/auth/verify-otp')],
   ['/api/place-lookups', () => import('./api/place-lookups/index')],
-  ['/api/place-entry', () => import('./api/place-entry')],
+  ['/api/place-submissions', () => import('./api/place-submissions/index')],
+  ['/api/place-submissions/[submissionId]/confirmations', () => import('./api/place-submissions/[submissionId]/confirmations')],
   ['/api/places', () => import('./api/places/index')],
   ['/api/places/[placeId]', () => import('./api/places/[placeId]')],
-  ['/api/place-review', () => import('./api/place-review')],
+  ['/api/places/[placeId]/reviews', () => import('./api/places/[placeId]/reviews/index')],
 ])
 
 const devApiRouteHandlerCache = new Map<string, Promise<DevApiRouteHandler>>()
@@ -129,21 +105,11 @@ const resolveDevApiRoute = async (req: IncomingMessage): Promise<ResolvedDevApiR
   const method = (req.method ?? 'GET').toUpperCase()
 
   if (method === 'DELETE' && pathname === '/api/auth/session') {
-    return {
-      handlerPath: '/api/auth/logout',
-      requestOverrides: {
-        method: 'POST',
-      },
-    }
+    return { handlerPath: '/api/auth/session' }
   }
 
   if (method === 'PATCH' && pathname === '/api/auth/profile') {
-    return {
-      handlerPath: '/api/auth/profile',
-      requestOverrides: {
-        method: 'POST',
-      },
-    }
+    return { handlerPath: '/api/auth/profile' }
   }
 
   if (method === 'GET' && pathname === '/api/places') {
@@ -167,33 +133,16 @@ const resolveDevApiRoute = async (req: IncomingMessage): Promise<ResolvedDevApiR
   }
 
   if (method === 'POST' && pathname === '/api/place-submissions') {
-    const rawBody = await readRequestBody(req)
-    const parsedBody = asRecord(parseRequestBody(req, rawBody))
-
-    return {
-      handlerPath: '/api/place-entry',
-      requestOverrides: {
-        body: {
-          ...parsedBody,
-          confirmDuplicate: false,
-        },
-      },
-    }
+    return { handlerPath: '/api/place-submissions' }
   }
 
   const confirmationMatch = pathname.match(/^\/api\/place-submissions\/([^/]+)\/confirmations$/)
   if (method === 'POST' && confirmationMatch) {
-    const decodedDraft = decodePlaceSubmissionId(confirmationMatch[1])
-    if (!decodedDraft) {
-      return null
-    }
-
     return {
-      handlerPath: '/api/place-entry',
+      handlerPath: '/api/place-submissions/[submissionId]/confirmations',
       requestOverrides: {
-        body: {
-          ...decodedDraft,
-          confirmDuplicate: true,
+        query: {
+          submissionId: decodeURIComponent(confirmationMatch[1]),
         },
       },
     }
@@ -201,15 +150,10 @@ const resolveDevApiRoute = async (req: IncomingMessage): Promise<ResolvedDevApiR
 
   const placeReviewMatch = pathname.match(/^\/api\/places\/([^/]+)\/reviews$/)
   if (method === 'POST' && placeReviewMatch) {
-    const rawBody = await readRequestBody(req)
-    const parsedBody = asRecord(parseRequestBody(req, rawBody))
-
     return {
-      handlerPath: '/api/place-review',
+      handlerPath: '/api/places/[placeId]/reviews',
       requestOverrides: {
-        body: {
-          ...parsedBody,
-          allowOverwrite: false,
+        query: {
           placeId: decodeURIComponent(placeReviewMatch[1]),
         },
       },
@@ -259,10 +203,6 @@ const runDevApiRoute = async ({
       res.end(JSON.stringify(body))
       return vercelResponse
     }
-  }
-
-  if (requestOverrides?.method) {
-    vercelRequest.method = requestOverrides.method
   }
 
   vercelRequest.query = {

@@ -57,13 +57,9 @@ flowchart LR
 | Place review create | `POST /api/places/:placeId/reviews` | backend-issued app session + CSRF pair | 일반 리뷰 생성 전용이며 duplicate review는 conflict로 반환한다. |
 
 ## Compatibility Wrapper Gate
-- Batch 1 pure re-export wrappers(`/api/place-list`, `/api/place-detail`, `/api/place-lookup`)는 제거됐다. 남은 legacy wrappers `/api/place-entry`, `/api/place-review`, `/api/auth/request-link`, `/api/auth/logout`만 migration 동안 한시적으로 허용한다.
-- wrapper는 canonical handler를 감싸는 thin adapter여야 하며, 독자적인 business logic surface가 되면 안 된다.
-- removal gate는 다음 네 가지를 모두 충족할 때만 닫는다.
-  1. primary caller가 canonical route inventory만 사용한다.
-  2. tests/docs가 canonical contract와 `submissionId` confirmation flow로 옮겨간다.
-  3. Vercel `api/*` handler와 Vite dev middleware parity evidence가 갱신된다.
-  4. sprint QA/review evidence가 wrapper deprecation 상태를 다시 기록한다.
+- RESTfulness compatibility wrapper(`place-list`, `place-detail`, `place-lookup`, `place-entry`, `place-review`, `auth/request-link`, `auth/logout`)는 제거됐다.
+- current runtime contract는 canonical route inventory만 사용한다.
+- 이후 hidden consumer 이슈가 발견되면 새 follow-up으로 추적하고, 제거한 wrapper를 기본 대응으로 복구하지 않는다.
 
 ## Route And State Ownership
 - durable/shareable state는 route가 관리한다.
