@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { PlaceRegistrationPreparationResult, PlaceRegistrationResult } from './placeRepository'
 import { useAppShellStore } from './appShellStore'
 import { useAuth } from '../auth/authContext'
@@ -210,6 +210,15 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   const submitButtonSizeClasses = 'h-12 py-3'
   const textareaClasses = `${isDesktop ? 'min-h-[96px] py-3' : 'min-h-[88px] py-2'} resize-none overflow-hidden ${BASE_TEXT_FIELD_CLASSES}`
   const reviewTextareaMinHeight = isDesktop ? DESKTOP_REVIEW_TEXTAREA_MIN_HEIGHT : MOBILE_REVIEW_TEXTAREA_MIN_HEIGHT
+  const scrollRegionClassName = isDesktop
+    ? 'flex-1 min-h-0 overflow-auto px-6 pb-4'
+    : 'flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 pb-4'
+  const mobileScrollRegionStyle: CSSProperties | undefined = isDesktop
+    ? undefined
+    : {
+        paddingBottom: 'calc(16px + var(--nurimap-effective-bottom-inset, 0px))',
+        scrollPaddingBottom: 'calc(24px + var(--nurimap-effective-bottom-inset, 0px))',
+      }
 
   const [draft, setDraft] = useState<RegistrationDraft>(createInitialDraft)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -347,7 +356,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   }
 
   return (
-    <div className="flex h-full flex-col" data-testid="place-add-form">
+    <div className="flex h-full min-h-0 flex-col" data-testid="place-add-form">
       <div className="sticky top-0 z-10 h-14 bg-white" data-testid="place-add-header">
         <div className="relative h-full">
           <button
@@ -363,7 +372,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
       </div>
       <h2 className="sr-only">직접 장소 등록</h2>
 
-      <div className="flex-1 overflow-auto px-6 pb-4">
+      <div className={scrollRegionClassName} style={mobileScrollRegionStyle}>
         <div className="mt-6" data-testid="place-add-form-content">
           <div className="space-y-6" data-testid="place-add-form-fields">
             <div className="w-full" data-testid="place-name-field">
@@ -451,8 +460,8 @@ export const DesktopPlaceAddPanel = ({ onClose }: PlaceAddPanelProps) => (
 )
 
 export const MobilePlaceAddPage = ({ onClose }: PlaceAddPanelProps) => (
-  <section className="absolute inset-0 z-20 flex min-h-screen flex-col bg-white" data-testid="mobile-place-add-page">
-    <div className="flex-1 overflow-hidden">
+  <section className="absolute inset-0 z-20 flex h-full min-h-0 flex-col overflow-hidden bg-white" data-testid="mobile-place-add-page">
+    <div className="flex-1 min-h-0 overflow-hidden">
       <PlaceAddForm onClose={onClose} />
     </div>
   </section>

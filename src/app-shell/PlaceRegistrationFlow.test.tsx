@@ -238,9 +238,29 @@ describe('Plan 06 place registration flow', () => {
     const scrollRegion = formContent.parentElement as HTMLElement
 
     expect(screen.getByTestId('place-add-header')).toHaveClass('sticky', 'top-0', 'h-14')
-    expect(scrollRegion).toHaveClass('flex-1', 'overflow-auto', 'px-6', 'pb-4')
+    expect(scrollRegion).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto', 'overscroll-contain', 'px-6', 'pb-4')
     expect(scrollRegion).not.toHaveClass('mt-6')
     expect(formContent).toHaveClass('mt-6')
+  })
+
+  it('uses the mobile shell viewport contract for the mobile place-add overlay', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openDirectEntryForm(user)
+
+    const page = screen.getByTestId('mobile-place-add-page')
+    const formContent = screen.getByTestId('place-add-form-content')
+    const scrollRegion = formContent.parentElement as HTMLElement
+
+    expect(page).toHaveClass('absolute', 'inset-0', 'h-full', 'min-h-0', 'overflow-hidden')
+    expect(page).not.toHaveClass('min-h-screen')
+    expect(scrollRegion).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto', 'overscroll-contain')
+    expect(scrollRegion).toHaveStyle({
+      paddingBottom: 'calc(16px + var(--nurimap-effective-bottom-inset, 0px))',
+      scrollPaddingBottom: 'calc(24px + var(--nurimap-effective-bottom-inset, 0px))',
+    })
   })
 
   it('applies the updated place-add field styles and back-only header affordance', async () => {
