@@ -98,10 +98,10 @@ const DEV_API_ROUTE_LOADERS = new Map<string, () => Promise<DevApiRouteModule>>(
   ['/api/auth/request-otp', () => import('./api/auth/request-otp')],
   ['/api/auth/session', () => import('./api/auth/session')],
   ['/api/auth/verify-otp', () => import('./api/auth/verify-otp')],
-  ['/api/place-detail', () => import('./api/place-detail')],
+  ['/api/place-lookups', () => import('./api/place-lookups/index')],
   ['/api/place-entry', () => import('./api/place-entry')],
-  ['/api/place-list', () => import('./api/place-list')],
-  ['/api/place-lookup', () => import('./api/place-lookup')],
+  ['/api/places', () => import('./api/places/index')],
+  ['/api/places/[placeId]', () => import('./api/places/[placeId]')],
   ['/api/place-review', () => import('./api/place-review')],
 ])
 
@@ -147,13 +147,13 @@ const resolveDevApiRoute = async (req: IncomingMessage): Promise<ResolvedDevApiR
   }
 
   if (method === 'GET' && pathname === '/api/places') {
-    return { handlerPath: '/api/place-list' }
+    return { handlerPath: '/api/places' }
   }
 
   const placeDetailMatch = pathname.match(/^\/api\/places\/([^/]+)$/)
   if (method === 'GET' && placeDetailMatch) {
     return {
-      handlerPath: '/api/place-detail',
+      handlerPath: '/api/places/[placeId]',
       requestOverrides: {
         query: {
           placeId: decodeURIComponent(placeDetailMatch[1]),
@@ -163,7 +163,7 @@ const resolveDevApiRoute = async (req: IncomingMessage): Promise<ResolvedDevApiR
   }
 
   if (method === 'POST' && pathname === '/api/place-lookups') {
-    return { handlerPath: '/api/place-lookup' }
+    return { handlerPath: '/api/place-lookups' }
   }
 
   if (method === 'POST' && pathname === '/api/place-submissions') {
@@ -284,7 +284,13 @@ const runDevApiRoute = async ({
 const apiDevPlugin = (): Plugin => ({
   name: 'nurimap-api-dev-plugin',
   configureServer(server) {
-    server.middlewares.use('/api', async (req, res, next) => {
+    server.middlewares.use(async (req, res, next) => {
+      const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
+      if (!pathname.startsWith('/api/')) {
+        next()
+        return
+      }
+
       const resolvedRoute = await resolveDevApiRoute(req)
       if (!resolvedRoute) {
         next()

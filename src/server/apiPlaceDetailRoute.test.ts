@@ -23,7 +23,7 @@ vi.mock('../server-core/place/placeDataService.js', () => ({
   getPlaceDetailForUser: getPlaceDetailForUserMock,
 }))
 
-import handler from '../../api/place-detail.js'
+import handler from '../../api/places/[placeId].js'
 
 const createResponse = () => {
   const state: { body?: unknown; statusCode?: number } = {}
@@ -44,7 +44,7 @@ const createResponse = () => {
   }
 }
 
-describe('/api/place-detail', () => {
+describe('GET /api/places/:placeId', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     readSessionIdFromCookieHeaderMock.mockReturnValue('session-123')

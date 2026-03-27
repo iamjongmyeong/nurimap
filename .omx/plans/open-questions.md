@@ -12,3 +12,6 @@
 - [ ] Figma node `9:319`, `9:299`를 새 세션의 Figma MCP로 열어 각각 어떤 mobile surface/state를 대표하는지 매핑한다 — 현재 세션은 Figma MCP reload 전이고 direct HTTP 접근도 2026-03-21 기준 403이라 정확한 handoff 판독이 아직 필요하다.
 - [ ] non-Figma 상태(loading/error/empty/disabled)에 대해 기존 visual을 유지할지, 이번 Sprint에서 함께 정리할지 final guardrail을 planning.md에 확정한다 — bounded fallback 범위가 QA와 문서 범위를 결정한다.
 
+
+## RESTfulness Refactor - 2026-03-27
+- [x] 해결됨 — RESTfulness 관련 open question은 빠른 제거 원칙으로 정리되어 종료.

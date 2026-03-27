@@ -41,7 +41,7 @@ vi.mock('../server-core/http/requestRateLimit.js', () => ({
   checkUserScopedRateLimit: checkUserScopedRateLimitMock,
 }))
 
-import handler from '../../api/place-lookup.js'
+import handler from '../../api/place-lookups/index.js'
 
 const createResponse = () => {
   const state: { body?: unknown; statusCode?: number } = {}
@@ -62,7 +62,7 @@ const createResponse = () => {
   }
 }
 
-describe('/api/place-lookup', () => {
+describe('POST /api/place-lookups', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     readSessionIdFromCookieHeaderMock.mockReturnValue('session-123')
