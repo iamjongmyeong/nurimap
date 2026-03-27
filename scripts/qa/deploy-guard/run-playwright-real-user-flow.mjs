@@ -10,7 +10,7 @@ const profileName = '플레이라이트';
 const placeName = `플레이라이트 테스트 ${uniqueSuffix}`;
 const placeAddress = '서울 마포구 등록로 1';
 const reviewContent = `Playwright 등록 확인 ${uniqueSuffix}`;
-const artifactDir = 'artifacts/qa/sprint-20';
+const artifactDir = 'artifacts/qa/deploy-guard';
 const screenshotPath = `${artifactDir}/playwright-real-user-flow-success.png`;
 const failScreenshotPath = `${artifactDir}/playwright-real-user-flow-failure.png`;
 const resultPath = `${artifactDir}/playwright-real-user-flow-result.json`;
@@ -46,17 +46,46 @@ await page.addInitScript(() => {
   const mapInstance = {
     getLevel: () => currentLevel,
     panTo: () => {},
-    setLevel: (level) => { currentLevel = level; },
+    setLevel: (level) => {
+      currentLevel = level;
+    },
   };
-  class MockLatLng { constructor(latitude, longitude) { this.latitude = latitude; this.longitude = longitude; } }
-  class MockMarker { constructor(options) { this.options = options; } setMap() {} }
-  class MockMarkerImage { constructor(source, size) { this.source = source; this.size = size; } }
-  class MockSize { constructor(width, height) { this.width = width; this.height = height; } }
-  class MockOverlay { constructor(options) { this.options = options; } setMap() {} }
+  class MockLatLng {
+    constructor(latitude, longitude) {
+      this.latitude = latitude;
+      this.longitude = longitude;
+    }
+  }
+  class MockMarker {
+    constructor(options) {
+      this.options = options;
+    }
+    setMap() {}
+  }
+  class MockMarkerImage {
+    constructor(source, size) {
+      this.source = source;
+      this.size = size;
+    }
+  }
+  class MockSize {
+    constructor(width, height) {
+      this.width = width;
+      this.height = height;
+    }
+  }
+  class MockOverlay {
+    constructor(options) {
+      this.options = options;
+    }
+    setMap() {}
+  }
   window.kakao = {
     maps: {
       load: (callback) => callback(),
-      Map: function MockMap() { return mapInstance; },
+      Map: function MockMap() {
+        return mapInstance;
+      },
       LatLng: MockLatLng,
       Marker: MockMarker,
       MarkerImage: MockMarkerImage,

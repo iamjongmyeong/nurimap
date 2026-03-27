@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 
 const baseUrl = 'http://localhost:5175';
 const mailpitUrl = 'http://127.0.0.1:54324/api/v1/messages';
-const artifactDir = 'artifacts/qa/sprint-20';
+const artifactDir = 'artifacts/qa/deploy-guard';
 const resultPath = `${artifactDir}/playwright-edge-user-actions-result.json`;
 
 await mkdir(artifactDir, { recursive: true });
@@ -36,17 +36,46 @@ async function createContext(browser, viewport = { width: 390, height: 844 }) {
     const mapInstance = {
       getLevel: () => currentLevel,
       panTo: () => {},
-      setLevel: (level) => { currentLevel = level; },
+      setLevel: (level) => {
+        currentLevel = level;
+      },
     };
-    class MockLatLng { constructor(latitude, longitude) { this.latitude = latitude; this.longitude = longitude; } }
-    class MockMarker { constructor(options) { this.options = options; } setMap() {} }
-    class MockMarkerImage { constructor(source, size) { this.source = source; this.size = size; } }
-    class MockSize { constructor(width, height) { this.width = width; this.height = height; } }
-    class MockOverlay { constructor(options) { this.options = options; } setMap() {} }
+    class MockLatLng {
+      constructor(latitude, longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+      }
+    }
+    class MockMarker {
+      constructor(options) {
+        this.options = options;
+      }
+      setMap() {}
+    }
+    class MockMarkerImage {
+      constructor(source, size) {
+        this.source = source;
+        this.size = size;
+      }
+    }
+    class MockSize {
+      constructor(width, height) {
+        this.width = width;
+        this.height = height;
+      }
+    }
+    class MockOverlay {
+      constructor(options) {
+        this.options = options;
+      }
+      setMap() {}
+    }
     window.kakao = {
       maps: {
         load: (callback) => callback(),
-        Map: function MockMap() { return mapInstance; },
+        Map: function MockMap() {
+          return mapInstance;
+        },
         LatLng: MockLatLng,
         Marker: MockMarker,
         MarkerImage: MockMarkerImage,
@@ -140,7 +169,6 @@ await runScenario('session_restore_direct_detail_and_review_cta_hide', async () 
   await loginAndSaveName(page, email, profileName);
   await page.getByRole('button', { name: '목록 보기' }).waitFor({ state: 'visible', timeout: 15000 });
 
-  // session restore via reload
   await page.reload({ waitUntil: 'networkidle' });
   await page.getByRole('button', { name: '목록 보기' }).waitFor({ state: 'visible', timeout: 15000 });
 
