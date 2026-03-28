@@ -26,7 +26,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 클라이언트에서 1차 검증한다.
 - 서버와 인증 완료 후 사용자 정보에서도 다시 검증한다.
 - 단, 운영자가 환경변수 `AUTH_ALLOWED_EMAILS`로 명시한 exact 이메일은 허용 도메인이 아니어도 일반 OTP request 대상으로 예외 허용할 수 있다.
-- 단, 운영자가 환경변수로 명시한 bypass 이메일 allowlist는 local dev / local QA에서만 예외적으로 허용할 수 있다. non-local runtime은 allowlist/env가 남아 있어도 bypass를 로그인 성공 경로로 사용하지 않는다.
+- 단, 운영자가 환경변수로 명시한 bypass 이메일 allowlist는 non-production local dev / local QA에서만 예외적으로 허용할 수 있다. 여기서 local runtime은 loopback/localhost와 same-private-LAN의 RFC1918 IP literal origin만 포함하며, non-local runtime은 allowlist/env가 남아 있어도 bypass를 로그인 성공 경로로 사용하지 않는다.
 - bypass 이메일 목록 값 자체는 public repository에 커밋하지 않고 환경변수에서만 관리한다.
 - exact allowlist 이메일 값도 public repository에 커밋하지 않고 환경변수에서만 관리한다.
 
@@ -38,7 +38,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 로그인 이메일에는 서비스 식별 정보와 OTP 코드를 포함한다.
 - 새 OTP를 발급하면 이전 미사용 OTP도 즉시 무효화한다.
 - OTP는 한 번 성공적으로 사용하면 다시 사용할 수 없다.
-- `AUTH_BYPASS_ENABLED=true` 이고 이메일이 `AUTH_BYPASS_EMAILS` allowlist에 있어도, bypass는 loopback/local origin에서만 OTP 입력 없는 로그인으로 허용한다.
+- `AUTH_BYPASS_ENABLED=true` 이고 이메일이 `AUTH_BYPASS_EMAILS` allowlist에 있어도, bypass는 non-production local runtime의 loopback/localhost 또는 RFC1918 private-LAN IP literal origin에서만 OTP 입력 없는 로그인으로 허용한다.
 - bypass는 기본적으로 비활성화 상태를 유지하고, local dev / local QA에서만 명시적으로 켠다.
 - backend가 user-facing OTP를 중개하더라도 `signInWithOtp` / `verifyOtp` 같은 일반 auth method는 publishable/anon auth client를 사용하고, `auth.admin.*`만 service-role/admin client를 사용한다.
 
@@ -62,6 +62,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 90일이 지나면 재로그인이 필요하다.
 - 다른 브라우저, 시크릿 창, 쿠키 삭제, 로그아웃 시에는 세션이 유지되지 않는다.
 - 앱 시작 시 session cookie가 있어도 `GET /api/auth/session` 또는 보호된 API 확인으로 유효성을 재검증한다.
+- local iPhone/private-LAN 검증도 same-origin browser/API path 위에서 backend-issued app session cookie를 그대로 사용한다. local dev 편의를 위해 별도의 cross-origin cookie/CORS 예외를 추가하지 않는다.
 
 ## Auth Rollout Readiness Policy
 - production의 auth/login/session 변경은 **배포 코드**, **런타임 환경변수**, **DB schema/migration**을 각각 독립된 rollout gate로 본다. 한 gate의 성공이 다른 gate의 성공을 의미하지 않는다.
@@ -81,7 +82,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 ## Environment Separation Policy
 - canonical 환경 축은 `local dev / test / remote preview-development / production`이다.
 - 각 환경은 secret과 mutable data target을 명시적으로 구분해야 하며, 특히 `production`은 다른 환경과 DB write target을 공유하면 안 된다.
-- local dev는 local Supabase와 loopback origin을 사용한다. local runtime은 remote project를 암묵적으로 기본값으로 삼지 않는다.
+- local dev의 official browser/API path는 `make dev`가 제공하는 same-origin local runtime이다. 이 경로는 local Supabase와 함께 loopback/localhost 또는 same-private-LAN의 RFC1918 IP literal origin에서 실행할 수 있으며, local runtime은 remote project를 암묵적으로 기본값으로 삼지 않는다.
 - `test`는 가능하면 전용 test DB 또는 전용 test Supabase target을 사용한다. 전용 target이 아직 없을 때만 reset 가능한 local DB를 짧은 범위의 isolated run에 재사용할 수 있다.
 - remote preview/development의 기본 역할은 production과 분리된 deploy/release 확인이다.
 - preview/development가 **UI/deploy separation check만 수행하는 경우**, 별도 backend target을 필수로 요구하지 않는다.
@@ -93,7 +94,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
   - Supabase server target: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`
   - browser bootstrap/public origin: `PUBLIC_APP_URL`
 - browser에 노출 가능한 key는 public client/runtime key로 한정한다. 예: `NEXT_PUBLIC_SUPABASE_*`, `PUBLIC_KAKAO_MAP_APP_KEY`.
-- bypass는 local dev 전용이다. preview/development/production에서 env가 남아 있더라도 runtime은 non-loopback bypass를 거절해야 하며, local bypass 사용은 운영 로그와 QA handoff에서 구분 가능해야 한다.
+- bypass는 local dev 전용이다. preview/development/production에서 env가 남아 있더라도 runtime은 bypass를 거절해야 하며, local dev에서도 trust 대상은 loopback/localhost + RFC1918 private-LAN IP literal로 한정한다. arbitrary hostname/public IP/preview/prod origin은 허용하지 않으며, local bypass 사용은 운영 로그와 QA handoff에서 구분 가능해야 한다.
 
 ## Authorization Policy
 - place 등록과 리뷰 작성은 인증된 사용자만 수행한다.
@@ -124,5 +125,6 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - OTP 요청 제한 초과와 잘못된/만료/무효화된 코드 사용은 별도 보안 이벤트로 기록한다.
 - bypass 로그인 사용, `request-otp` 수락/전달 실패는 운영 로그에서 구분 가능해야 한다.
 - 실제 bypass 이메일 값은 tracked code/docs/tests/examples에 직접 쓰지 않는다.
+- tracked code/docs/tests/examples/artifacts에는 실제 private-LAN IP, hostname, device name을 직접 쓰지 않고 `private LAN` 같은 일반화 표현만 사용한다.
 - production migration 뒤에는 auth-critical table(`user_profiles`, `app_sessions` 등) 존재 여부와 verify-otp smoke를 함께 확인해 schema readiness를 검증한다.
 - auth/login 복구 작업 뒤에는 직전 blocker와 동일한 error signature가 사라졌는지, 그리고 다음 단계 blocker가 새로 드러났는지를 latest production log로 다시 확인한다.
