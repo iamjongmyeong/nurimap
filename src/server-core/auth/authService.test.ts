@@ -217,6 +217,41 @@ describe('Sprint 18 otp auth request flow', () => {
     })
   })
 
+  it('allows bypass-only requests on a private-lan runtime origin even when PUBLIC_APP_URL is overridden to production', async () => {
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
+    generateLinkMock.mockResolvedValue({
+      data: {
+        properties: {
+          hashed_token: 'bypass-token-hash',
+          verification_type: 'magiclink',
+        },
+      },
+      error: null,
+    })
+
+    const result = await requestLoginOtp('bypass.user@example.com', {
+      requireBypass: true,
+      runtimeOrigin: 'http://192.168.0.24:5173',
+    })
+
+    expect(result).toEqual({
+      status: 'success',
+      mode: 'bypass',
+      message: '테스트 계정으로 바로 로그인합니다.',
+      tokenHash: 'bypass-token-hash',
+      verificationType: 'magiclink',
+    })
+    expect(generateLinkMock).toHaveBeenCalledWith({
+      type: 'magiclink',
+      email: 'bypass.user@example.com',
+      options: {
+        redirectTo: 'http://192.168.0.24:5173',
+      },
+    })
+  })
+
   it('does not trust a local runtime origin override for bypass in production mode', async () => {
     process.env.NODE_ENV = 'production'
     process.env.AUTH_BYPASS_ENABLED = 'true'
@@ -226,6 +261,24 @@ describe('Sprint 18 otp auth request flow', () => {
     const result = await requestLoginOtp('bypass.user@example.com', {
       requireBypass: true,
       runtimeOrigin: 'http://localhost:5173',
+    })
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 'bypass_required',
+      message: '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.',
+    })
+    expect(generateLinkMock).not.toHaveBeenCalled()
+  })
+
+  it('does not trust a public ipv4 runtime origin override for bypass', async () => {
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+    process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
+
+    const result = await requestLoginOtp('bypass.user@example.com', {
+      requireBypass: true,
+      runtimeOrigin: 'http://8.8.8.8:5173',
     })
 
     expect(result).toEqual({
@@ -993,6 +1046,47 @@ describe('Sprint 18 otp auth request flow', () => {
     })
   })
 
+  it('accepts token-hash verification on a private-lan runtime origin even when PUBLIC_APP_URL is overridden to production', async () => {
+    process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'bypass.user@example.com',
+          app_metadata: {
+            nurimap_auth: {
+              day_key: '2026-03-22',
+              day_count: 1,
+              last_requested_at: '2026-03-22T00:00:00.000Z',
+              last_verified_at: null,
+            },
+          },
+          user_metadata: {},
+        },
+        session: {
+          access_token: 'provider-access-token',
+        },
+      },
+      error: null,
+    })
+
+    const result = await verifyLoginOtp({
+      email: '',
+      runtimeOrigin: 'http://192.168.0.24:5173',
+      token: '',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })
+
+    expect(result.status).toBe('success')
+    expect(verifyOtpMock).toHaveBeenCalledWith({
+      token_hash: 'token-hash',
+      type: 'magiclink',
+    })
+  })
+
   it('does not trust a local runtime origin override for token-hash verification in production mode', async () => {
     process.env.NODE_ENV = 'production'
     process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
@@ -1002,6 +1096,26 @@ describe('Sprint 18 otp auth request flow', () => {
     await expect(verifyLoginOtp({
       email: '',
       runtimeOrigin: 'http://localhost:5173',
+      token: '',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })).resolves.toEqual({
+      status: 'error',
+      message: '이 코드는 사용할 수 없어요.',
+    })
+
+    expect(verifyOtpMock).not.toHaveBeenCalled()
+    expect(createAppSessionMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects token-hash verification on a public ipv4 runtime origin', async () => {
+    process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+
+    await expect(verifyLoginOtp({
+      email: '',
+      runtimeOrigin: 'http://8.8.8.8:5173',
       token: '',
       tokenHash: 'token-hash',
       verificationType: 'magiclink',
