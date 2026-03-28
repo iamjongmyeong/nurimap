@@ -105,6 +105,26 @@ const createFetchMock = () =>
       return mockPlaceEntrySuccess(buildCreatedPlacePayload(body))
     }
 
+    if (url === '/api/place-lookups') {
+      return new Response(JSON.stringify({
+        status: 'success',
+        data: {
+          naver_place_id: '123456789',
+          canonical_url: 'https://map.naver.com/p/entry/place/123456789',
+          name: '네이버 프리필 장소',
+          road_address: '서울 마포구 연남로 1',
+          land_lot_address: null,
+          representative_address: '서울 마포구 연남로 1',
+          latitude: 37.558721,
+          longitude: 126.92444,
+          coordinate_source: 'naver',
+        },
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     return new Response(JSON.stringify({ error: { message: `unexpected request: ${url} ${init?.method ?? 'GET'}` } }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -132,8 +152,21 @@ const mockPlaceEntrySuccess = (overrides: Record<string, unknown> = {}) =>
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   )
 
+const openPlaceAddEntryScreen = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: '장소 추가' }))
+  await screen.findByTestId('place-add-url-entry-screen')
+}
+
+const openDirectEntryForm = async (user: ReturnType<typeof userEvent.setup>) => {
+  await openPlaceAddEntryScreen(user)
+  await user.click(screen.getByTestId('place-add-direct-entry-button'))
+  await screen.findByRole('heading', { name: '직접 장소 등록' })
+}
+
 describe('Plan 05 direct place entry shell flow', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
+    vi.spyOn(window, 'alert').mockImplementation(() => {})
     resetAppShellStore()
     window.history.replaceState({}, '', '/')
     globalThis.fetch = createFetchMock() as typeof fetch
@@ -143,18 +176,24 @@ describe('Plan 05 direct place entry shell flow', () => {
     globalThis.fetch = originalFetch
   })
 
-  it('replaces the desktop list area with the direct-entry form', async () => {
+  it('opens the desktop sidebar on the URL-entry screen first', async () => {
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
 
     expect(screen.getByTestId('place-list-ready')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '장소 추가' }))
+    await openPlaceAddEntryScreen(user)
 
     expect(window.location.pathname).toBe('/add-place')
     expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
-    expect(screen.getByRole('heading', { name: '직접 장소 등록' })).toBeInTheDocument()
+    expect(screen.getByTestId('place-add-url-entry-helper')).toBeInTheDocument()
+    expect(screen.getByText('네이버 지도에서 링크를 복사해서 입력해주세요.')).toBeInTheDocument()
+    expect(screen.getByText('URL')).toBeInTheDocument()
+    expect(screen.getByTestId('place-add-url-entry-input')).toHaveAttribute('placeholder', '네이버 지도 URL')
+    expect(screen.getByRole('button', { name: '장소 정보 가져오기' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '직접 입력하기' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '직접 장소 등록' })).not.toBeInTheDocument()
     expect(screen.queryByTestId('place-list-ready')).not.toBeInTheDocument()
   })
 
@@ -163,7 +202,7 @@ describe('Plan 05 direct place entry shell flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '장소 추가' }))
+    await openDirectEntryForm(user)
 
     const orderedFields = [
       screen.getByTestId('place-name-field'),
@@ -188,12 +227,241 @@ describe('Plan 05 direct place entry shell flow', () => {
 
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '장소 추가' }))
+    await openPlaceAddEntryScreen(user)
 
     expect(window.location.pathname).toBe('/add-place')
     expect(screen.getByTestId('mobile-place-add-page')).toBeInTheDocument()
+    expect(screen.getByTestId('place-add-url-entry-screen')).toBeInTheDocument()
     expect(screen.queryByTestId('map-canvas')).not.toBeInTheDocument()
     expect(screen.queryByTestId('mobile-bottom-tab-bar')).not.toBeInTheDocument()
+  })
+
+  it('prefills name and address after a successful lookup', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openPlaceAddEntryScreen(user)
+    await user.type(screen.getByLabelText('URL'), 'https://map.naver.com/p/entry/place/123456789')
+    await user.click(screen.getByRole('button', { name: '장소 정보 가져오기' }))
+
+    expect(await screen.findByRole('heading', { name: '직접 장소 등록' })).toBeInTheDocument()
+    expect(screen.getByLabelText('이름')).toHaveValue('네이버 프리필 장소')
+    expect(screen.getByLabelText('주소')).toHaveValue('서울 마포구 연남로 1')
+  })
+
+  it('falls back to the manual form when lookup fails', async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url === '/api/places') {
+        return new Response(JSON.stringify({ status: 'success', places: MOCK_PLACES }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url === '/api/place-lookups') {
+        return new Response(JSON.stringify({
+          status: 'error',
+          error: {
+            code: 'lookup_failed',
+            message: '장소 정보를 가져오지 못했어요. 다시 시도해 주세요.',
+          },
+        }), {
+          status: 502,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      const placeId = getPlaceIdFromDetailUrl(url)
+      if (placeId) {
+        const place = cloneMockPlace(placeId)
+        return new Response(JSON.stringify(place ? { status: 'success', place } : { error: { message: 'not found' } }), {
+          status: place ? 200 : 404,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url === '/api/place-submissions') {
+        const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+        return mockPlaceEntrySuccess(buildCreatedPlacePayload(body))
+      }
+
+      return new Response(JSON.stringify({ error: { message: 'unexpected request' } }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }) as typeof fetch
+
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openPlaceAddEntryScreen(user)
+    await user.type(screen.getByLabelText('URL'), 'https://map.naver.com/p/entry/place/bad')
+    await user.click(screen.getByRole('button', { name: '장소 정보 가져오기' }))
+
+    expect(window.alert).toHaveBeenCalledWith('장소 정보 추출에 실패했어요 🥲\n장소 정보를 직접 입력해주세요.')
+    expect(await screen.findByRole('heading', { name: '직접 장소 등록' })).toBeInTheDocument()
+    expect(screen.getByLabelText('이름')).toHaveValue('')
+    expect(screen.getByLabelText('주소')).toHaveValue('')
+  })
+
+  it('keeps invalid_url errors on the URL-entry screen and clears the inline error when the input changes', async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url === '/api/places') {
+        return new Response(JSON.stringify({ status: 'success', places: MOCK_PLACES }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url === '/api/place-lookups') {
+        return new Response(JSON.stringify({
+          status: 'error',
+          error: {
+            code: 'invalid_url',
+            message: '네이버 지도 URL을 입력해주세요.',
+          },
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      const placeId = getPlaceIdFromDetailUrl(url)
+      if (placeId) {
+        const place = cloneMockPlace(placeId)
+        return new Response(JSON.stringify(place ? { status: 'success', place } : { error: { message: 'not found' } }), {
+          status: place ? 200 : 404,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ error: { message: 'unexpected request' } }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }) as typeof fetch
+
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openPlaceAddEntryScreen(user)
+    const urlInput = screen.getByLabelText('URL')
+
+    await user.type(urlInput, 'https://example.com/nope')
+    await user.click(screen.getByRole('button', { name: '장소 정보 가져오기' }))
+
+    expect(screen.getByTestId('place-add-url-entry-screen')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '직접 장소 등록' })).not.toBeInTheDocument()
+    expect(window.alert).not.toHaveBeenCalled()
+    expect(urlInput).toHaveAttribute('aria-invalid', 'true')
+    expect(urlInput).toHaveClass('border-[#e53935]', 'focus:border-[#e53935]')
+    expect(screen.getByTestId('place-add-url-entry-error')).toHaveTextContent('네이버 지도 URL을 입력해주세요.')
+
+    await user.type(urlInput, '1')
+
+    expect(urlInput).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.queryByTestId('place-add-url-entry-error')).not.toBeInTheDocument()
+  })
+
+  it('disables lookup before a url is entered and shows only a spinner while loading', async () => {
+    let resolveLookup!: (response: Response) => void
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url === '/api/places') {
+        return new Response(JSON.stringify({ status: 'success', places: MOCK_PLACES }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url === '/api/place-lookups') {
+        return await new Promise<Response>((resolve) => {
+          resolveLookup = resolve
+        })
+      }
+
+      const placeId = getPlaceIdFromDetailUrl(url)
+      if (placeId) {
+        const place = cloneMockPlace(placeId)
+        return new Response(JSON.stringify(place ? { status: 'success', place } : { error: { message: 'not found' } }), {
+          status: place ? 200 : 404,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url === '/api/place-submissions') {
+        const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+        return mockPlaceEntrySuccess(buildCreatedPlacePayload(body))
+      }
+
+      return new Response(JSON.stringify({ error: { message: 'unexpected request' } }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }) as typeof fetch
+
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openPlaceAddEntryScreen(user)
+
+    const lookupButton = screen.getByTestId('place-add-url-entry-submit-button')
+    expect(lookupButton).toBeDisabled()
+    expect(lookupButton).toHaveClass('disabled:opacity-50')
+
+    await user.type(screen.getByLabelText('URL'), 'https://map.naver.com/p/entry/place/123456789')
+    expect(lookupButton).toBeEnabled()
+
+    const clickPromise = user.click(lookupButton)
+
+    await waitFor(() => {
+      expect(lookupButton).toBeDisabled()
+      expect(lookupButton).toHaveAccessibleName('불러오는 중')
+      expect(screen.getByTestId('place-add-url-entry-submit-spinner')).toBeInTheDocument()
+      expect(lookupButton).not.toHaveTextContent('장소 정보 가져오기')
+    })
+
+    resolveLookup(new Response(JSON.stringify({
+      status: 'success',
+      data: {
+        naver_place_id: '123456789',
+        canonical_url: 'https://map.naver.com/p/entry/place/123456789',
+        name: '네이버 프리필 장소',
+        road_address: '서울 마포구 연남로 1',
+        land_lot_address: null,
+        representative_address: '서울 마포구 연남로 1',
+        latitude: 37.558721,
+        longitude: 126.92444,
+        coordinate_source: 'naver',
+      },
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+
+    await clickPromise
+  })
+
+  it('returns from the manual form to the URL-entry step on back', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openDirectEntryForm(user)
+
+    await user.click(screen.getByTestId('place-add-back-button'))
+
+    expect(await screen.findByTestId('place-add-url-entry-screen')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '직접 장소 등록' })).not.toBeInTheDocument()
   })
 
   it('submits the direct-entry draft on register and shows the submit loading state', async () => {
@@ -210,7 +478,7 @@ describe('Plan 05 direct place entry shell flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '장소 추가' }))
+    await openDirectEntryForm(user)
     await user.type(screen.getByLabelText('이름'), '등록 테스트 장소')
     await user.type(screen.getByLabelText('주소'), '서울 마포구 등록로 1')
     const submitButton = screen.getByTestId('place-submit-button')
@@ -267,7 +535,7 @@ describe('Plan 05 direct place entry shell flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '장소 추가' }))
+    await openDirectEntryForm(user)
     await user.type(screen.getByLabelText('이름'), '중복 방지 테스트 장소')
     await user.type(screen.getByLabelText('주소'), '서울 마포구 등록로 1')
     const submitButton = screen.getByTestId('place-submit-button')

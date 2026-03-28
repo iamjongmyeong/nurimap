@@ -1,23 +1,160 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
-  __primePlaceLookupCachesForTests,
   __getPlaceLookupCacheSizesForTests,
   __resetPlaceLookupCaches,
   lookupPlaceFromRawUrl,
 } from './placeLookupService'
 
 const originalFetch = globalThis.fetch
+const originalKakaoRestApiKey = process.env.KAKAO_REST_API_KEY
 const sprint13FavoriteUrl = 'https://map.naver.com/p/favorite/myPlace/folder/52f873516c87492794d35b0f62ebe0f1/place/1648359924?c=16.00,0,0,0,dh&at=a&placePath=/home?from=map&fromPanelNum=2&timestamp=202603122222&locale=ko&svcName=map_pcv5'
 const sprint13SearchUrl = 'https://map.naver.com/p/search/%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5/place/1648359924?c=15.95,0,0,0,dh&placePath=/home?bk_query=%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5&entry=bmp&from=map&fromPanelNum=2&timestamp=202603122222&locale=ko&svcName=map_pcv5&searchText=%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5'
+
+const createSummaryPayload = ({
+  address = '서울 마포구 테스트동 1-1',
+  latitude = 37.558721,
+  longitude = 126.92444,
+  name,
+  placeId,
+  roadAddress = '서울 마포구 테스트로 1',
+}: {
+  address?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  name: string
+  placeId: string
+  roadAddress?: string | null
+}) => ({
+  data: {
+    placeDetail: {
+      id: placeId,
+      name,
+      coordinate: {
+        latitude,
+        longitude,
+      },
+      address: {
+        address,
+        roadAddress,
+      },
+    },
+  },
+})
 
 describe('Plan 05 place lookup service', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     __resetPlaceLookupCaches()
+    process.env.NAVER_PLACE_LOOKUP_ALLOW_NETWORK_IN_TEST = 'true'
+    delete process.env.KAKAO_REST_API_KEY
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const url = String(input)
+
+      if (url.includes('/p/api/place/summary/123456789')) {
+        expect(init?.headers).toMatchObject({
+          Referer: 'https://map.naver.com/p/entry/place/123456789',
+        })
+        return new Response(JSON.stringify(createSummaryPayload({
+          placeId: '123456789',
+          name: '누리 테스트 식당',
+          roadAddress: '서울 마포구 양화로19길 22-16',
+          address: '서울 마포구 서교동 368-22',
+          latitude: 37.558721,
+          longitude: 126.92444,
+        })), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.includes('/p/api/place/summary/1648359924')) {
+        return new Response(JSON.stringify(createSummaryPayload({
+          placeId: '1648359924',
+          name: '주막보리밥',
+          roadAddress: '서울 마포구 성미산로 190-31',
+          address: '서울 마포구 연남동 240-34',
+          latitude: 37.566123,
+          longitude: 126.922345,
+        })), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.includes('/p/api/place/summary/234567890')) {
+        return new Response(JSON.stringify(createSummaryPayload({
+          placeId: '234567890',
+          name: '도로명 fallback 카페',
+          roadAddress: '서울 마포구 테스트로 10',
+          address: '서울 마포구 테스트동 10-1',
+          latitude: null,
+          longitude: null,
+        })), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.includes('/p/api/place/summary/345678901')) {
+        return new Response(JSON.stringify(createSummaryPayload({
+          placeId: '345678901',
+          name: '지번 fallback 식당',
+          roadAddress: '도로명 없음 테스트',
+          address: '서울 마포구 지번테스트 35-1',
+          latitude: null,
+          longitude: null,
+        })), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.includes('/p/api/place/summary/456789012')) {
+        return new Response(JSON.stringify({ error: { message: 'not found' } }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url.includes('/p/api/place/summary/567890123')) {
+        return new Response(JSON.stringify(createSummaryPayload({
+          placeId: '567890123',
+          name: '좌표 실패 장소',
+          roadAddress: '존재하지 않는 도로명 주소 99999',
+          address: '존재하지 않는 지번 주소 99999',
+          latitude: null,
+          longitude: null,
+        })), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (url === 'https://naver.me/I55a1Ogw') {
+        expect(init).toMatchObject({
+          method: 'HEAD',
+          redirect: 'manual',
+        })
+        return new Response(null, {
+          status: 307,
+          headers: {
+            Location: 'https://map.naver.com/p/entry/place/1648359924?placePath=%2Fhome',
+          },
+        })
+      }
+
+      throw new Error(`unexpected request: ${url}`)
+    }) as typeof fetch
   })
 
   afterEach(() => {
     globalThis.fetch = originalFetch
+    delete process.env.NAVER_PLACE_LOOKUP_ALLOW_NETWORK_IN_TEST
+    if (originalKakaoRestApiKey === undefined) {
+      delete process.env.KAKAO_REST_API_KEY
+      return
+    }
+    process.env.KAKAO_REST_API_KEY = originalKakaoRestApiKey
   })
 
   it('returns fixture place data successfully', async () => {
@@ -53,27 +190,6 @@ describe('Plan 05 place lookup service', () => {
   })
 
   it('resolves the Sprint 13 naver short url before lookup', async () => {
-    globalThis.fetch = vi.fn(async (input, init) => {
-      if (String(input) === 'https://naver.me/I55a1Ogw') {
-        expect(init).toMatchObject({
-          method: 'HEAD',
-          redirect: 'manual',
-        })
-
-        return new Response(null, {
-          status: 307,
-          headers: {
-            Location: 'https://map.naver.com/p/entry/place/1648359924?placePath=%2Fhome',
-          },
-        })
-      }
-
-      return new Response(JSON.stringify({ documents: [] }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }) as typeof fetch
-
     const result = await lookupPlaceFromRawUrl('https://naver.me/I55a1Ogw')
 
     expect(result.status).toBe('success')
@@ -126,38 +242,41 @@ describe('Plan 05 place lookup service', () => {
     })
   })
 
-  it('returns a coordinate failure when all coordinate strategies fail', async () => {
-    globalThis.fetch = vi.fn(async () =>
-      new Response(JSON.stringify({ documents: [] }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    ) as typeof fetch
-    process.env.KAKAO_REST_API_KEY = 'test-rest-key'
-
+  it('still succeeds when coordinates remain unavailable after fallback attempts', async () => {
     const result = await lookupPlaceFromRawUrl('https://map.naver.com/p/entry/place/567890123')
 
     expect(result).toEqual({
-      status: 'error',
-      error: {
-        code: 'coordinates_unavailable',
-        message: '좌표를 확인하지 못했어요. 다시 시도해 주세요.',
+      status: 'success',
+      data: {
+        naver_place_id: '567890123',
+        canonical_url: 'https://map.naver.com/p/entry/place/567890123',
+        name: '좌표 실패 장소',
+        road_address: '존재하지 않는 도로명 주소 99999',
+        land_lot_address: '존재하지 않는 지번 주소 99999',
+        representative_address: '존재하지 않는 도로명 주소 99999',
+        latitude: null,
+        longitude: null,
+        coordinate_source: 'unavailable',
       },
     })
   })
 
   it('reuses cached lookup results for the same canonical URL', async () => {
-    const fetchSpy = vi.fn(async () =>
-      new Response(JSON.stringify({ documents: [{ x: '126.925301', y: '37.557812' }] }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    ) as typeof fetch
+    const fetchSpy = vi.fn(async () => new Response(JSON.stringify(createSummaryPayload({
+      placeId: '123456789',
+      name: '누리 테스트 식당',
+      roadAddress: '서울 마포구 양화로19길 22-16',
+      address: '서울 마포구 서교동 368-22',
+      latitude: 37.558721,
+      longitude: 126.92444,
+    })), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })) as typeof fetch
     globalThis.fetch = fetchSpy
-    process.env.KAKAO_REST_API_KEY = 'test-rest-key'
 
-    const first = await lookupPlaceFromRawUrl('https://map.naver.com/p/entry/place/567890123')
-    const second = await lookupPlaceFromRawUrl('https://map.naver.com/p/entry/place/567890123')
+    const first = await lookupPlaceFromRawUrl('https://map.naver.com/p/entry/place/123456789')
+    const second = await lookupPlaceFromRawUrl('https://map.naver.com/p/entry/place/123456789')
 
     expect(first.status).toBe('success')
     expect(second.status).toBe('success')
@@ -166,37 +285,22 @@ describe('Plan 05 place lookup service', () => {
 
   it('keeps lookup and geocode caches bounded', async () => {
     for (let index = 0; index < 220; index += 1) {
-      __primePlaceLookupCachesForTests({
-        geocodeEntries: [
-          {
-            key: `road-${index}`,
-            value: { latitude: 37.55 + index / 10_000, longitude: 126.92 + index / 10_000 },
-          },
-        ],
-        lookupEntries: [
-          {
-            key: `canonical-${index}`,
-            value: {
-              status: 'success',
-              data: {
-                naver_place_id: String(index),
-                canonical_url: `https://map.naver.com/p/entry/place/${index}`,
-                name: `장소 ${index}`,
-                road_address: '서울 마포구 테스트로 1',
-                land_lot_address: null,
-                representative_address: '서울 마포구 테스트로 1',
-                latitude: 37.55,
-                longitude: 126.92,
-                coordinate_source: 'naver',
-              },
-            },
-          },
-        ],
-      })
+      ;(globalThis.fetch as typeof fetch) = vi.fn(async () => new Response(JSON.stringify(createSummaryPayload({
+        placeId: String(index),
+        name: `장소 ${index}`,
+        roadAddress: '서울 마포구 테스트로 1',
+        address: '서울 마포구 테스트동 1-1',
+        latitude: 37.55,
+        longitude: 126.92,
+      })), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })) as typeof fetch
+      await lookupPlaceFromRawUrl(`https://map.naver.com/p/entry/place/${index}`)
     }
 
     expect(__getPlaceLookupCacheSizesForTests()).toEqual({
-      geocode: 200,
+      geocode: 0,
       lookup: 200,
     })
   })

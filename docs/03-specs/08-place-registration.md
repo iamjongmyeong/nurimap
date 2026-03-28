@@ -1,9 +1,10 @@
 # Spec: Place Registration
 
 ## Summary
-place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
+URL-entry-first place 등록 흐름과 저장 전 검증 규칙을 정의한다.
 
 ## Scope
+- Naver URL entry step
 - 등록 폼의 기능 요구
 - 이름/주소 입력
 - 장소 구분 입력
@@ -19,7 +20,13 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - 저장 비동기 상태
 
 ## Functional Requirements
-- place 등록은 desktop에서는 기존 sidebar 안의 단일 폼으로, mobile에서는 canonical `/add-place` full-screen page의 단일 폼으로 구성한다.
+- place 등록은 desktop에서는 기존 sidebar 안의 staged flow로, mobile에서는 canonical `/add-place` full-screen page의 staged flow로 구성한다.
+- `/add-place` 진입 시 사용자는 먼저 Naver URL entry step을 본다.
+- URL entry step에서 사용자는 `장소 정보 가져오기` 또는 `직접 입력하기`를 선택할 수 있어야 한다.
+- URL lookup 성공 시 기존 manual add-place form으로 이어지되 `name`과 `road_address`만 prefill하고, 기존 form 구조/UX/UI/submit/review/success navigation은 그대로 유지된다.
+- non-empty URL에 대한 lookup 실패 중 `invalid_url`은 URL entry step에 머무르며 inline field error로 안내해야 한다.
+- `invalid_url`이 아닌 non-empty URL lookup 실패는 안내 후 기존 manual add-place form으로 이어져 수동 등록을 계속할 수 있어야 한다.
+- manual form에서 뒤로가기를 누르면 URL entry step으로 돌아가야 한다.
 - 필수 입력은 `name`, `road_address`, `place_type`, `zeropay_status`, `rating_score`다.
 - `land_lot_address`와 `review_content`는 선택 입력이다.
 - `place_type = restaurant | cafe`
@@ -44,7 +51,8 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - 저장 상태는 `place_submit = idle | submitting | error`로 관리한다.
 
 ## Canonical Runtime / API Contract
-- canonical direct-entry normalization/lookup endpoint는 `POST /api/place-lookups`다. raw 입력(`name`, `roadAddress`, `landLotAddress?`)을 받아 backend가 geocoding/정규화/좌표 확보를 수행한다.
+- canonical URL normalization/lookup endpoint는 `POST /api/place-lookups`다. raw Naver Map URL을 받아 backend가 redirect resolution / normalize / placeId extraction / prefill data lookup을 수행한다.
+- place lookup은 manual registration의 전처리 단계이며, save-time geocoding/duplicate/merge contract와는 분리된다.
 - canonical place registration endpoint는 `POST /api/place-submissions`다. 이 요청은 authenticated app session + CSRF cookie/header pair가 있을 때만 허용한다.
 - `POST /api/place-submissions`는 lookup 결과와 draft(`place_type`, `zeropay_status`, `rating_score`, `review_content`)를 받아 새 place 생성 또는 bounded duplicate conflict를 반환한다.
 - duplicate가 감지되면 서버는 기존 place를 즉시 mutate하지 않고 `409 { status: 'confirm_required', submissionId, reason, place, confirmMessage }` shape로 확인 흐름을 반환한다.
@@ -52,7 +60,13 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - legacy `POST /api/place-entry` compatibility wrapper는 제거되었다. place registration은 canonical `place-lookups` + `place-submissions` + `place-submissions/:submissionId/confirmations` flow만 사용한다.
 
 ## Acceptance Criteria
-- desktop place 등록은 기존 sidebar 안의 단일 폼으로, mobile place 등록은 `/add-place` full-screen page의 단일 폼으로 진행된다.
+- desktop place 등록은 기존 sidebar 안의 staged flow로, mobile place 등록은 `/add-place` full-screen page의 staged flow로 진행된다.
+- `/add-place` 진입 시 URL entry step이 먼저 보인다.
+- URL entry step에서 lookup 성공 시 기존 manual form이 열리고 `name`과 `road_address`가 미리 채워진다.
+- URL entry step에서 `invalid_url`은 inline field error를 보여주고 URL entry step에 머문다.
+- URL entry step에서 `invalid_url`이 아닌 non-empty URL lookup 실패는 안내 후 기존 manual form이 열리고 사용자는 계속 등록할 수 있다.
+- URL entry step에서 직접 입력으로 바로 이동할 수 있다.
+- manual form에서 뒤로가기를 누르면 URL entry step으로 돌아간다.
 - 이름, 주소, 장소 구분, 제로페이, 평가 입력이 가능하다.
 - 후기 입력은 여러 줄 입력을 지원한다.
 - 초기 별점은 기본적으로 5점 선택 상태다.
@@ -74,32 +88,38 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - 저장 중에는 진행 중 상태가 보인다.
 
 ## TDD Implementation Order
-1. 단일 등록 폼 렌더링 테스트를 작성한다.
-2. 핵심 입력 필드 존재 테스트를 작성한다.
-3. 장소 구분/제로페이 선택 테스트를 작성한다.
-4. 초기 별점 기본값 테스트를 작성한다.
-5. 별점 변경 테스트를 작성한다.
-6. 환경별 별점 입력 테스트를 작성한다.
-7. 후기 길이 clamp 테스트를 작성한다.
-8. 후기 multiline 입력 테스트를 작성한다.
-9. 좌표 없는 등록 차단 테스트를 작성한다.
-10. 초기 리뷰 생성 테스트를 작성한다.
-11. geocoding 실패 후 현재 등록 맥락 유지 테스트를 작성한다.
-12. 중복 장소 확인 흐름 표시 테스트를 작성한다.
-13. 중복 장소 확인 `확인` 처리 테스트를 작성한다.
-14. 중복 장소 확인 `취소` 유지 테스트를 작성한다.
-15. 기존 review overwrite 테스트를 작성한다.
-16. 후기 비어 있음 시 평가만 갱신 테스트를 작성한다.
-17. dirty state 뒤로가기/닫기 확인 테스트를 작성한다.
-18. 저장 중 진행 상태 테스트를 작성한다.
-19. 저장 중 제출 버튼 비활성화 테스트를 작성한다.
-20. 저장 실패 시 입력값 유지 테스트를 작성한다.
-21. 등록 성공 후 지도/목록 갱신 테스트를 작성한다.
-22. 등록 성공 후 상세 이동 테스트를 작성한다.
-23. 구현한다.
-24. 전체 테스트를 통과시킨다.
+1. URL entry step 렌더링 테스트를 작성한다.
+2. URL entry lookup/direct-entry/back flow 테스트를 작성한다.
+3. manual form prefill handoff 테스트를 작성한다.
+4. 기존 manual form 렌더링 회귀 테스트를 유지/보강한다.
+5. 장소 구분/제로페이 선택 테스트를 유지한다.
+6. 초기 별점 기본값 테스트를 유지한다.
+7. 별점 변경 테스트를 유지한다.
+8. 환경별 별점 입력 테스트를 유지한다.
+9. 후기 길이 clamp 테스트를 유지한다.
+10. 후기 multiline 입력 테스트를 유지한다.
+11. 좌표 없는 등록 차단 테스트를 유지한다.
+12. 초기 리뷰 생성 테스트를 유지한다.
+13. geocoding 실패 후 현재 등록 맥락 유지 테스트를 유지한다.
+14. 중복 장소 확인 흐름 표시 테스트를 유지한다.
+15. 중복 장소 확인 `확인` 처리 테스트를 유지한다.
+16. 중복 장소 확인 `취소` 유지 테스트를 유지한다.
+17. 기존 review overwrite 테스트를 유지한다.
+18. 후기 비어 있음 시 평가만 갱신 테스트를 유지한다.
+19. dirty state 뒤로가기/닫기 확인 테스트를 유지한다.
+20. 저장 중 진행 상태 테스트를 유지한다.
+21. 저장 중 제출 버튼 비활성화 테스트를 유지한다.
+22. 저장 실패 시 입력값 유지 테스트를 유지한다.
+23. 등록 성공 후 지도/목록 갱신 테스트를 유지한다.
+24. 등록 성공 후 상세 이동 테스트를 유지한다.
+25. 구현한다.
+26. 전체 테스트를 통과시킨다.
 
 ## Required Test Cases
+- URL entry step 렌더링
+- URL entry lookup success / `invalid_url` inline error / other failure fallback / direct bypass / back flow
+- `invalid_url` inline error clear on edit
+- manual form handoff with name/address prefill
 - 단일 등록 폼 렌더링
 - 핵심 입력 필드 존재
 - 장소 구분 선택
@@ -127,7 +147,13 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - 등록 성공 시 결과 place 상세 이동
 
 ## Manual QA Checklist
-- desktop place 등록은 기존 sidebar 안의 단일 폼으로 보이고, mobile place 등록은 `/add-place` full-screen page로 보인다.
+- desktop place 등록은 기존 sidebar 안의 staged flow로 보이고, mobile place 등록은 `/add-place` full-screen page의 staged flow로 보인다.
+- URL entry step이 먼저 보인다.
+- URL lookup 성공 시 manual form에 name/address가 미리 채워진다.
+- 잘못된 URL 형식은 URL entry step에 머무르며 inline error로 안내된다.
+- URL lookup 실패 중 `invalid_url`이 아닌 경우에는 manual form으로 넘어가 계속 등록할 수 있다.
+- 직접 입력하기로 바로 manual form에 갈 수 있다.
+- manual form에서 뒤로가기를 누르면 URL entry step으로 돌아간다.
 - 장소 구분과 제로페이 선택이 가능하다.
 - 평가는 별점 입력으로 동작한다.
 - 기본 상태에서 5점이 선택되어 있다.

@@ -152,6 +152,8 @@ const mockPlaceEntrySuccess = (overrides: Record<string, unknown> = {}) =>
 
 const openDirectEntryForm = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('button', { name: '장소 추가' }))
+  await screen.findByTestId('place-add-url-entry-screen')
+  await user.click(screen.getByTestId('place-add-direct-entry-button'))
   await screen.findByRole('heading', { name: '직접 장소 등록' })
 }
 
@@ -556,7 +558,7 @@ describe('Plan 06 place registration flow', () => {
     expect(screen.getByTestId('review-content-input')).toHaveValue('취소 후 유지')
   })
 
-  it('closes immediately without a dirty close confirm', async () => {
+  it('returns to the url-entry step without a dirty close confirm', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     setViewport(1280)
     const user = userEvent.setup()
@@ -567,8 +569,9 @@ describe('Plan 06 place registration flow', () => {
     await user.click(screen.getByRole('button', { name: '뒤로가기' }))
 
     expect(confirmSpy).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('desktop-place-add-panel')).not.toBeInTheDocument()
-    expect(screen.getByTestId('place-list-ready')).toBeInTheDocument()
+    expect(screen.getByTestId('desktop-place-add-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('place-add-url-entry-screen')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '직접 장소 등록' })).not.toBeInTheDocument()
   })
 
   it('shows the submitting state and disables the submit button while saving', async () => {
@@ -605,10 +608,10 @@ describe('Plan 06 place registration flow', () => {
   it('shows only a spinner while the request is in progress', async () => {
     globalThis.fetch = vi.fn(() => new Promise<Response>(() => {})) as typeof fetch
     setViewport(1280)
+    const user = userEvent.setup()
     render(<App />)
 
-    fireEvent.click(screen.getByRole('button', { name: '장소 추가' }))
-    await screen.findByRole('heading', { name: '직접 장소 등록' })
+    await openDirectEntryForm(user)
     fireEvent.change(screen.getByLabelText('이름'), { target: { value: '등록 테스트 장소' } })
     fireEvent.change(screen.getByLabelText('주소'), { target: { value: '서울 마포구 등록로 1' } })
 

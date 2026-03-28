@@ -17,13 +17,18 @@ export type PlaceLookupSuccess = {
     road_address: string | null
     land_lot_address: string | null
     representative_address: string | null
-    latitude: number
-    longitude: number
-    coordinate_source: 'naver' | 'road_address_geocode' | 'land_lot_address_geocode'
+    latitude: number | null
+    longitude: number | null
+    coordinate_source: 'naver' | 'road_address_geocode' | 'land_lot_address_geocode' | 'unavailable'
   }
 }
 
-export type PlaceLookupErrorCode = 'lookup_failed' | 'coordinates_unavailable'
+export type PlaceLookupErrorCode =
+  | 'invalid_url'
+  | 'redirect_failed'
+  | 'place_id_extraction_failed'
+  | 'lookup_failed'
+  | 'coordinates_unavailable'
 
 export type PlaceLookupError = {
   status: 'error'

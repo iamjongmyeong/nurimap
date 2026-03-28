@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { NAVER_URL_ERROR_MESSAGE, normalizeNaverMapUrl } from './naverUrl'
+import { NAVER_PLACE_ID_ERROR_MESSAGE, NAVER_URL_ERROR_MESSAGE, normalizeNaverMapUrl } from './naverUrl'
 
 const validSearchUrl = 'https://map.naver.com/p/search/%EC%B9%B4%ED%8E%98/place/123456789?c=15.00,0,0,0,dh'
 const validEntryUrl = 'https://map.naver.com/p/entry/place/987654321?placePath=%2Fhome'
 const validFavoriteUrl = 'https://map.naver.com/p/favorite/myPlace/folder/52f873516c87492794d35b0f62ebe0f1/place/1648359924?c=16.00,0,0,0,dh'
+const validMobileUrl = 'https://m.place.naver.com/restaurant/38282260/home?entry=pll'
 
 describe('Plan 04 naver url normalization', () => {
   it('recognizes the search place url shape', () => {
@@ -27,6 +28,13 @@ describe('Plan 04 naver url normalization', () => {
     })
   })
 
+  it('recognizes the mobile place url shape', () => {
+    expect(normalizeNaverMapUrl(validMobileUrl)).toEqual({
+      canonicalUrl: 'https://map.naver.com/p/entry/place/38282260',
+      naverPlaceId: '38282260',
+    })
+  })
+
   it('rejects a non-naver host', () => {
     expect(() => normalizeNaverMapUrl('https://example.com/p/entry/place/123')).toThrow(
       NAVER_URL_ERROR_MESSAGE,
@@ -35,7 +43,7 @@ describe('Plan 04 naver url normalization', () => {
 
   it('fails when the place id is missing', () => {
     expect(() => normalizeNaverMapUrl('https://map.naver.com/p/entry/place/')).toThrow(
-      NAVER_URL_ERROR_MESSAGE,
+      NAVER_PLACE_ID_ERROR_MESSAGE,
     )
   })
 })

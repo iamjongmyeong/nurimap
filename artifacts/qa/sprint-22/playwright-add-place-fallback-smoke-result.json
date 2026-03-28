@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-03-28T11:59:42.921Z",
+  "baseUrl": "http://localhost:5173",
+  "scenarios": [
+    {
+      "name": "desktop_invalid_url_inline_error",
+      "passed": true,
+      "viewport": "desktop",
+      "dialogs": [],
+      "errorText": "네이버 지도 URL을 입력해주세요.",
+      "ariaInvalid": "true",
+      "errorClearedAfterEdit": true,
+      "screenshotPath": "artifacts/qa/sprint-22/playwright-add-place-invalid-url-inline-error-desktop.png"
+    },
+    {
+      "name": "mobile_lookup_failure_alert_then_manual_form",
+      "passed": true,
+      "viewport": "mobile",
+      "dialogs": [
+        {
+          "type": "alert",
+          "message": "장소 정보 추출에 실패했어요 🥲\n장소 정보를 직접 입력해주세요."
+        }
+      ],
+      "manualFormVisible": true,
+      "screenshotPath": "artifacts/qa/sprint-22/playwright-add-place-lookup-failure-manual-fallback-mobile.png"
+    }
+  ]
+}

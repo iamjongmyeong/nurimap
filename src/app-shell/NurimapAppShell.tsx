@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { MapPane } from './MapPane'
 import { useAuth } from '../auth/authContext'
-import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
+import {
+  DesktopPlaceAddPanel,
+  MobilePlaceAddPage,
+  type PlaceAddPrefill,
+  type PlaceAddStep,
+} from './PlaceAddPanels'
 import { createInitialReviewDraft, validateReviewDraft, type ReviewDraft } from './placeRepository'
 import {
   useAppShellStore,
@@ -245,6 +250,30 @@ const readBrowseNavigationStateFromHistoryState = (state: unknown): BrowseNaviga
   readHistoryStateRecord(state).navigationState === 'mobile_place_list_open'
     ? 'mobile_place_list_open'
     : 'map_browse'
+
+const readPlaceAddStepFromHistoryState = (state: unknown): PlaceAddStep =>
+  readHistoryStateRecord(state).placeAddStep === 'manual_form'
+    ? 'manual_form'
+    : 'url_entry'
+
+const readPlaceAddPrefillFromHistoryState = (state: unknown): PlaceAddPrefill | null => {
+  const record = readHistoryStateRecord(state)
+  const name = typeof record.placeAddPrefillName === 'string'
+    ? record.placeAddPrefillName
+    : ''
+  const road_address = typeof record.placeAddPrefillRoadAddress === 'string'
+    ? record.placeAddPrefillRoadAddress
+    : ''
+
+  if (!name && !road_address) {
+    return null
+  }
+
+  return {
+    name,
+    road_address,
+  }
+}
 
 const getPlaceIdFromPathname = (pathname: string) => {
   if (!pathname.startsWith(DETAIL_ROUTE_PREFIX)) {
@@ -824,7 +853,10 @@ const DesktopDetailSidebar = ({
 
 const DesktopSidebar = ({
   onClosePlaceAdd,
+  onContinuePlaceAddToManual,
   onOpenPlaceAdd,
+  placeAddPrefill,
+  placeAddStep,
   navigationState,
   onOpenPlaceDetail,
   onReturnToMapBrowse,
@@ -833,7 +865,10 @@ const DesktopSidebar = ({
   selectedPlaceId,
 }: {
   onClosePlaceAdd: () => void
+  onContinuePlaceAddToManual: (prefill?: PlaceAddPrefill) => void
   onOpenPlaceAdd: () => void
+  placeAddPrefill: PlaceAddPrefill | null
+  placeAddStep: PlaceAddStep
   navigationState: NavigationState
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
@@ -849,7 +884,12 @@ const DesktopSidebar = ({
   return (
     <aside className={sidebarClassName} data-testid="desktop-sidebar">
       {navigationState === 'place_add_open' ? (
-        <DesktopPlaceAddPanel onClose={onClosePlaceAdd} />
+        <DesktopPlaceAddPanel
+          onClose={onClosePlaceAdd}
+          onContinueToManual={onContinuePlaceAddToManual}
+          prefill={placeAddPrefill}
+          step={placeAddStep}
+        />
       ) : navigationState === 'place_detail_open' ? (
         <DesktopDetailSidebar
           onBrowseBack={onReturnToMapBrowse}
@@ -1038,7 +1078,10 @@ const MobileDetailPage = ({
 
 const DesktopAppShell = ({
   onClosePlaceAdd,
+  onContinuePlaceAddToManual,
   onOpenPlaceAdd,
+  placeAddPrefill,
+  placeAddStep,
   navigationState,
   mapPlaces,
   onOpenPlaceDetail,
@@ -1046,7 +1089,10 @@ const DesktopAppShell = ({
   selectedPlace,
 }: {
   onClosePlaceAdd: () => void
+  onContinuePlaceAddToManual: (prefill?: PlaceAddPrefill) => void
   onOpenPlaceAdd: () => void
+  placeAddPrefill: PlaceAddPrefill | null
+  placeAddStep: PlaceAddStep
   navigationState: NavigationState
   mapPlaces: PlaceSummary[]
   onOpenPlaceDetail: (placeId: string) => void
@@ -1061,7 +1107,10 @@ const DesktopAppShell = ({
     <main className="hidden h-screen md:flex" data-testid="desktop-shell">
       <DesktopSidebar
         onClosePlaceAdd={onClosePlaceAdd}
+        onContinuePlaceAddToManual={onContinuePlaceAddToManual}
         onOpenPlaceAdd={onOpenPlaceAdd}
+        placeAddPrefill={placeAddPrefill}
+        placeAddStep={placeAddStep}
         navigationState={navigationState}
         onOpenPlaceDetail={onOpenPlaceDetail}
         onReturnToMapBrowse={onReturnToMapBrowse}
@@ -1084,9 +1133,12 @@ const DesktopAppShell = ({
 
 const MobileAppShell = ({
   onClosePlaceAdd,
+  onContinuePlaceAddToManual,
   detailChildSurface,
   navigationState,
   onOpenPlaceAdd,
+  placeAddPrefill,
+  placeAddStep,
   mapPlaces,
   onAddRatingBack,
   onOpenPlaceDetail,
@@ -1096,9 +1148,12 @@ const MobileAppShell = ({
   selectedPlace,
 }: {
   onClosePlaceAdd: () => void
+  onContinuePlaceAddToManual: (prefill?: PlaceAddPrefill) => void
   detailChildSurface: 'detail' | 'add_rating'
   navigationState: NavigationState
   onOpenPlaceAdd: () => void
+  placeAddPrefill: PlaceAddPrefill | null
+  placeAddStep: PlaceAddStep
   mapPlaces: PlaceSummary[]
   onAddRatingBack: () => void
   onOpenAddRating: () => void
@@ -1121,7 +1176,12 @@ const MobileAppShell = ({
   if (navigationState === 'place_add_open') {
     return (
       <main className={MOBILE_SHELL_CLASS} data-testid="mobile-shell" style={MOBILE_SHELL_STYLE}>
-        <MobilePlaceAddPage onClose={onClosePlaceAdd} />
+        <MobilePlaceAddPage
+          onClose={onClosePlaceAdd}
+          onContinueToManual={onContinuePlaceAddToManual}
+          prefill={placeAddPrefill}
+          step={placeAddStep}
+        />
       </main>
     )
   }
@@ -1215,6 +1275,10 @@ export const NurimapAppShell = () => {
       ? 'place_add_open'
       : navigationState
   const effectiveDetailChildSurface = routePlaceId ? detailChildSurface : 'detail'
+  const [placeAddStep, setPlaceAddStep] = useState<PlaceAddStep>(() => readPlaceAddStepFromHistoryState(window.history.state))
+  const [placeAddPrefill, setPlaceAddPrefill] = useState<PlaceAddPrefill | null>(() => readPlaceAddPrefillFromHistoryState(window.history.state))
+  const effectivePlaceAddStep = routePlaceAdd ? placeAddStep : 'url_entry'
+  const effectivePlaceAddPrefill = routePlaceAdd ? placeAddPrefill : null
 
   useEffect(() => {
     if (placeListLoad !== 'idle') {
@@ -1251,9 +1315,17 @@ export const NurimapAppShell = () => {
     }
 
     delete fallbackState.placeAddOriginPath
+    delete fallbackState.placeAddStep
+    delete fallbackState.placeAddPrefillName
+    delete fallbackState.placeAddPrefillRoadAddress
 
     window.history.replaceState(fallbackState, '', '/')
-    window.history.pushState({ ...fallbackState, navigationState: 'place_add_open', placeAddOriginPath: '/' }, '', PLACE_ADD_ROUTE)
+    window.history.pushState({
+      ...fallbackState,
+      navigationState: 'place_add_open',
+      placeAddOriginPath: '/',
+      placeAddStep: 'url_entry',
+    }, '', PLACE_ADD_ROUTE)
   }, [routePlaceAdd])
 
   useEffect(() => {
@@ -1289,6 +1361,8 @@ export const NurimapAppShell = () => {
       }
 
       if (window.location.pathname === PLACE_ADD_ROUTE) {
+        setPlaceAddStep(readPlaceAddStepFromHistoryState(window.history.state))
+        setPlaceAddPrefill(readPlaceAddPrefillFromHistoryState(window.history.state))
         return
       }
 
@@ -1399,6 +1473,45 @@ export const NurimapAppShell = () => {
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
+  const navigatePlaceAddStep = ({
+    prefill = null,
+    replace = false,
+    step,
+  }: {
+    prefill?: PlaceAddPrefill | null
+    replace?: boolean
+    step: PlaceAddStep
+  }) => {
+    const currentState = readHistoryStateRecord(window.history.state)
+    const nextState: Record<string, unknown> = {
+      ...currentState,
+      navigationState: 'place_add_open',
+      placeAddOriginPath:
+        typeof currentState.placeAddOriginPath === 'string'
+          ? currentState.placeAddOriginPath
+          : '/',
+      placeAddStep: step,
+    }
+
+    if (prefill) {
+      nextState.placeAddPrefillName = prefill.name
+      nextState.placeAddPrefillRoadAddress = prefill.road_address
+    } else {
+      delete nextState.placeAddPrefillName
+      delete nextState.placeAddPrefillRoadAddress
+    }
+
+    setPlaceAddStep(step)
+    setPlaceAddPrefill(prefill)
+    if (window.location.pathname === PLACE_ADD_ROUTE && !replace) {
+      window.history.pushState(nextState, '', PLACE_ADD_ROUTE)
+      window.dispatchEvent(new PopStateEvent('popstate'))
+      return
+    }
+
+    navigateToPath(PLACE_ADD_ROUTE, replace, nextState)
+  }
+
   const handleOpenPlaceDetail = (placeId: string) => {
     openPlaceDetail(placeId)
     navigateToPath(getDetailRoutePath(placeId))
@@ -1415,6 +1528,7 @@ export const NurimapAppShell = () => {
       ...currentState,
       navigationState: 'place_add_open',
       placeAddOriginPath: window.location.pathname,
+      placeAddStep: 'url_entry',
     })
   }
 
@@ -1425,6 +1539,13 @@ export const NurimapAppShell = () => {
     }
 
     closePlaceAdd()
+  }
+
+  const handleContinuePlaceAddToManual = (prefill?: PlaceAddPrefill) => {
+    navigatePlaceAddStep({
+      step: 'manual_form',
+      prefill: prefill ?? null,
+    })
   }
 
   const handleOpenAddRating = () => {
@@ -1532,7 +1653,10 @@ export const NurimapAppShell = () => {
   return isDesktop ? (
     <DesktopAppShell
       onClosePlaceAdd={handleClosePlaceAdd}
+      onContinuePlaceAddToManual={handleContinuePlaceAddToManual}
       onOpenPlaceAdd={handleOpenPlaceAdd}
+      placeAddPrefill={effectivePlaceAddPrefill}
+      placeAddStep={effectivePlaceAddStep}
       navigationState={effectiveNavigationState}
       mapPlaces={mapPlaces}
       onOpenPlaceDetail={handleOpenPlaceDetail}
@@ -1542,9 +1666,12 @@ export const NurimapAppShell = () => {
   ) : (
     <MobileAppShell
       onClosePlaceAdd={handleClosePlaceAdd}
+      onContinuePlaceAddToManual={handleContinuePlaceAddToManual}
       detailChildSurface={effectiveDetailChildSurface}
       navigationState={effectiveNavigationState}
       onOpenPlaceAdd={handleOpenPlaceAdd}
+      placeAddPrefill={effectivePlaceAddPrefill}
+      placeAddStep={effectivePlaceAddStep}
       mapPlaces={mapPlaces}
       onAddRatingBack={handleCloseAddRating}
       onOpenAddRating={handleOpenAddRating}

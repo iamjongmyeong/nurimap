@@ -56,7 +56,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const result = await lookupPlaceFromRawUrl(rawUrl)
     if (result.status === 'error') {
-      res.status(result.error.code === 'lookup_failed' ? 502 : 422).json(result)
+      const statusCode = new Set(['invalid_url', 'place_id_extraction_failed']).has(result.error.code)
+        ? 400
+        : 502
+      res.status(statusCode).json(result)
       return
     }
 

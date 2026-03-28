@@ -145,4 +145,48 @@ describe('POST /api/place-lookups', () => {
     })
     expect(state.statusCode).toBe(200)
   })
+
+  it('returns 400 for invalid url lookup failures', async () => {
+    lookupPlaceFromRawUrlMock.mockResolvedValue({
+      status: 'error',
+      error: {
+        code: 'invalid_url',
+        message: '네이버 지도 URL을 입력해주세요.',
+      },
+    })
+
+    const { response, state } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {
+        cookie: '__Host-nurimap_session=session-123; nurimap_csrf=csrf-123',
+        'x-nurimap-csrf-token': 'csrf-123',
+      },
+      body: { rawUrl: 'https://example.com/nope' },
+    } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(400)
+  })
+
+  it('returns 502 for upstream lookup failures', async () => {
+    lookupPlaceFromRawUrlMock.mockResolvedValue({
+      status: 'error',
+      error: {
+        code: 'lookup_failed',
+        message: '장소 정보를 가져오지 못했어요. 다시 시도해 주세요.',
+      },
+    })
+
+    const { response, state } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {
+        cookie: '__Host-nurimap_session=session-123; nurimap_csrf=csrf-123',
+        'x-nurimap-csrf-token': 'csrf-123',
+      },
+      body: { rawUrl: 'https://map.naver.com/p/entry/place/123456789' },
+    } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(502)
+  })
 })

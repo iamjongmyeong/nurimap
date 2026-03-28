@@ -1,12 +1,24 @@
 import { useState, type CSSProperties } from 'react'
-import type { PlaceRegistrationPreparationResult, PlaceRegistrationResult } from './placeRepository'
+import {
+  lookupPlaceRegistrationPrefill,
+  type PlaceLookupPrefillData,
+  type PlaceRegistrationPreparationResult,
+  type PlaceRegistrationResult,
+} from './placeRepository'
 import { useAppShellStore } from './appShellStore'
 import { useAuth } from '../auth/authContext'
 import { useViewportMode } from './useViewportMode'
 import type { PlaceType, ZeropayStatus } from './types'
 
+export type PlaceAddStep = 'url_entry' | 'manual_form'
+
+export type PlaceAddPrefill = PlaceLookupPrefillData
+
 type PlaceAddPanelProps = {
   onClose: () => void
+  onContinueToManual?: (prefill?: PlaceAddPrefill) => void
+  prefill?: PlaceAddPrefill | null
+  step?: PlaceAddStep
 }
 
 type PlaceSubmitState = 'idle' | 'submitting' | 'error'
@@ -32,6 +44,7 @@ const GENERIC_SUBMIT_ERROR_MESSAGE = '등록하지 못했어요. 잠시 후 다�
 const REVIEW_LIMIT = 500
 const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-white px-3 text-base text-[#1f1f1f] placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
 const PLACE_ADD_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
+const PLACE_LOOKUP_FALLBACK_ALERT_MESSAGE = '장소 정보 추출에 실패했어요 🥲\n장소 정보를 직접 입력해주세요.'
 
 const PLACE_TYPE_OPTIONS: SegmentedOption<PlaceType>[] = [
   { value: 'restaurant', label: '음식점', testId: 'place-type-option-restaurant' },
@@ -46,6 +59,14 @@ const ZEROPAY_OPTIONS: SegmentedOption<ZeropayStatus>[] = [
 
 const BackArrowIcon = () => (
   <img alt="" aria-hidden="true" height="24" src={PLACE_ADD_BACK_ICON_SRC} width="24" />
+)
+
+const InfoCircleIcon = () => (
+  <svg aria-hidden="true" className="h-[14px] w-[14px] shrink-0" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="7" cy="7" fill="#5862FB" r="7" />
+    <circle cx="7" cy="4.15" fill="white" r="0.9" />
+    <rect fill="white" height="4.6" rx="0.6" width="1.2" x="6.4" y="5.3" />
+  </svg>
 )
 
 const SegmentedField = <T extends string>({
@@ -127,9 +148,9 @@ const StarRatingField = ({
   </div>
 )
 
-const createInitialDraft = (): RegistrationDraft => ({
-  name: '',
-  road_address: '',
+const createInitialDraft = (prefill?: Partial<Pick<RegistrationDraft, 'name' | 'road_address'>>): RegistrationDraft => ({
+  name: prefill?.name ?? '',
+  road_address: prefill?.road_address ?? '',
   place_type: 'restaurant',
   zeropay_status: 'available',
   rating_score: 5,
@@ -194,11 +215,161 @@ const encodePlaceSubmissionId = (draft: {
     .replace(/=+$/u, '')
 }
 
-const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
+const buildManualFormKey = (prefill?: PlaceAddPrefill | null) =>
+  `${prefill?.name ?? ''}::${prefill?.road_address ?? ''}`
+
+const PlaceAddUrlEntry = ({
+  onClose,
+  onContinueToManual,
+}: Pick<PlaceAddPanelProps, 'onClose' | 'onContinueToManual'>) => {
+  const { csrfHeaderName, csrfToken } = useAuth()
+  const [rawUrl, setRawUrl] = useState('')
+  const [urlFieldError, setUrlFieldError] = useState('')
+  const [submitState, setSubmitState] = useState<'idle' | 'submitting'>('idle')
+  const isLookupDisabled = submitState === 'submitting' || rawUrl.trim() === ''
+
+  const handleLookup = async () => {
+    if (submitState === 'submitting') {
+      return
+    }
+
+    if (rawUrl.trim() === '') {
+      return
+    }
+
+    setSubmitState('submitting')
+    setUrlFieldError('')
+
+    try {
+      const result = await lookupPlaceRegistrationPrefill({
+        rawUrl: rawUrl.trim(),
+        csrfHeaderName,
+        csrfToken,
+      })
+
+      if (result.status === 'success') {
+        onContinueToManual?.(result.data)
+        return
+      }
+
+      if (result.code === 'invalid_url') {
+        setUrlFieldError('네이버 지도 URL을 입력해주세요.')
+        return
+      }
+
+      window.alert(PLACE_LOOKUP_FALLBACK_ALERT_MESSAGE)
+      onContinueToManual?.()
+    } catch {
+      window.alert(PLACE_LOOKUP_FALLBACK_ALERT_MESSAGE)
+      onContinueToManual?.()
+    } finally {
+      setSubmitState('idle')
+    }
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-white" data-testid="place-add-url-entry-screen">
+      <div className="sticky top-0 z-10 h-14 bg-white" data-testid="place-add-url-entry-header">
+        <div className="relative h-full">
+          <button
+            aria-label="뒤로가기"
+            className="absolute left-6 top-6 inline-flex h-6 w-6 cursor-pointer items-center justify-center"
+            data-testid="place-add-url-entry-back-button"
+            onClick={onClose}
+            type="button"
+          >
+            <BackArrowIcon />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 bg-white px-6">
+        <div className="mx-auto flex w-full max-w-[400px] flex-col gap-6 pt-4">
+          <div
+            className="flex w-full items-center gap-2 rounded-xl bg-[#EEF] p-4"
+            data-testid="place-add-url-entry-helper"
+          >
+            <InfoCircleIcon />
+            <p className="break-keep text-sm font-medium tracking-[-0.35px] text-[#5458F7]">
+              네이버 지도에서 링크를 복사해서 입력해주세요.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2" data-testid="place-add-url-entry-field">
+            <label className="text-xs font-medium tracking-[-0.3px] text-[#1c1c1c]" htmlFor="place-add-naver-url-input">
+              URL
+            </label>
+            <input
+              aria-label="URL"
+              aria-describedby={urlFieldError ? 'place-add-naver-url-input-error' : undefined}
+              aria-invalid={urlFieldError ? 'true' : 'false'}
+              className={`h-12 rounded-xl border bg-white px-3 text-base text-[#1f1f1f] placeholder:text-[#c9c9c9] focus:outline-none focus:ring-0 ${
+                urlFieldError
+                  ? 'border-[#e53935] focus:border-[#e53935]'
+                  : 'border-[#ebebeb] focus:border-[#5862fb]'
+              }`}
+              data-testid="place-add-url-entry-input"
+              id="place-add-naver-url-input"
+              onChange={(event) => {
+                setRawUrl(event.target.value)
+                if (urlFieldError) {
+                  setUrlFieldError('')
+                }
+              }}
+              placeholder="네이버 지도 URL"
+              type="text"
+              value={rawUrl}
+            />
+            {urlFieldError ? (
+              <span
+                className="block text-xs text-[#e53935]"
+                data-testid="place-add-url-entry-error"
+                id="place-add-naver-url-input-error"
+              >
+                {urlFieldError}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-3" data-testid="place-add-url-entry-actions">
+            <button
+              aria-label={submitState === 'submitting' ? '불러오는 중' : '장소 정보 가져오기'}
+              className="inline-flex h-12 w-full cursor-pointer items-center justify-center rounded-xl bg-[#5862fb] px-4 py-2 text-base font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+              data-testid="place-add-url-entry-submit-button"
+              disabled={isLookupDisabled}
+              onClick={() => { void handleLookup() }}
+              type="button"
+            >
+              {submitState === 'submitting' ? (
+                <span
+                  aria-hidden="true"
+                  className="ui-spinner ui-spinner-xs"
+                  data-testid="place-add-url-entry-submit-spinner"
+                />
+              ) : '장소 정보 가져오기'}
+            </button>
+            <button
+              className="inline-flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-[#5862fb] bg-white px-4 py-2 text-base font-semibold text-[#5862fb] transition"
+              data-testid="place-add-direct-entry-button"
+              onClick={() => onContinueToManual?.()}
+              type="button"
+            >
+              직접 입력하기
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const PlaceAddForm = ({
+  onClose,
+  prefill,
+}: Pick<PlaceAddPanelProps, 'onClose' | 'prefill'>) => {
   const { csrfHeaderName, csrfToken } = useAuth()
   const { isDesktop } = useViewportMode()
   const applyRegistrationResult = useAppShellStore((state) => state.applyRegistrationResult)
-  const inputClasses = `${isDesktop ? 'h-12 py-3' : 'h-10'} ${BASE_TEXT_FIELD_CLASSES}`
+  const inputClasses = `h-12 py-3 ${BASE_TEXT_FIELD_CLASSES}`
   const segmentedButtonSizeClasses = 'h-12 py-3'
   const submitButtonSizeClasses = 'h-12 py-3'
   const textareaClasses = `h-[144px] min-h-[144px] resize-none overflow-y-auto py-3 ${BASE_TEXT_FIELD_CLASSES}`
@@ -212,7 +383,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
         scrollPaddingBottom: 'calc(24px + var(--nurimap-safe-area-bottom, 0px))',
       }
 
-  const [draft, setDraft] = useState<RegistrationDraft>(createInitialDraft)
+  const [draft, setDraft] = useState<RegistrationDraft>(() => createInitialDraft(prefill ?? undefined))
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitState, setSubmitState] = useState<PlaceSubmitState>('idle')
   const hasRequiredFields = hasCompletedRequiredFields(draft)
@@ -437,16 +608,34 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   )
 }
 
-export const DesktopPlaceAddPanel = ({ onClose }: PlaceAddPanelProps) => (
+export const DesktopPlaceAddPanel = ({
+  onClose,
+  onContinueToManual,
+  prefill,
+  step = 'manual_form',
+}: PlaceAddPanelProps) => (
   <div className="flex-1 overflow-hidden" data-testid="desktop-place-add-panel">
-    <PlaceAddForm onClose={onClose} />
+    {step === 'url_entry' ? (
+      <PlaceAddUrlEntry onClose={onClose} onContinueToManual={onContinueToManual} />
+    ) : (
+      <PlaceAddForm key={buildManualFormKey(prefill)} onClose={onClose} prefill={prefill} />
+    )}
   </div>
 )
 
-export const MobilePlaceAddPage = ({ onClose }: PlaceAddPanelProps) => (
+export const MobilePlaceAddPage = ({
+  onClose,
+  onContinueToManual,
+  prefill,
+  step = 'manual_form',
+}: PlaceAddPanelProps) => (
   <section className="flex h-full min-h-0 flex-col overflow-hidden bg-white" data-testid="mobile-place-add-page">
     <div className="flex-1 min-h-0 overflow-hidden">
-      <PlaceAddForm onClose={onClose} />
+      {step === 'url_entry' ? (
+        <PlaceAddUrlEntry onClose={onClose} onContinueToManual={onContinueToManual} />
+      ) : (
+        <PlaceAddForm key={buildManualFormKey(prefill)} onClose={onClose} prefill={prefill} />
+      )}
     </div>
   </section>
 )

@@ -1,6 +1,6 @@
 import { MOCK_PLACES } from './mockPlaces'
 import type { PlaceSummary, ReviewSummary, ZeropayStatus } from './types'
-import type { PlaceLookupSuccess } from '../shared/placeLookupTypes.js'
+import type { PlaceLookupErrorCode, PlaceLookupSuccess } from '../shared/placeLookupTypes.js'
 
 export const CURRENT_USER_NAME = '테스트 사용자'
 const REVIEW_LIMIT = 500
@@ -24,6 +24,11 @@ export type PlaceRegistrationLookupData = Pick<
   PlaceLookupSuccess['data'],
   'naver_place_id' | 'canonical_url' | 'name' | 'road_address' | 'land_lot_address' | 'representative_address' | 'latitude' | 'longitude'
 >
+
+export type PlaceLookupPrefillData = {
+  name: string
+  road_address: string
+}
 
 export type PlaceRegistrationResult =
   | {
@@ -92,6 +97,17 @@ type PlaceDetailResponse =
 type PlaceReviewResponse =
   | { status: 'saved'; place: PlaceSummary }
   | { status: 'existing_review'; place: PlaceSummary; message: '이미 리뷰를 남긴 장소예요' }
+  | { error?: { message?: string } }
+
+type PlaceLookupResponse =
+  | PlaceLookupSuccess
+  | {
+      status: 'error'
+      error: {
+        code: string
+        message: string
+      }
+    }
   | { error?: { message?: string } }
 
 const roundAverage = (value: number) => Math.round(value * 10) / 10
@@ -212,8 +228,8 @@ const buildCreatedPlace = ({
     naver_place_url: lookupData.canonical_url,
     name: lookupData.name,
     road_address: resolveRoadAddress(lookupData),
-    latitude: lookupData.latitude,
-    longitude: lookupData.longitude,
+    latitude: lookupData.latitude ?? undefined,
+    longitude: lookupData.longitude ?? undefined,
     place_type: draft.place_type,
     zeropay_status: draft.zeropay_status,
     average_rating: draft.rating_score,
@@ -625,6 +641,7 @@ export const submitReviewForPlace = async ({
 }
 type ErrorResponse = {
   error?: {
+    code?: string
     message?: string
   }
 }
@@ -639,3 +656,77 @@ const getErrorMessage = (payload: unknown, fallbackMessage: string) =>
   && typeof payload.error.message === 'string'
     ? payload.error.message
     : fallbackMessage
+
+const getErrorCode = (payload: unknown): PlaceLookupErrorCode | null =>
+  typeof payload === 'object'
+  && payload !== null
+  && 'error' in payload
+  && typeof payload.error === 'object'
+  && payload.error !== null
+  && 'code' in payload.error
+  && typeof payload.error.code === 'string'
+  && (
+    payload.error.code === 'invalid_url'
+    || payload.error.code === 'redirect_failed'
+    || payload.error.code === 'place_id_extraction_failed'
+    || payload.error.code === 'lookup_failed'
+    || payload.error.code === 'coordinates_unavailable'
+  )
+    ? payload.error.code
+    : null
+
+export const lookupPlaceRegistrationPrefill = async ({
+  csrfHeaderName,
+  csrfToken,
+  rawUrl,
+}: {
+  csrfHeaderName: string | null
+  csrfToken: string | null
+  rawUrl: string
+}): Promise<
+  | {
+      status: 'success'
+      data: PlaceLookupPrefillData
+    }
+  | {
+      status: 'error'
+      code: PlaceLookupErrorCode | 'unknown'
+      message: string
+    }
+> => {
+  if (!csrfHeaderName || !csrfToken) {
+    return {
+      status: 'error',
+      code: 'unknown',
+      message: '장소 정보를 가져오지 못했어요. 다시 시도해 주세요.',
+    }
+  }
+
+  const response = await fetch('/api/place-lookups', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      [csrfHeaderName]: csrfToken,
+    },
+    body: JSON.stringify({
+      rawUrl,
+    }),
+  })
+  const payload = await parseJson<PlaceLookupResponse>(response)
+
+  if (!response.ok || !('status' in payload) || payload.status !== 'success') {
+    return {
+      status: 'error',
+      code: getErrorCode(payload as ErrorResponse) ?? 'unknown',
+      message: getErrorMessage(payload as ErrorResponse, '장소 정보를 가져오지 못했어요. 다시 시도해 주세요.'),
+    }
+  }
+
+  return {
+    status: 'success',
+    data: {
+      name: payload.data.name,
+      road_address: payload.data.road_address ?? payload.data.representative_address ?? payload.data.land_lot_address ?? '',
+    },
+  }
+}
