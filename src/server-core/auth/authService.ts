@@ -19,6 +19,7 @@ import {
   touchAppSession,
 } from './appSessionService.js'
 import { withDatabaseConnection, withDatabaseTransaction } from '../runtime/database.js'
+import { isLoopbackOrPrivateLanRuntimeUrl, normalizeHttpUrl } from '../http/requestOrigin.js'
 import { logAuthBypassLogin, logAuthRequestAccepted, logAuthRequestFailure } from '../runtime/opsLogger.js'
 import { createSupabaseAdminClient, createSupabaseAuthClient } from '../runtime/supabaseAdmin.js'
 
@@ -221,53 +222,12 @@ const isEmailAllowedForAuth = (email: string, runtimeOrigin?: string) => {
   )
 }
 
-const LOCAL_BYPASS_HOSTS = new Set(['127.0.0.1', '::1', 'localhost'])
-
 const toVerificationType = (verificationType: string | undefined): AuthVerifyType =>
   verificationType === 'magiclink' || verificationType === 'invite' ? verificationType : 'signup'
-
-const normalizeHttpUrl = (rawValue: string | null | undefined) => {
-  if (!rawValue) {
-    return null
-  }
-
-  try {
-    const parsedUrl = new URL(rawValue.trim())
-    if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
-      return null
-    }
-
-    if (parsedUrl.hash) {
-      parsedUrl.hash = ''
-    }
-
-    const normalizedUrl = parsedUrl.toString()
-    if (parsedUrl.pathname === '/' && !parsedUrl.search) {
-      return normalizedUrl.replace(/\/$/, '')
-    }
-
-    return normalizedUrl
-  } catch {
-    return null
-  }
-}
 
 const getPublicAppUrl = () => normalizeHttpUrl(process.env.PUBLIC_APP_URL)
 
 const shouldTrustRuntimeOriginForLocalBypass = () => process.env.NODE_ENV !== 'production'
-
-const isLoopbackRuntimeUrl = (runtimeUrl: string | null) => {
-  if (!runtimeUrl) {
-    return false
-  }
-
-  try {
-    const hostname = new URL(runtimeUrl).hostname.toLowerCase()
-    return LOCAL_BYPASS_HOSTS.has(hostname) || hostname.endsWith('.localhost')
-  } catch {
-    return false
-  }
-}
 
 const getEffectiveLocalBypassRuntimeUrl = (runtimeOrigin?: string) => {
   const normalizedRuntimeOrigin = shouldTrustRuntimeOriginForLocalBypass()
@@ -278,7 +238,7 @@ const getEffectiveLocalBypassRuntimeUrl = (runtimeOrigin?: string) => {
 }
 
 const isLocalBypassRuntime = (runtimeOrigin?: string) =>
-  isLoopbackRuntimeUrl(getEffectiveLocalBypassRuntimeUrl(runtimeOrigin))
+  isLoopbackOrPrivateLanRuntimeUrl(getEffectiveLocalBypassRuntimeUrl(runtimeOrigin))
 
 const isBypassLoginEmail = (email: string, runtimeOrigin?: string) => {
   if (process.env.AUTH_BYPASS_ENABLED !== 'true' || !isLocalBypassRuntime(runtimeOrigin)) {
