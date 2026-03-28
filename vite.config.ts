@@ -4,6 +4,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import type { Plugin } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { defineConfig } from 'vitest/config'
+import { createSupabaseStudioBannerPlugin } from './vite.agentationBanner'
 
 type DevApiRouteHandler = (req: VercelRequest, res: VercelResponse) => Promise<void> | void
 type DevApiQuery = Record<string, string | string[]>
@@ -254,7 +255,7 @@ const apiDevPlugin = (): Plugin => ({
 
 export default defineConfig({
   envPrefix: ['VITE_', 'NEXT_PUBLIC_', 'PUBLIC_'],
-  plugins: [react(), tailwindcss(), apiDevPlugin()],
+  plugins: [react(), tailwindcss(), apiDevPlugin(), createSupabaseStudioBannerPlugin()],
   server: {
     host: '0.0.0.0',
     strictPort: true,

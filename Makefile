@@ -43,7 +43,7 @@ dev:
 		fi; \
 		printf '%s\n' "Supabase Studio: $(SUPABASE_STUDIO_URL)"; \
 		printf '%s\n' "Make sure local Supabase is already running before exercising backend flows."; \
-		$(VITE_DEV_CMD)
+		NURIMAP_SHOW_SUPABASE_STUDIO_BANNER=true SUPABASE_STUDIO_URL="$(SUPABASE_STUDIO_URL)" $(VITE_DEV_CMD)
 
 dev-vercel:
 	@pids="$$($(PORT_CHECK_CMD) | tail -n +2)"; \
@@ -88,4 +88,4 @@ agentation:
 			printf '%s\n' "LAN URL: Vite will also print a detected Network URL when a private LAN IPv4 is available."; \
 			printf '%s\n' "Set NURIMAP_DEV_LAN_HOST in .env.local to override this hint if needed."; \
 		fi; \
-		VITE_ENABLE_AGENTATION=true $(VITE_DEV_CMD)
+		SUPABASE_STUDIO_URL="$(SUPABASE_STUDIO_URL)" VITE_ENABLE_AGENTATION=true $(VITE_DEV_CMD)
