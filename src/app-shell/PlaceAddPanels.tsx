@@ -208,8 +208,8 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   const mobileScrollRegionStyle: CSSProperties | undefined = isDesktop
     ? undefined
     : {
-        paddingBottom: 'calc(16px + var(--nurimap-effective-bottom-inset, 0px))',
-        scrollPaddingBottom: 'calc(24px + var(--nurimap-effective-bottom-inset, 0px))',
+        paddingBottom: 'calc(16px + var(--nurimap-safe-area-bottom, 0px))',
+        scrollPaddingBottom: 'calc(24px + var(--nurimap-safe-area-bottom, 0px))',
       }
 
   const [draft, setDraft] = useState<RegistrationDraft>(createInitialDraft)

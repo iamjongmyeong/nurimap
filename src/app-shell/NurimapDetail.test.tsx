@@ -229,7 +229,7 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('mobile-detail-page')).toBeInTheDocument()
     expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('누리 식당')
     expect(screen.getByTestId('detail-header')).toHaveStyle({
-      paddingTop: 'var(--nurimap-effective-top-inset, 0px)',
+      paddingTop: 'var(--nurimap-safe-area-top, 0px)',
     })
     expect(screen.getByTestId('detail-address')).toHaveTextContent('서울 마포구 양화로19길 22-16 1층')
     expect(screen.getByTestId('detail-added-by')).toHaveTextContent('김누리님이 추가한 장소')

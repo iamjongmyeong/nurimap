@@ -151,8 +151,9 @@ describe('Nurimap app shell', () => {
     setViewport(390)
     render(<App />)
 
-    expect(screen.getByTestId('mobile-shell')).toHaveClass('h-[100dvh]', 'min-h-[100dvh]', 'overflow-hidden')
+    expect(screen.getByTestId('mobile-shell')).toHaveClass('overflow-hidden')
     expect(screen.getByTestId('mobile-shell')).toHaveStyle({
+      top: 'var(--nurimap-viewport-offset-top, 0px)',
       height: 'var(--nurimap-viewport-height, 100dvh)',
       minHeight: 'var(--nurimap-viewport-height, 100dvh)',
     })
@@ -161,7 +162,7 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toBeInTheDocument()
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveClass('fixed')
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveStyle({
-      paddingBottom: 'var(--nurimap-effective-bottom-inset, 0px)',
+      paddingBottom: 'var(--nurimap-safe-area-bottom, 0px)',
     })
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveClass('h-14')
     expect(screen.getByTestId('mobile-bottom-tab-bar').className).not.toContain('shadow-[')
@@ -196,13 +197,13 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('mobile-list-header')).toContainElement(screen.getByAltText('Nurimedia 로고'))
     expect(screen.getByTestId('mobile-list-header-content')).toHaveClass('pl-6', 'pr-5', 'pt-6', 'pb-4')
     expect(screen.getByTestId('mobile-list-header')).toHaveStyle({
-      paddingTop: 'var(--nurimap-effective-top-inset, 0px)',
+      paddingTop: 'var(--nurimap-safe-area-top, 0px)',
     })
     expect(screen.getByTestId('mobile-list-header').className).not.toContain('border-b')
     expect(screen.getByTestId('mobile-list-page')).toHaveTextContent('누리맵')
     expect(screen.getByTestId('mobile-list-page')).toHaveClass('h-full', 'min-h-0', 'overflow-hidden', 'pb-14')
     expect(screen.getByTestId('mobile-list-page')).toHaveStyle({
-      paddingBottom: 'calc(56px + var(--nurimap-effective-bottom-inset, 0px))',
+      paddingBottom: 'calc(56px + var(--nurimap-safe-area-bottom, 0px))',
     })
     expect(screen.getByTestId('mobile-list-scroll-region')).toHaveClass('overflow-y-auto', 'overscroll-contain')
     expect(screen.getByTestId('mobile-list-logout-button')).toHaveAccessibleName('로그아웃')
@@ -260,6 +261,13 @@ describe('Nurimap app shell', () => {
     expect(document.documentElement.style.getPropertyValue('--nurimap-viewport-height')).toBe('780px')
     expect(document.documentElement.style.getPropertyValue('--nurimap-viewport-offset-top')).toBe('24px')
     expect(document.documentElement.style.getPropertyValue('--nurimap-viewport-offset-bottom')).toBe('40px')
+    expect(screen.getByTestId('mobile-shell')).toHaveStyle({
+      top: 'var(--nurimap-viewport-offset-top, 0px)',
+      height: 'var(--nurimap-viewport-height, 100dvh)',
+    })
+    expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveStyle({
+      paddingBottom: 'var(--nurimap-safe-area-bottom, 0px)',
+    })
     expect(addEventListener).toHaveBeenCalledWith('resize', expect.any(Function))
     expect(addEventListener).toHaveBeenCalledWith('scroll', expect.any(Function))
 

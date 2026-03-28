@@ -13,12 +13,17 @@
   - desktop direct entry sidebar rendering
 - mobile `/add-place` standalone page 렌더링 정리
   - map canvas와 분리된 route-owned page로 조정
+- shell-first keyboard viewport follow-up
+  - mobile shell이 `visualViewport`의 `top + height`를 직접 추적하도록 조정
+  - `/add-place` child padding에서 keyboard-linked inset 의존 제거
+  - add-rating non-route contract를 유지한 채 shared shell keyboard model 정리
 - 자동화 검증 / browser QA evidence 반영
   - 테스트, 빌드, diagnostics, Playwright screenshot evidence 기록
 
 # Not Completed
 - 사용자 실기기 QA sign-off
   - mobile keyboard open 상태에서 회색 영역 미노출
+  - mobile add-rating keyboard open 상태에서 회색 영역 미노출
   - device back context restore
   - direct entry / refresh 후 back fallback 체감 확인
 

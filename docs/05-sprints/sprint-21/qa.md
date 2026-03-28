@@ -6,17 +6,20 @@
 
 - 실행 결과:
   - `pnpm test:run src/App.test.tsx src/app-shell/PlaceRegistrationFlow.test.tsx src/app-shell/PlaceLookupFlow.test.tsx src/app-shell/NurimapDetail.test.tsx` → PASS (`4 passed`, `61 passed`)
+  - `pnpm vitest run src/App.test.tsx src/app-shell/PlaceRegistrationFlow.test.tsx src/app-shell/NurimapDetail.test.tsx` → PASS (`3 passed`, `56 passed`)
   - `pnpm build` → PASS
   - LSP diagnostics → PASS
     - `src/App.test.tsx`
     - `src/app-shell/NurimapAppShell.tsx`
     - `src/app-shell/PlaceAddPanels.tsx`
     - `src/app-shell/PlaceRegistrationFlow.test.tsx`
+    - `src/app-shell/NurimapDetail.test.tsx`
     - `src/app-shell/PlaceLookupFlow.test.tsx`
 - 확인 포인트:
   - `/add-place` route 진입 / direct entry / back fallback 테스트 통과
   - mobile `/add-place`가 map overlay가 아니라 standalone page로 렌더링되는 회귀 테스트 통과
   - add-rating non-route invariant 유지
+  - mobile shell이 `visualViewport`의 `top + height`를 직접 추적하고 child surface는 safe-area만 소비하도록 contract 정리
   - place submission API contract 변경 없음
 
 # Manual QA Result
@@ -27,11 +30,13 @@
   - `docs/02-architecture/system-runtime.md`, `docs/03-specs/08-place-registration.md`, `docs/04-design/place-submission.md`, `docs/04-design/browse-and-detail.md` 동기화
   - architect review로 mobile `/add-place`가 아직 in-shell overlay 성격을 남기는지 구조 검토
   - 구조 검토 결과를 반영해 mobile `place_add_open`을 map shell과 분리된 standalone page로 수정
+  - shell-first follow-up으로 keyboard geometry와 safe-area contract를 분리하고 `/add-place` child padding keyboard 의존 제거
 - 결과:
   - `/add-place` route contract와 live SSOT 문서 정합성 확보
   - mobile `/add-place`는 map canvas를 함께 유지하지 않는 standalone page로 조정
   - desktop `/add-place` direct entry는 기존 sidebar place-add surface 유지
   - add-rating non-route / place submission API contract unchanged 유지
+  - mobile `/add-place`와 add-rating이 shared shell contract 기준으로 같은 keyboard viewport model을 따르도록 정리
 
 ## Browser Automation QA Evidence
 - 실행 목적:
@@ -65,14 +70,15 @@
 ## User QA Required
 - 사용자 확인 항목:
   - mobile `/add-place` 후기 input focus 시 회색 영역 제거
+  - mobile add-rating 후기 input focus 시 회색 영역 제거
   - mobile `/add-place` 기기 뒤로가기 context 복원
   - `/add-place` direct entry / refresh 후 back fallback
 - 기대 결과:
-  - mobile place-add route UX가 안정적으로 동작한다.
+  - mobile place-add / add-rating keyboard UX가 안정적으로 동작한다.
 - 상태:
   - AI Agent automated/browser QA 완료
   - 사용자 실기기 QA 대기
-  - handoff 메모: local browser QA는 auth override + Kakao/runtime stub 기반으로 수행했으므로, 최종 sign-off는 실제 mobile device/browser에서 한 번 더 확인 필요
+  - handoff 메모: local browser QA는 auth override + Kakao/runtime stub 기반으로 수행했으므로, 최종 sign-off는 실제 mobile device/browser에서 `/add-place`와 add-rating 둘 다 한 번 더 확인 필요
 
 # Issues Found
 - 없음

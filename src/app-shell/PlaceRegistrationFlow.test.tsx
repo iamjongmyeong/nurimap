@@ -259,8 +259,8 @@ describe('Plan 06 place registration flow', () => {
     expect(screen.queryByTestId('map-canvas')).not.toBeInTheDocument()
     expect(scrollRegion).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto', 'overscroll-contain')
     expect(scrollRegion).toHaveStyle({
-      paddingBottom: 'calc(16px + var(--nurimap-effective-bottom-inset, 0px))',
-      scrollPaddingBottom: 'calc(24px + var(--nurimap-effective-bottom-inset, 0px))',
+      paddingBottom: 'calc(16px + var(--nurimap-safe-area-bottom, 0px))',
+      scrollPaddingBottom: 'calc(24px + var(--nurimap-safe-area-bottom, 0px))',
     })
   })
 

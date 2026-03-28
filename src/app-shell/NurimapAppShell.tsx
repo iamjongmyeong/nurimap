@@ -79,21 +79,22 @@ const BROWSE_BOOTSTRAP_RETRY_LABEL = '다시 시도'
 const STAR_PATH =
   'M11.9995 19.3643L6.46613 22.6977C6.22168 22.8532 5.96613 22.9199 5.69946 22.8977C5.4328 22.8754 5.19946 22.7865 4.99946 22.631C4.79946 22.4754 4.64391 22.2812 4.5328 22.0483C4.42168 21.8154 4.39946 21.5541 4.46613 21.2643L5.9328 14.9643L1.0328 10.731C0.810573 10.531 0.671906 10.303 0.616795 10.047C0.561684 9.79099 0.578129 9.54121 0.666129 9.29766C0.754129 9.0541 0.887462 8.8541 1.06613 8.69766C1.2448 8.54121 1.48924 8.44121 1.79946 8.39766L8.26613 7.83099L10.7661 1.89766C10.8772 1.63099 11.0497 1.43099 11.2835 1.29766C11.5172 1.16432 11.7559 1.09766 11.9995 1.09766C12.243 1.09766 12.4817 1.16432 12.7155 1.29766C12.9492 1.43099 13.1217 1.63099 13.2328 1.89766L15.7328 7.83099L22.1995 8.39766C22.5106 8.4421 22.755 8.5421 22.9328 8.69766C23.1106 8.85321 23.2439 9.05321 23.3328 9.29766C23.4217 9.5421 23.4386 9.79232 23.3835 10.0483C23.3284 10.3043 23.1892 10.5319 22.9661 10.731L18.0661 14.9643L19.5328 21.2643C19.5995 21.5532 19.5772 21.8145 19.4661 22.0483C19.355 22.2821 19.1995 22.4763 18.9995 22.631C18.7995 22.7857 18.5661 22.8745 18.2995 22.8977C18.0328 22.9208 17.7772 22.8541 17.5328 22.6977L11.9995 19.3643Z'
 const SECONDARY_BUTTON_CLASSES = 'inline-flex h-12 items-center justify-center rounded-full border border-[#d9d8e6] bg-white px-4 py-3 text-sm font-semibold text-[#222127] transition hover:border-[#c8c7d7] hover:bg-[#fafaff] disabled:cursor-not-allowed disabled:opacity-50'
-const MOBILE_SHELL_CLASS = 'relative h-[100dvh] min-h-[100dvh] overflow-hidden bg-white md:hidden'
+const MOBILE_SHELL_CLASS = 'fixed inset-x-0 overflow-hidden bg-white md:hidden'
 const MOBILE_SURFACE_CLASS = 'absolute inset-0 flex h-full min-h-0 flex-col bg-white overflow-hidden'
 const MOBILE_SCROLL_REGION_CLASS = 'flex-1 overflow-y-auto overscroll-contain'
 const MOBILE_SHELL_STYLE: CSSProperties = {
+  top: 'var(--nurimap-viewport-offset-top, 0px)',
   height: 'var(--nurimap-viewport-height, 100dvh)',
   minHeight: 'var(--nurimap-viewport-height, 100dvh)',
 }
 const MOBILE_SAFE_AREA_TOP_STYLE: CSSProperties = {
-  paddingTop: 'var(--nurimap-effective-top-inset, 0px)',
+  paddingTop: 'var(--nurimap-safe-area-top, 0px)',
 }
 const MOBILE_SAFE_AREA_BOTTOM_STYLE: CSSProperties = {
-  paddingBottom: 'var(--nurimap-effective-bottom-inset, 0px)',
+  paddingBottom: 'var(--nurimap-safe-area-bottom, 0px)',
 }
 const MOBILE_BOTTOM_BAR_SPACER_STYLE: CSSProperties = {
-  paddingBottom: 'calc(56px + var(--nurimap-effective-bottom-inset, 0px))',
+  paddingBottom: 'calc(56px + var(--nurimap-safe-area-bottom, 0px))',
 }
 const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
 
