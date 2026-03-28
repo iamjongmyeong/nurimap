@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import type { PlaceRegistrationPreparationResult, PlaceRegistrationResult } from './placeRepository'
 import { useAppShellStore } from './appShellStore'
 import { useAuth } from '../auth/authContext'
@@ -31,8 +31,6 @@ type SegmentedOption<T extends string> = {
 const GENERIC_SUBMIT_ERROR_MESSAGE = '등록하지 못했어요. 잠시 후 다시 시도해 주세요.'
 const REVIEW_LIMIT = 500
 const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-white px-3 text-base text-[#1f1f1f] placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
-const MOBILE_REVIEW_TEXTAREA_MIN_HEIGHT = 88
-const DESKTOP_REVIEW_TEXTAREA_MIN_HEIGHT = 96
 const PLACE_ADD_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 
 const PLACE_TYPE_OPTIONS: SegmentedOption<PlaceType>[] = [
@@ -196,11 +194,6 @@ const encodePlaceSubmissionId = (draft: {
     .replace(/=+$/u, '')
 }
 
-const resizeReviewTextarea = (textarea: HTMLTextAreaElement, minHeight: number) => {
-  textarea.style.height = `${minHeight}px`
-  textarea.style.height = `${Math.max(textarea.scrollHeight, minHeight)}px`
-}
-
 const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   const { csrfHeaderName, csrfToken } = useAuth()
   const { isDesktop } = useViewportMode()
@@ -208,8 +201,7 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   const inputClasses = `${isDesktop ? 'h-12 py-3' : 'h-10'} ${BASE_TEXT_FIELD_CLASSES}`
   const segmentedButtonSizeClasses = 'h-12 py-3'
   const submitButtonSizeClasses = 'h-12 py-3'
-  const textareaClasses = `${isDesktop ? 'min-h-[96px] py-3' : 'min-h-[88px] py-2'} resize-none overflow-hidden ${BASE_TEXT_FIELD_CLASSES}`
-  const reviewTextareaMinHeight = isDesktop ? DESKTOP_REVIEW_TEXTAREA_MIN_HEIGHT : MOBILE_REVIEW_TEXTAREA_MIN_HEIGHT
+  const textareaClasses = `h-[144px] min-h-[144px] resize-none overflow-y-auto py-3 ${BASE_TEXT_FIELD_CLASSES}`
   const scrollRegionClassName = isDesktop
     ? 'flex-1 min-h-0 overflow-auto px-6 pb-4'
     : 'flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 pb-4'
@@ -224,12 +216,6 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitState, setSubmitState] = useState<PlaceSubmitState>('idle')
   const hasRequiredFields = hasCompletedRequiredFields(draft)
-  const reviewTextareaRef = useRef<HTMLTextAreaElement | null>(null)
-
-  useEffect(() => {
-    if (!reviewTextareaRef.current) return
-    resizeReviewTextarea(reviewTextareaRef.current, reviewTextareaMinHeight)
-  }, [draft.review_content, reviewTextareaMinHeight])
 
   const updateDraft = (patch: Partial<RegistrationDraft>) => {
     setDraft((current) => ({ ...current, ...patch }))
@@ -423,10 +409,8 @@ const PlaceAddForm = ({ onClose }: PlaceAddPanelProps) => {
                   const nextReviewContent = clampReviewContent(event.target.value)
                   event.currentTarget.value = nextReviewContent
                   updateDraft({ review_content: nextReviewContent })
-                  resizeReviewTextarea(event.currentTarget, reviewTextareaMinHeight)
                 }}
                 maxLength={REVIEW_LIMIT}
-                ref={reviewTextareaRef}
                 value={draft.review_content}
               />
             </div>

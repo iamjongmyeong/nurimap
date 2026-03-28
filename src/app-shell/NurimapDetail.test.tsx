@@ -270,7 +270,7 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('review-add-surface')).toHaveTextContent('후기(선택)')
     expect(screen.getByText('평가')).toHaveClass("font-['Pretendard']", 'text-[12px]', 'font-medium', 'leading-[18px]', 'tracking-[-0.3px]', 'text-[#1c1c1c]')
     expect(screen.getByText('후기(선택)')).toHaveClass("font-['Pretendard']", 'text-[12px]', 'font-medium', 'leading-[18px]', 'tracking-[-0.3px]', 'text-[#1c1c1c]')
-    expect(screen.getByTestId('review-add-content-input')).toHaveClass('h-[96px]', 'min-h-[96px]', 'px-3', 'py-3')
+    expect(screen.getByTestId('review-add-content-input')).toHaveClass('h-[144px]', 'min-h-[144px]', 'overflow-y-auto', 'px-3', 'py-3', 'text-base')
     expect(screen.getByTestId('review-add-submit-button')).toHaveTextContent('등록')
     expect(screen.getByTestId('review-add-submit-button')).toHaveClass('h-12', 'py-3', 'font-semibold')
     expect(window.location.pathname).toBe('/places/place-cafe-1')
@@ -350,7 +350,7 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('review-add-content-input')).toHaveValue('저장 실패 시도')
   })
 
-  it('grows the add-rating review textarea height when the entered content exceeds the minimum height', async () => {
+  it('keeps the add-rating review textarea fixed at 144px and scrollable for multiline input', async () => {
     setViewport(390)
     const user = userEvent.setup()
     render(<App />)
@@ -361,14 +361,10 @@ describe('Sprint 16 place detail refresh', () => {
 
     const reviewInput = screen.getByTestId('review-add-content-input') as HTMLTextAreaElement
 
-    Object.defineProperty(reviewInput, 'scrollHeight', {
-      configurable: true,
-      value: 164,
-    })
-
     await user.type(reviewInput, '첫 줄\\n둘째 줄\\n셋째 줄\\n넷째 줄\\n다섯째 줄\\n여섯째 줄')
 
-    expect(reviewInput.style.height).toBe('164px')
+    expect(reviewInput).toHaveClass('h-[144px]', 'min-h-[144px]', 'overflow-y-auto')
+    expect(reviewInput.style.height).toBe('')
   })
 
   it('clamps pasted add-rating review content to 500 characters and discards the overflow', async () => {

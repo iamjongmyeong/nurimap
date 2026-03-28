@@ -296,7 +296,7 @@ describe('Plan 06 place registration flow', () => {
     expect(zeropayNeedsVerificationButton).toHaveClass('h-12', 'py-3', 'text-base', 'text-[#C9C9C9]')
     expect(screen.getByTestId('rating-field')).toHaveClass('space-y-3')
     expect(screen.getByTestId('rating-star-3')).toHaveClass('cursor-pointer', 'hover:scale-110')
-    expect(reviewInput).toHaveClass('w-full', 'min-h-[96px]', 'resize-none', 'px-3', 'py-3')
+    expect(reviewInput).toHaveClass('w-full', 'h-[144px]', 'min-h-[144px]', 'resize-none', 'overflow-y-auto', 'px-3', 'py-3')
     expect(screen.queryByText('0 / 500')).not.toBeInTheDocument()
     const submitButton = screen.getByTestId('place-submit-button')
     expect(submitButton).toHaveClass('mt-6', 'h-12', 'py-3')
@@ -308,7 +308,7 @@ describe('Plan 06 place registration flow', () => {
     expect(submitButton).toHaveAttribute('data-required-fields', 'complete')
   })
 
-  it('grows the review textarea height when the entered content exceeds the minimum height', async () => {
+  it('keeps the review textarea fixed at 144px and scrollable for multiline input', async () => {
     setViewport(1280)
     const user = userEvent.setup()
     render(<App />)
@@ -317,14 +317,10 @@ describe('Plan 06 place registration flow', () => {
 
     const reviewInput = screen.getByTestId('review-content-input') as HTMLTextAreaElement
 
-    Object.defineProperty(reviewInput, 'scrollHeight', {
-      configurable: true,
-      value: 164,
-    })
-
     await user.type(reviewInput, '첫 줄\\n둘째 줄\\n셋째 줄\\n넷째 줄\\n다섯째 줄\\n여섯째 줄')
 
-    expect(reviewInput.style.height).toBe('164px')
+    expect(reviewInput).toHaveClass('h-[144px]', 'min-h-[144px]', 'overflow-y-auto')
+    expect(reviewInput.style.height).toBe('')
   })
 
   it('clamps pasted review content to 500 characters and discards the overflow', async () => {

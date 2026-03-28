@@ -71,7 +71,6 @@ const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const DETAIL_ROUTE_PREFIX = '/places/'
 const PLACE_ADD_ROUTE = '/add-place'
 const REVIEW_LIMIT = 500
-const ADD_RATING_TEXTAREA_MIN_HEIGHT = 96
 const BROWSE_BOOTSTRAP_LOADING_TITLE = '데이터를 불러오는 중이에요.'
 const BROWSE_BOOTSTRAP_LOADING_BODY = '잠시만 기다려 주세요.'
 const BROWSE_BOOTSTRAP_ERROR_TITLE = '데이터를 불러오지 못했어요.'
@@ -97,11 +96,6 @@ const MOBILE_BOTTOM_BAR_SPACER_STYLE: CSSProperties = {
   paddingBottom: 'calc(56px + var(--nurimap-effective-bottom-inset, 0px))',
 }
 const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
-
-const resizeAddRatingTextarea = (textarea: HTMLTextAreaElement) => {
-  textarea.style.height = `${ADD_RATING_TEXTAREA_MIN_HEIGHT}px`
-  textarea.style.height = `${Math.max(textarea.scrollHeight, ADD_RATING_TEXTAREA_MIN_HEIGHT)}px`
-}
 
 const BrowseBootstrapState = ({
   mode,
@@ -653,12 +647,6 @@ const AddRatingScreen = ({
   const [draft, setDraft] = useState(createInitialReviewDraft)
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const reviewTextareaRef = useRef<HTMLTextAreaElement | null>(null)
-
-  useEffect(() => {
-    if (!reviewTextareaRef.current) return
-    resizeAddRatingTextarea(reviewTextareaRef.current)
-  }, [draft.review_content])
 
   const handleSubmit = async () => {
     if (!place || submitState === 'submitting') {
@@ -706,7 +694,7 @@ const AddRatingScreen = ({
                     후기(선택)
                   </label>
                   <textarea
-                    className="h-[96px] min-h-[96px] w-full resize-none overflow-hidden rounded-xl border border-[#ebe7f1] bg-white px-3 py-3 text-sm leading-6 text-[#1f1f1f] placeholder:text-[#b3afbf] focus:border-[#5862fb] focus:outline-none focus:ring-0 focus:shadow-none"
+                    className="h-[144px] min-h-[144px] w-full resize-none overflow-y-auto rounded-xl border border-[#ebe7f1] bg-white px-3 py-3 text-base leading-6 text-[#1f1f1f] placeholder:text-[#b3afbf] focus:border-[#5862fb] focus:outline-none focus:ring-0 focus:shadow-none"
                     data-testid="review-add-content-input"
                     id="review-add-content-input"
                     maxLength={REVIEW_LIMIT}
@@ -714,10 +702,8 @@ const AddRatingScreen = ({
                       const nextReviewContent = clampReviewContent(event.target.value)
                       event.currentTarget.value = nextReviewContent
                       setDraft((current) => ({ ...current, review_content: nextReviewContent }))
-                      resizeAddRatingTextarea(event.currentTarget)
                     }}
                     placeholder=""
-                    ref={reviewTextareaRef}
                     value={draft.review_content}
                   />
                 </div>
