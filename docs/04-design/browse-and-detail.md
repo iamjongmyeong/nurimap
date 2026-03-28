@@ -19,9 +19,9 @@
 
 ## Surface Contract
 - desktop은 전체 지도 + 왼쪽 sidebar를 browse / detail / place add의 공용 container로 사용한다.
-- mobile browse는 전체 지도 surface 위에 하단 고정 3탭 바(`지도`, `추가`, `목록`)를 사용하고, map/list primary surface 사이를 이동할 때 active 탭이 현재 surface와 함께 바뀐다. 목록 surface는 상단 고정 brand/logout header를 유지하고, place add surface에서는 하단 GNB를 숨긴다. detail은 full-screen page로 열린다.
+- mobile browse는 전체 지도 surface 위에 하단 고정 3탭 바(`지도`, `추가`, `목록`)를 사용하고, map/list primary surface 사이를 이동할 때 active 탭이 현재 surface와 함께 바뀐다. 목록 surface는 상단 고정 brand/logout header를 유지한다. mobile place add는 canonical `/add-place` full-screen page로 열리고, 이때 하단 GNB는 숨긴다. detail은 full-screen page로 열린다.
 - desktop detail은 별도 floating panel이 아니라 기존 목록 영역 안에서 열린다.
-- place add는 desktop/mobile 모두 기존 목록 영역 계열 surface를 재사용한다.
+- place add는 desktop에서는 기존 목록 영역 계열 surface를 재사용하고, mobile에서는 canonical `/add-place` page로 분리한다.
 - mobile add-rating은 detail에 종속된 child surface이며 standalone durable page로 분리하지 않는다.
 - detail surface는 장소 요약, review list, review action처럼 place detail에 종속된 하위 모듈을 함께 품는다.
 - map runtime loading / failure도 browse layout 안에서 처리하고, fake-map 같은 별도 surface로 오해되면 안 된다.
@@ -32,11 +32,11 @@
 - direct detail entry(`/places/:placeId`)도 현재 breakpoint에 맞는 같은 detail surface로 열려야 한다.
 - detail 하단 CTA로 연 add-rating은 current detail context 안에서 열리고, save/back/cancel은 같은 detail로 복귀해야 한다.
 - add-rating은 route를 별도 `/places/:placeId/add-rating` 같은 durable state로 승격하지 않는다.
-- place add 진입/닫기는 기존 browse container 안에서 처리하고 add 전용 route를 만들지 않는다.
+- mobile place add 진입은 `/add-place` route를 사용하고, desktop `/add-place` direct entry는 기존 sidebar place-add surface로 렌더링한다.
 - place submission 성공 후에는 별도 완료 화면이 아니라 결과 place detail로 이어진다.
 
 ## Hidden Invariants
-- durable/shareable detail state는 route가 관리하고, transient browse/add/add-rating UI state는 기존 internal state 경계 안에 남아야 한다.
+- durable/shareable detail state와 mobile place-add entry는 canonical route와 정합해야 하고, list/add-rating 같은 non-durable UI state만 internal state 경계 안에 남아야 한다.
 - 사용자는 map ↔ list ↔ detail 전환 중에도 selected place와 지도 맥락을 잃지 않아야 한다.
 - review와 add-rating entry는 detail의 일부이며 별도 design 문서나 별도 navigation surface로 분리하지 않는다.
 - add-rating은 review domain의 entry surface이지만 detail에서 파생된 transient child surface다.

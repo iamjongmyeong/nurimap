@@ -38,7 +38,7 @@ flowchart LR
 | Auth request surface | `/` + auth phase | 로그인 전 진입점이다. |
 | Browse surface | `/` | 지도 + 목록 기본 surface다. |
 | Place detail surface | `/places/:placeId` | durable/shareable detail source of truth다. desktop은 sidebar detail, mobile은 full-screen detail을 유지한다. |
-| Place add surface | internal `place_add_open` state | 별도 `/add-place` route를 만들지 않는다. 등록 성공 후에는 결과 place의 `/places/:placeId`로 이동한다. |
+| Place add surface | `/add-place` | mobile은 standalone full-screen page, desktop은 sidebar place-add surface로 렌더링한다. 등록 성공 후에는 결과 place의 `/places/:placeId`로 이동한다. |
 | Mobile place list surface | internal `mobile_place_list_open` state | 모바일 전용 목록 surface다. |
 
 ## Canonical Server Route Contract
@@ -64,17 +64,22 @@ flowchart LR
 ## Route And State Ownership
 - durable/shareable state는 route가 관리한다.
   - `/`
+  - `/add-place`
   - `/places/:placeId`
 - transient/view-local state는 local store가 관리한다.
   - `selectedPlaceId`
   - `mapLevel`
   - `placeListLoad`
   - `placeDetailLoad`
-  - `place_add_open`
   - `mobile_place_list_open`
   - draft form state
+- route-synced app-shell navigation state는 UI layer bridge로 해석한다.
+  - `place_add_open`은 canonical `/add-place` surface active 상태를 반영한다.
+  - `place_detail_open`은 canonical `/places/:placeId` surface active 상태를 반영한다.
+  - `mobile_place_list_open`만 internal-only mobile list surface다.
 - route/store bridge는 UI layer에서 수행한다. store action 안에서 `navigate()`를 직접 호출하지 않는다.
 - route param `placeId`가 있으면 `place_detail_open` surface가 active이며, route가 detail open 여부의 source of truth다.
+- pathname이 `/add-place`면 `place_add_open` surface가 active이며, route가 mobile place-add entry의 source of truth다.
 - `selectedPlaceId`는 route param이 없을 때도 마지막 focus/selection anchor로 유지될 수 있다.
 
 ## Auth Phase Contract
@@ -95,7 +100,7 @@ flowchart LR
 |---|---|---|
 | `map_browse` | 지도 탐색 기본 상태 | browse 기본 surface다. |
 | `mobile_place_list_open` | 모바일 목록 화면 | 모바일에서만 활성화된다. |
-| `place_add_open` | 기존 목록 영역이 등록 화면으로 전환된 상태 | URL은 바뀌지 않는다. |
+| `place_add_open` | place add surface active 상태 | `/add-place` route와 동기화되며, desktop에서는 sidebar surface·mobile에서는 standalone page로 나타난다. |
 | `place_detail_open` | 장소 상세 화면 | canonical route(`/places/:placeId`)와 동기화된다. |
 
 ## Async Substate Contract

@@ -19,6 +19,7 @@ export type NavigationState =
 export type DetailChildSurface = 'detail' | 'add_rating'
 export type PlaceListLoadState = 'idle' | 'loading' | 'ready' | 'error'
 export type PlaceDetailLoadState = 'idle' | 'loading' | 'ready' | 'error'
+export type BrowseNavigationState = 'map_browse' | 'mobile_place_list_open'
 
 type AppShellState = {
   navigationState: NavigationState
@@ -29,7 +30,6 @@ type AppShellState = {
   mapLevel: number
   places: PlaceSummary[]
   openMobilePlaceList: () => void
-  openPlaceAdd: () => void
   closePlaceAdd: () => void
   openPlaceDetail: (placeId: string) => void
   closePlaceDetail: () => void
@@ -37,6 +37,7 @@ type AppShellState = {
   closeDetailAddRating: () => void
   syncDetailChildSurface: (surface: DetailChildSurface) => void
   returnToMapBrowse: () => void
+  restoreBrowseNavigationState: (navigationState: BrowseNavigationState) => void
   setSelectedPlaceId: (placeId: string | null) => void
   setPlaceListLoad: (status: PlaceListLoadState) => void
   setPlaceDetailLoad: (status: PlaceDetailLoadState) => void
@@ -69,7 +70,6 @@ const buildInitialState = () => ({
 export const useAppShellStore = create<AppShellState>((set, get) => ({
   ...buildInitialState(),
   openMobilePlaceList: () => set({ navigationState: 'mobile_place_list_open', detailChildSurface: 'detail' }),
-  openPlaceAdd: () => set({ navigationState: 'place_add_open', detailChildSurface: 'detail' }),
   closePlaceAdd: () => set({ navigationState: 'map_browse', detailChildSurface: 'detail' }),
   openPlaceDetail: (placeId) =>
     set({
@@ -83,6 +83,12 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   closeDetailAddRating: () => set({ detailChildSurface: 'detail' }),
   syncDetailChildSurface: (detailChildSurface) => set({ detailChildSurface }),
   returnToMapBrowse: () => set({ navigationState: 'map_browse', detailChildSurface: 'detail' }),
+  restoreBrowseNavigationState: (navigationState) =>
+    set({
+      navigationState,
+      detailChildSurface: 'detail',
+      selectedPlaceId: null,
+    }),
   setSelectedPlaceId: (selectedPlaceId) => set({ selectedPlaceId }),
   setPlaceListLoad: (placeListLoad) => set({ placeListLoad }),
   setPlaceDetailLoad: (placeDetailLoad) => set({ placeDetailLoad }),

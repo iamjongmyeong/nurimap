@@ -19,7 +19,7 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - 저장 비동기 상태
 
 ## Functional Requirements
-- place 등록은 기존 목록 영역 안의 단일 폼으로 구성한다.
+- place 등록은 desktop에서는 기존 sidebar 안의 단일 폼으로, mobile에서는 canonical `/add-place` full-screen page의 단일 폼으로 구성한다.
 - 필수 입력은 `name`, `road_address`, `place_type`, `zeropay_status`, `rating_score`다.
 - `land_lot_address`와 `review_content`는 선택 입력이다.
 - `place_type = restaurant | cafe`
@@ -52,7 +52,7 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - legacy `POST /api/place-entry` compatibility wrapper는 제거되었다. place registration은 canonical `place-lookups` + `place-submissions` + `place-submissions/:submissionId/confirmations` flow만 사용한다.
 
 ## Acceptance Criteria
-- place 등록은 같은 목록 영역 안의 단일 폼으로 진행된다.
+- desktop place 등록은 기존 sidebar 안의 단일 폼으로, mobile place 등록은 `/add-place` full-screen page의 단일 폼으로 진행된다.
 - 이름, 주소, 장소 구분, 제로페이, 평가 입력이 가능하다.
 - 후기 입력은 여러 줄 입력을 지원한다.
 - 초기 별점은 기본적으로 5점 선택 상태다.
@@ -127,7 +127,7 @@ place 직접 입력 등록 흐름과 저장 전 검증 규칙을 정의한다.
 - 등록 성공 시 결과 place 상세 이동
 
 ## Manual QA Checklist
-- place 등록이 같은 목록 영역 안의 단일 폼으로 보인다.
+- desktop place 등록은 기존 sidebar 안의 단일 폼으로 보이고, mobile place 등록은 `/add-place` full-screen page로 보인다.
 - 장소 구분과 제로페이 선택이 가능하다.
 - 평가는 별점 입력으로 동작한다.
 - 기본 상태에서 5점이 선택되어 있다.

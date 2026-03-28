@@ -23,9 +23,9 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 - 모바일 목록 페이지에서 place를 선택하면 전체 화면 상세 페이지로 이동한다.
 - 모바일 목록 페이지는 상단 고정 header에서 로고 + `누리맵` 브랜드를 왼쪽에, `로그아웃` control을 오른쪽에 표시한다.
 - 모바일 목록 페이지의 목록 row UI는 desktop browse row와 같은 구조를 재사용한다.
-- `장소 추가`를 누르면 같은 목록 영역이 등록 화면으로 전환된다.
-- 등록 화면을 닫으면 사용자는 직전 목록 상태로 돌아간다.
-- `장소 추가` 진입과 닫기 동안 현재 browse/detail URL은 place add 전용 route로 바뀌지 않는다.
+- 모바일에서 `장소 추가`를 누르면 canonical `/add-place` route로 이동해 full-screen 등록 화면을 연다.
+- 데스크톱에서 `장소 추가`를 누르면 기존 sidebar place-add surface를 연다.
+- 모바일 등록 화면을 닫으면 사용자는 직전 목록 상태로 돌아가고, direct entry/refresh처럼 이전 context가 없으면 `/`로 복귀한다.
 - 목록 상태는 `place_list_load = idle | loading | empty | ready | error`로 관리한다.
 - 목록 로딩 중에는 진행 중 상태를 표시한다.
 - 목록 데이터가 0건이면 empty state를 표시한다.
@@ -42,8 +42,8 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 - 목록 로딩 중에는 진행 중 상태가 보인다.
 - 목록 데이터가 없으면 empty state가 보인다.
 - 목록 로딩 실패 시 재시도 액션을 확인할 수 있다.
-- 장소 추가 진입 시 목록 영역이 등록 화면으로 바뀌고 URL은 place add 전용 path로 바뀌지 않는다.
-- 등록 화면을 닫으면 목록 탐색 맥락으로 복귀한다.
+- 모바일 장소 추가 진입 시 `/add-place` route가 반영되고 full-screen 등록 화면이 열린다.
+- 모바일 등록 화면을 닫으면 목록 탐색 맥락으로 복귀하고, direct entry/refresh로 이전 context가 없을 때는 `/`로 복귀한다.
 
 ## TDD Implementation Order
 1. 목록 표시 필드 테스트를 작성한다.
@@ -68,7 +68,7 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 - 목록 로딩 상태 표시
 - 데이터 없음 상태 처리
 - 목록 로딩 실패 시 재시도
-- place add 진입/닫기 시 URL 유지
+- mobile `/add-place` route 진입/닫기
 
 ## Manual QA Checklist
 - 목록에서 place 비교가 가능하다.
@@ -78,7 +78,7 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 - 제로페이 미확인 또는 불가 place에는 제로페이 로고가 보이지 않는다.
 - 클릭 시 상세가 열리고 URL이 해당 place detail로 바뀐다.
 - 모바일 목록 페이지에서 place를 누르면 전체 화면 상세 페이지가 열린다.
-- 장소 추가 진입 시 같은 목록 영역이 등록 화면으로 바뀌고 URL은 그대로 유지된다.
+- 모바일 장소 추가 진입 시 `/add-place` route가 반영된다.
 - 목록 로딩 중 진행 상태가 보인다.
 - 목록 데이터가 없을 때 empty state가 보인다.
 - 목록 로딩 실패 시 재시도 액션이 보인다.

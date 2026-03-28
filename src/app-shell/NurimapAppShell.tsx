@@ -5,6 +5,7 @@ import { DesktopPlaceAddPanel, MobilePlaceAddPage } from './PlaceAddPanels'
 import { createInitialReviewDraft, validateReviewDraft, type ReviewDraft } from './placeRepository'
 import {
   useAppShellStore,
+  type BrowseNavigationState,
   type NavigationState,
   type PlaceDetailLoadState,
   type PlaceListLoadState,
@@ -68,6 +69,7 @@ const MOBILE_BOTTOM_TAB_PLUS_ICON = {
 const LOGOUT_CONFIRM_MESSAGE = '로그아웃하시겠어요?'
 const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const DETAIL_ROUTE_PREFIX = '/places/'
+const PLACE_ADD_ROUTE = '/add-place'
 const REVIEW_LIMIT = 500
 const ADD_RATING_TEXTAREA_MIN_HEIGHT = 96
 const BROWSE_BOOTSTRAP_LOADING_TITLE = '데이터를 불러오는 중이에요.'
@@ -237,6 +239,17 @@ const parseReviewTimestamp = (value: string) => {
 }
 
 const getDetailRoutePath = (placeId: string) => `${DETAIL_ROUTE_PREFIX}${encodeURIComponent(placeId)}`
+const isPlaceAddPathname = (pathname: string) => pathname === PLACE_ADD_ROUTE
+
+const readHistoryStateRecord = (state: unknown): Record<string, unknown> =>
+  state && typeof state === 'object'
+    ? state as Record<string, unknown>
+    : {}
+
+const readBrowseNavigationStateFromHistoryState = (state: unknown): BrowseNavigationState =>
+  readHistoryStateRecord(state).navigationState === 'mobile_place_list_open'
+    ? 'mobile_place_list_open'
+    : 'map_browse'
 
 const getPlaceIdFromPathname = (pathname: string) => {
   if (!pathname.startsWith(DETAIL_ROUTE_PREFIX)) {
@@ -760,16 +773,17 @@ const DesktopBrowseTopBar = ({ onOpenPlaceAdd }: { onOpenPlaceAdd: () => void })
 )
 
 const DesktopBrowseSidebar = ({
+  onOpenPlaceAdd,
   onOpenPlaceDetail,
   places,
   selectedPlaceId,
 }: {
+  onOpenPlaceAdd: () => void
   onOpenPlaceDetail: (placeId: string) => void
   places: PlaceSummary[]
   selectedPlaceId: string | null
 }) => {
   const { signOut } = useAuth()
-  const openPlaceAdd = useAppShellStore((state) => state.openPlaceAdd)
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
   const handleSignOut = () => {
     if (!window.confirm(LOGOUT_CONFIRM_MESSAGE)) {
@@ -780,7 +794,7 @@ const DesktopBrowseSidebar = ({
 
   return (
     <>
-      <DesktopBrowseTopBar onOpenPlaceAdd={openPlaceAdd} />
+      <DesktopBrowseTopBar onOpenPlaceAdd={onOpenPlaceAdd} />
 
       <div className="-mx-6 flex-1 overflow-auto">
         <PlaceListPanel
@@ -822,6 +836,8 @@ const DesktopDetailSidebar = ({
 )
 
 const DesktopSidebar = ({
+  onClosePlaceAdd,
+  onOpenPlaceAdd,
   navigationState,
   onOpenPlaceDetail,
   onReturnToMapBrowse,
@@ -829,6 +845,8 @@ const DesktopSidebar = ({
   selectedPlace,
   selectedPlaceId,
 }: {
+  onClosePlaceAdd: () => void
+  onOpenPlaceAdd: () => void
   navigationState: NavigationState
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
@@ -836,7 +854,6 @@ const DesktopSidebar = ({
   selectedPlace: PlaceSummary | undefined
   selectedPlaceId: string | null
 }) => {
-  const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
   const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
   const sidebarClassName = `place-add-surface flex h-screen w-[390px] flex-col border-r border-[#ececf3] bg-[#fff] ${
     navigationState === 'place_detail_open' || navigationState === 'place_add_open' ? '' : 'px-5 py-5 md:px-6 md:py-6'
@@ -845,7 +862,7 @@ const DesktopSidebar = ({
   return (
     <aside className={sidebarClassName} data-testid="desktop-sidebar">
       {navigationState === 'place_add_open' ? (
-        <DesktopPlaceAddPanel onClose={closePlaceAdd} />
+        <DesktopPlaceAddPanel onClose={onClosePlaceAdd} />
       ) : navigationState === 'place_detail_open' ? (
         <DesktopDetailSidebar
           onBrowseBack={onReturnToMapBrowse}
@@ -853,7 +870,12 @@ const DesktopSidebar = ({
           status={placeDetailLoad}
         />
       ) : (
-        <DesktopBrowseSidebar onOpenPlaceDetail={onOpenPlaceDetail} places={places} selectedPlaceId={selectedPlaceId} />
+        <DesktopBrowseSidebar
+          onOpenPlaceAdd={onOpenPlaceAdd}
+          onOpenPlaceDetail={onOpenPlaceDetail}
+          places={places}
+          selectedPlaceId={selectedPlaceId}
+        />
       )}
     </aside>
   )
@@ -889,9 +911,14 @@ const MobileBottomTabButton = ({
 
 type MobilePrimaryTab = 'map' | 'add' | 'list'
 
-const MobileBottomTabBar = ({ activeTab }: { activeTab: MobilePrimaryTab }) => {
+const MobileBottomTabBar = ({
+  activeTab,
+  onOpenPlaceAdd,
+}: {
+  activeTab: MobilePrimaryTab
+  onOpenPlaceAdd: () => void
+}) => {
   const openMobilePlaceList = useAppShellStore((state) => state.openMobilePlaceList)
-  const openPlaceAdd = useAppShellStore((state) => state.openPlaceAdd)
   const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
 
   return (
@@ -910,7 +937,7 @@ const MobileBottomTabBar = ({ activeTab }: { activeTab: MobilePrimaryTab }) => {
           />
           <span className="block h-[10px] whitespace-nowrap text-center font-['Pretendard'] text-[10px] font-normal leading-[10px]">지도</span>
         </MobileBottomTabButton>
-        <MobileBottomTabButton active={activeTab === 'add'} ariaLabel="장소 추가" onClick={openPlaceAdd} testId="mobile-tab-add">
+        <MobileBottomTabButton active={activeTab === 'add'} ariaLabel="장소 추가" onClick={onOpenPlaceAdd} testId="mobile-tab-add">
           <MobileBottomTabIcon
             className="h-6 w-6 shrink-0"
             src={activeTab === 'add' ? MOBILE_BOTTOM_TAB_PLUS_ICON.active : MOBILE_BOTTOM_TAB_PLUS_ICON.inactive}
@@ -1023,12 +1050,16 @@ const MobileDetailPage = ({
 }
 
 const DesktopAppShell = ({
+  onClosePlaceAdd,
+  onOpenPlaceAdd,
   navigationState,
   mapPlaces,
   onOpenPlaceDetail,
   onReturnToMapBrowse,
   selectedPlace,
 }: {
+  onClosePlaceAdd: () => void
+  onOpenPlaceAdd: () => void
   navigationState: NavigationState
   mapPlaces: PlaceSummary[]
   onOpenPlaceDetail: (placeId: string) => void
@@ -1042,6 +1073,8 @@ const DesktopAppShell = ({
   return (
     <main className="hidden h-screen md:flex" data-testid="desktop-shell">
       <DesktopSidebar
+        onClosePlaceAdd={onClosePlaceAdd}
+        onOpenPlaceAdd={onOpenPlaceAdd}
         navigationState={navigationState}
         onOpenPlaceDetail={onOpenPlaceDetail}
         onReturnToMapBrowse={onReturnToMapBrowse}
@@ -1063,18 +1096,22 @@ const DesktopAppShell = ({
 }
 
 const MobileAppShell = ({
+  onClosePlaceAdd,
   detailChildSurface,
   navigationState,
+  onOpenPlaceAdd,
   mapPlaces,
   onAddRatingBack,
-  onOpenAddRating,
   onOpenPlaceDetail,
+  onOpenAddRating,
   onReturnToMapBrowse,
   onSubmitReview,
   selectedPlace,
 }: {
+  onClosePlaceAdd: () => void
   detailChildSurface: 'detail' | 'add_rating'
   navigationState: NavigationState
+  onOpenPlaceAdd: () => void
   mapPlaces: PlaceSummary[]
   onAddRatingBack: () => void
   onOpenAddRating: () => void
@@ -1083,7 +1120,6 @@ const MobileAppShell = ({
   onSubmitReview: (placeId: string, draft: ReviewDraft) => Promise<{ status: 'saved' | 'existing_review' | 'error'; message?: string }>
   selectedPlace: PlaceSummary | undefined
 }) => {
-  const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
   const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
   const mapLevel = useAppShellStore((state) => state.mapLevel)
@@ -1094,6 +1130,14 @@ const MobileAppShell = ({
         : 'map'
   const showMobileBottomTabBar =
     navigationState === 'map_browse' || navigationState === 'mobile_place_list_open'
+
+  if (navigationState === 'place_add_open') {
+    return (
+      <main className={MOBILE_SHELL_CLASS} data-testid="mobile-shell" style={MOBILE_SHELL_STYLE}>
+        <MobilePlaceAddPage onClose={onClosePlaceAdd} />
+      </main>
+    )
+  }
 
   return (
     <main className={MOBILE_SHELL_CLASS} data-testid="mobile-shell" style={MOBILE_SHELL_STYLE}>
@@ -1123,8 +1167,7 @@ const MobileAppShell = ({
           status={placeDetailLoad}
         />
       ) : null}
-      {navigationState === 'place_add_open' ? <MobilePlaceAddPage onClose={closePlaceAdd} /> : null}
-      {showMobileBottomTabBar ? <MobileBottomTabBar activeTab={activeMobileTab} /> : null}
+      {showMobileBottomTabBar ? <MobileBottomTabBar activeTab={activeMobileTab} onOpenPlaceAdd={onOpenPlaceAdd} /> : null}
     </main>
   )
 }
@@ -1153,10 +1196,12 @@ export const NurimapAppShell = () => {
   const pathname = useSyncExternalStore(subscribeToLocation, getLocationPathname, getLocationPathname)
   const navigationState = useAppShellStore((state) => state.navigationState)
   const detailChildSurface = useAppShellStore((state) => state.detailChildSurface)
+  const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
   const openPlaceDetail = useAppShellStore((state) => state.openPlaceDetail)
   const closePlaceDetail = useAppShellStore((state) => state.closePlaceDetail)
   const openDetailAddRating = useAppShellStore((state) => state.openDetailAddRating)
   const closeDetailAddRating = useAppShellStore((state) => state.closeDetailAddRating)
+  const restoreBrowseNavigationState = useAppShellStore((state) => state.restoreBrowseNavigationState)
   const syncDetailChildSurface = useAppShellStore((state) => state.syncDetailChildSurface)
   const places = useAppShellStore((state) => state.places)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
@@ -1170,13 +1215,18 @@ export const NurimapAppShell = () => {
   const { csrfHeaderName, csrfToken } = useAuth()
   const mapPlaces = places.filter(hasCoordinates)
   const routePlaceId = getPlaceIdFromPathname(pathname)
+  const routePlaceAdd = isPlaceAddPathname(pathname)
   const routeSelectedPlace = routePlaceId
     ? places.find((place) => place.id === routePlaceId)
     : undefined
   const selectedPlace = routePlaceId
     ? routeSelectedPlace
     : places.find((place) => place.id === selectedPlaceId)
-  const effectiveNavigationState = routePlaceId ? 'place_detail_open' : navigationState
+  const effectiveNavigationState = routePlaceId
+    ? 'place_detail_open'
+    : routePlaceAdd
+      ? 'place_add_open'
+      : navigationState
   const effectiveDetailChildSurface = routePlaceId ? detailChildSurface : 'detail'
 
   useEffect(() => {
@@ -1198,20 +1248,71 @@ export const NurimapAppShell = () => {
   }, [detailChildSurface, routePlaceId, syncDetailChildSurface])
 
   useEffect(() => {
+    if (!routePlaceAdd) {
+      return
+    }
+
+    const currentState = readHistoryStateRecord(window.history.state)
+    if (typeof currentState.placeAddOriginPath === 'string') {
+      return
+    }
+
+    const fallbackState: Record<string, unknown> = {
+      ...currentState,
+      navigationState: 'map_browse',
+      detailChildSurface: 'detail',
+    }
+
+    delete fallbackState.placeAddOriginPath
+
+    window.history.replaceState(fallbackState, '', '/')
+    window.history.pushState({ ...fallbackState, navigationState: 'place_add_open', placeAddOriginPath: '/' }, '', PLACE_ADD_ROUTE)
+  }, [routePlaceAdd])
+
+  useEffect(() => {
+    if (pathname !== '/' || routePlaceId || routePlaceAdd) {
+      return
+    }
+
+    const currentState = readHistoryStateRecord(window.history.state)
+    const nextBrowseNavigationState = navigationState === 'mobile_place_list_open'
+      ? 'mobile_place_list_open'
+      : 'map_browse'
+
+    if (currentState.navigationState === nextBrowseNavigationState && !('placeAddOriginPath' in currentState)) {
+      return
+    }
+
+    const nextState: Record<string, unknown> = {
+      ...currentState,
+      navigationState: nextBrowseNavigationState,
+      detailChildSurface: 'detail',
+    }
+
+    delete nextState.placeAddOriginPath
+
+    window.history.replaceState(nextState, '', pathname)
+  }, [navigationState, pathname, routePlaceAdd, routePlaceId])
+
+  useEffect(() => {
     const handlePopState = () => {
       if (window.location.pathname.startsWith(DETAIL_ROUTE_PREFIX)) {
         syncDetailChildSurface(readDetailChildSurfaceFromHistoryState(window.history.state))
         return
       }
 
-      closePlaceDetail()
+      if (window.location.pathname === PLACE_ADD_ROUTE) {
+        return
+      }
+
+      restoreBrowseNavigationState(readBrowseNavigationStateFromHistoryState(window.history.state))
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [closePlaceDetail, syncDetailChildSurface])
+  }, [restoreBrowseNavigationState, syncDetailChildSurface])
 
   useEffect(() => {
     if (isDesktop) {
@@ -1295,16 +1396,17 @@ export const NurimapAppShell = () => {
     }
   }, [loadPlaceDetailFromApi, placeDetailLoad, routePlaceId, routeSelectedPlace, selectedPlaceId, setSelectedPlaceId])
 
-  const navigateToPath = (path: string, replace = false) => {
+  const navigateToPath = (path: string, replace = false, historyState: Record<string, unknown> = {}) => {
     if (window.location.pathname === path) {
+      window.history.replaceState(historyState, '', path)
       window.dispatchEvent(new PopStateEvent('popstate'))
       return
     }
 
     if (replace) {
-      window.history.replaceState({}, '', path)
+      window.history.replaceState(historyState, '', path)
     } else {
-      window.history.pushState({}, '', path)
+      window.history.pushState(historyState, '', path)
     }
 
     window.dispatchEvent(new PopStateEvent('popstate'))
@@ -1317,7 +1419,25 @@ export const NurimapAppShell = () => {
 
   const handleReturnToMapBrowse = () => {
     closePlaceDetail()
-    navigateToPath('/', true)
+    navigateToPath('/', true, { navigationState: 'map_browse', detailChildSurface: 'detail' })
+  }
+
+  const handleOpenPlaceAdd = () => {
+    const currentState = readHistoryStateRecord(window.history.state)
+    navigateToPath(PLACE_ADD_ROUTE, false, {
+      ...currentState,
+      navigationState: 'place_add_open',
+      placeAddOriginPath: window.location.pathname,
+    })
+  }
+
+  const handleClosePlaceAdd = () => {
+    if (window.location.pathname === PLACE_ADD_ROUTE) {
+      window.history.back()
+      return
+    }
+
+    closePlaceAdd()
   }
 
   const handleOpenAddRating = () => {
@@ -1424,6 +1544,8 @@ export const NurimapAppShell = () => {
 
   return isDesktop ? (
     <DesktopAppShell
+      onClosePlaceAdd={handleClosePlaceAdd}
+      onOpenPlaceAdd={handleOpenPlaceAdd}
       navigationState={effectiveNavigationState}
       mapPlaces={mapPlaces}
       onOpenPlaceDetail={handleOpenPlaceDetail}
@@ -1432,8 +1554,10 @@ export const NurimapAppShell = () => {
     />
   ) : (
     <MobileAppShell
+      onClosePlaceAdd={handleClosePlaceAdd}
       detailChildSurface={effectiveDetailChildSurface}
       navigationState={effectiveNavigationState}
+      onOpenPlaceAdd={handleOpenPlaceAdd}
       mapPlaces={mapPlaces}
       onAddRatingBack={handleCloseAddRating}
       onOpenAddRating={handleOpenAddRating}

@@ -152,6 +152,7 @@ describe('Plan 05 direct place entry shell flow', () => {
 
     await user.click(screen.getByRole('button', { name: '장소 추가' }))
 
+    expect(window.location.pathname).toBe('/add-place')
     expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
     expect(screen.getByRole('heading', { name: '직접 장소 등록' })).toBeInTheDocument()
     expect(screen.queryByTestId('place-list-ready')).not.toBeInTheDocument()
@@ -189,7 +190,9 @@ describe('Plan 05 direct place entry shell flow', () => {
 
     await user.click(screen.getByRole('button', { name: '장소 추가' }))
 
+    expect(window.location.pathname).toBe('/add-place')
     expect(screen.getByTestId('mobile-place-add-page')).toBeInTheDocument()
+    expect(screen.queryByTestId('map-canvas')).not.toBeInTheDocument()
     expect(screen.queryByTestId('mobile-bottom-tab-bar')).not.toBeInTheDocument()
   })
 

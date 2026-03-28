@@ -243,7 +243,7 @@ describe('Plan 06 place registration flow', () => {
     expect(formContent).toHaveClass('mt-6')
   })
 
-  it('uses the mobile shell viewport contract for the mobile place-add overlay', async () => {
+  it('uses the mobile shell viewport contract for the route-owned mobile place-add page', async () => {
     setViewport(390)
     const user = userEvent.setup()
     render(<App />)
@@ -254,8 +254,9 @@ describe('Plan 06 place registration flow', () => {
     const formContent = screen.getByTestId('place-add-form-content')
     const scrollRegion = formContent.parentElement as HTMLElement
 
-    expect(page).toHaveClass('absolute', 'inset-0', 'h-full', 'min-h-0', 'overflow-hidden')
-    expect(page).not.toHaveClass('min-h-screen')
+    expect(page).toHaveClass('flex', 'h-full', 'min-h-0', 'overflow-hidden')
+    expect(page).not.toHaveClass('absolute', 'inset-0', 'z-20', 'min-h-screen')
+    expect(screen.queryByTestId('map-canvas')).not.toBeInTheDocument()
     expect(scrollRegion).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto', 'overscroll-contain')
     expect(scrollRegion).toHaveStyle({
       paddingBottom: 'calc(16px + var(--nurimap-effective-bottom-inset, 0px))',

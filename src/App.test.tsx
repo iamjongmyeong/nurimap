@@ -13,6 +13,7 @@ vi.mock('agentation', () => ({
 }))
 
 const originalFetch = globalThis.fetch
+const ADD_PLACE_ROUTE = '/add-place'
 
 const cloneMockPlace = (placeId: string) => {
   const matched = MOCK_PLACES.find((place) => place.id === placeId)
@@ -274,6 +275,79 @@ describe('Nurimap app shell', () => {
     render(<App />)
 
     expect(screen.queryByTestId('mobile-bottom-tab-bar')).not.toBeInTheDocument()
+  })
+
+  it('opens the desktop sidebar place-add surface at /add-place when the add CTA is clicked', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '장소 추가' }))
+
+    expect(window.location.pathname).toBe(ADD_PLACE_ROUTE)
+    expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
+  })
+
+  it('opens the mobile place-add page at /add-place and hides the bottom tab bar when the add tab is clicked', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '장소 추가' }))
+
+    expect(window.location.pathname).toBe(ADD_PLACE_ROUTE)
+    expect(screen.getByTestId('mobile-place-add-page')).toBeInTheDocument()
+    expect(screen.queryByTestId('map-canvas')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('mobile-bottom-tab-bar')).not.toBeInTheDocument()
+  })
+
+  it('restores the prior mobile list context when browser back leaves /add-place', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '장소 추가' }))
+    expect(window.location.pathname).toBe(ADD_PLACE_ROUTE)
+    expect(screen.getByTestId('mobile-place-add-page')).toBeInTheDocument()
+
+    act(() => {
+      window.history.back()
+    })
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/')
+      expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+      expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
+    })
+  })
+
+  it('opens the desktop sidebar place-add surface on direct /add-place entry', () => {
+    setViewport(1280)
+    window.history.replaceState({}, '', ADD_PLACE_ROUTE)
+    render(<App />)
+
+    expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
+  })
+
+  it('opens the mobile place-add page on direct /add-place entry and can fall back to / on browser back', async () => {
+    setViewport(390)
+    window.history.replaceState({}, '', ADD_PLACE_ROUTE)
+    render(<App />)
+
+    expect(screen.getByTestId('mobile-place-add-page')).toBeInTheDocument()
+    expect(screen.queryByTestId('map-canvas')).not.toBeInTheDocument()
+    expect(window.location.pathname).toBe(ADD_PLACE_ROUTE)
+
+    act(() => {
+      window.history.back()
+    })
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/')
+    })
   })
 
   it('renders the compact desktop add button inside the refreshed top bar', () => {

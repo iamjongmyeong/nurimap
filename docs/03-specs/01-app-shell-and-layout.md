@@ -34,8 +34,8 @@ Nurimap의 기본 앱 셸, 데스크톱/모바일 browse 레이아웃, map/list/
 - 모바일 하단 탭 바는 map/list primary surface에서 유지되고 active 탭은 현재 surface와 동기화된다.
 - 모바일 `지도` 탭은 기본 active browse state이며 현재 지도 surface를 유지한다.
 - 모바일 `목록` 탭은 list-family full-screen surface로 이동한다.
-- 모바일 `추가` 탭은 별도 durable route를 만들지 않고 같은 list-family surface 계열을 재사용한다.
-- 모바일 place add surface가 열리면 하단 탭 바는 보이지 않는다.
+- 모바일 `추가` 탭은 canonical `/add-place` route로 이동한다.
+- 모바일 `/add-place`는 standalone full-screen page로 열리고 하단 탭 바는 보이지 않는다.
 - 모바일 detail은 canonical detail route와 연결된 full-screen page로 표시한다.
 - 모바일 add-rating은 detail-owned transient child surface이며, durable/shareable route는 계속 `/places/:placeId`를 유지한다.
 - list/detail/add/add-rating 전환은 selected spec이 바꾸라고 명시하지 않는 한 selected place와 browse context를 보존한다.
@@ -48,7 +48,7 @@ Nurimap의 기본 앱 셸, 데스크톱/모바일 browse 레이아웃, map/list/
 - 데스크톱의 detail/add가 지도 위 overlay가 아니라 sidebar browse container 안에서 전환된다.
 - 모바일에서 하단 고정 3탭 바와 active `지도` 탭이 보인다.
 - 모바일에서 map/list 전환 시 active 탭이 현재 surface와 함께 바뀐다.
-- 모바일 목록/등록 전환이 같은 list-family surface 계열 안에서 이뤄진다.
+- 모바일 place add는 `/add-place` route와 연결된 full-screen page로 열린다.
 - 모바일 detail은 전체 화면으로 열리고, add-rating은 standalone route 없이 detail context 안에서 열린다.
 - loading/error 상태에서도 사용자는 현재 browse context를 이해할 수 있다.
 
