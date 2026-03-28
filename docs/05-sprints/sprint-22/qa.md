@@ -5,6 +5,8 @@
 # Automated Checks Result
 
 - 실행 결과:
+  - `pnpm test:run src/app-shell/NaverUrlNormalization.test.tsx src/server-core/place/placeLookupService.test.ts` → PASS (`2 passed`, `19 passed`)
+  - `pnpm exec eslint src/shared/naverUrl.ts src/app-shell/NaverUrlNormalization.test.tsx src/server-core/place/placeLookupService.test.ts` → PASS
   - `pnpm test:run src/app-shell/PlaceLookupFlow.test.tsx` → PASS (`1 passed`, `10 passed`)
   - `pnpm exec eslint src/app-shell/PlaceAddPanels.tsx src/app-shell/placeRepository.ts src/app-shell/PlaceLookupFlow.test.tsx` → PASS
   - `npx tsc --noEmit --project tsconfig.json` → PASS (`0 errors`)
@@ -19,6 +21,7 @@
   - `invalid_url`이 아닌 lookup failure는 alert 후 기존 manual form으로 연결된다.
   - manual form 뒤로가기가 URL-entry step으로 복귀한다.
   - Naver URL normalize / short-link / lookup route contract가 새 흐름과 맞게 통과한다.
+  - `naver.me`가 `map.naver.com/?...&pinId=...` 형태로 1차 redirect되는 경우도 canonical place entry URL로 normalize된다.
 
 # Manual QA Result
 

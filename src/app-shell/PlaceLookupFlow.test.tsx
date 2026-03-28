@@ -188,9 +188,9 @@ describe('Plan 05 direct place entry shell flow', () => {
     expect(window.location.pathname).toBe('/add-place')
     expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
     expect(screen.getByTestId('place-add-url-entry-helper')).toBeInTheDocument()
-    expect(screen.getByText('네이버 지도에서 링크를 복사해서 입력해주세요.')).toBeInTheDocument()
-    expect(screen.getByText('URL')).toBeInTheDocument()
-    expect(screen.getByTestId('place-add-url-entry-input')).toHaveAttribute('placeholder', '네이버 지도 URL')
+    expect(screen.getByText('네이버 지도 링크를 복사해서 입력해주세요.')).toBeInTheDocument()
+    expect(screen.getByText('네이버 지도 URL')).toBeInTheDocument()
+    expect(screen.getByTestId('place-add-url-entry-input')).toHaveAttribute('placeholder', 'https://map.naver.com/')
     expect(screen.getByRole('button', { name: '장소 정보 가져오기' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '직접 입력하기' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '직접 장소 등록' })).not.toBeInTheDocument()
@@ -242,7 +242,7 @@ describe('Plan 05 direct place entry shell flow', () => {
     render(<App />)
 
     await openPlaceAddEntryScreen(user)
-    await user.type(screen.getByLabelText('URL'), 'https://map.naver.com/p/entry/place/123456789')
+    await user.type(screen.getByLabelText('네이버 지도 URL'), 'https://map.naver.com/p/entry/place/123456789')
     await user.click(screen.getByRole('button', { name: '장소 정보 가져오기' }))
 
     expect(await screen.findByRole('heading', { name: '직접 장소 등록' })).toBeInTheDocument()
@@ -299,7 +299,7 @@ describe('Plan 05 direct place entry shell flow', () => {
     render(<App />)
 
     await openPlaceAddEntryScreen(user)
-    await user.type(screen.getByLabelText('URL'), 'https://map.naver.com/p/entry/place/bad')
+    await user.type(screen.getByLabelText('네이버 지도 URL'), 'https://map.naver.com/p/entry/place/bad')
     await user.click(screen.getByRole('button', { name: '장소 정보 가져오기' }))
 
     expect(window.alert).toHaveBeenCalledWith('장소 정보 추출에 실패했어요 🥲\n장소 정보를 직접 입력해주세요.')
@@ -352,7 +352,7 @@ describe('Plan 05 direct place entry shell flow', () => {
     render(<App />)
 
     await openPlaceAddEntryScreen(user)
-    const urlInput = screen.getByLabelText('URL')
+    const urlInput = screen.getByLabelText('네이버 지도 URL')
 
     await user.type(urlInput, 'https://example.com/nope')
     await user.click(screen.getByRole('button', { name: '장소 정보 가져오기' }))
@@ -418,7 +418,7 @@ describe('Plan 05 direct place entry shell flow', () => {
     expect(lookupButton).toBeDisabled()
     expect(lookupButton).toHaveClass('disabled:opacity-50')
 
-    await user.type(screen.getByLabelText('URL'), 'https://map.naver.com/p/entry/place/123456789')
+    await user.type(screen.getByLabelText('네이버 지도 URL'), 'https://map.naver.com/p/entry/place/123456789')
     expect(lookupButton).toBeEnabled()
 
     const clickPromise = user.click(lookupButton)

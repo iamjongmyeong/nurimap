@@ -44,6 +44,11 @@ const extractPlaceIdFromPathname = (pathname: string) => {
   return null
 }
 
+const extractPlaceIdFromSearchParams = (searchParams: URLSearchParams) => {
+  const pinId = searchParams.get('pinId')?.trim()
+  return pinId && /^\d+$/u.test(pinId) ? pinId : null
+}
+
 export const normalizeNaverMapUrl = (rawUrl: string): NormalizedNaverMapUrl => {
   let parsedUrl: URL
 
@@ -67,6 +72,7 @@ export const normalizeNaverMapUrl = (rawUrl: string): NormalizedNaverMapUrl => {
   })()
   const placeId = extractPlaceIdFromPathname(normalizedPathname)
     ?? extractPlaceIdFromPathname(decodedPathname)
+    ?? extractPlaceIdFromSearchParams(parsedUrl.searchParams)
 
   if (!placeId) {
     throw new Error(PLACE_ID_EXTRACTION_ERROR_MESSAGE)

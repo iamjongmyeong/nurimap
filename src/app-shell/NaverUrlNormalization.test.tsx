@@ -5,6 +5,7 @@ const validSearchUrl = 'https://map.naver.com/p/search/%EC%B9%B4%ED%8E%98/place/
 const validEntryUrl = 'https://map.naver.com/p/entry/place/987654321?placePath=%2Fhome'
 const validFavoriteUrl = 'https://map.naver.com/p/favorite/myPlace/folder/52f873516c87492794d35b0f62ebe0f1/place/1648359924?c=16.00,0,0,0,dh'
 const validMobileUrl = 'https://m.place.naver.com/restaurant/38282260/home?entry=pll'
+const validPinnedLocationUrl = 'https://map.naver.com/?menu=location&lat=37.5619497&pinType=site&app=Y&version=2&appMenu=location&lng=126.9246381&title=%EC%88%98%EB%9D%BC%EA%B0%84&pinId=1063954725'
 
 describe('Plan 04 naver url normalization', () => {
   it('recognizes the search place url shape', () => {
@@ -32,6 +33,13 @@ describe('Plan 04 naver url normalization', () => {
     expect(normalizeNaverMapUrl(validMobileUrl)).toEqual({
       canonicalUrl: 'https://map.naver.com/p/entry/place/38282260',
       naverPlaceId: '38282260',
+    })
+  })
+
+  it('recognizes the pinned location query url shape', () => {
+    expect(normalizeNaverMapUrl(validPinnedLocationUrl)).toEqual({
+      canonicalUrl: 'https://map.naver.com/p/entry/place/1063954725',
+      naverPlaceId: '1063954725',
     })
   })
 

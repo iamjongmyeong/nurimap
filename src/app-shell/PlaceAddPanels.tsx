@@ -301,12 +301,12 @@ const PlaceAddUrlEntry = ({
           >
             <InfoCircleIcon />
             <p className="break-keep text-sm font-medium tracking-[-0.35px] text-[#5458F7]">
-              네이버 지도에서 링크를 복사해서 입력해주세요.
+              네이버 지도 링크를 복사해서 입력해주세요.
             </p>
           </div>
           <div className="flex flex-col gap-2" data-testid="place-add-url-entry-field">
             <label className="text-xs font-medium tracking-[-0.3px] text-[#1c1c1c]" htmlFor="place-add-naver-url-input">
-              URL
+              네이버 지도 URL
             </label>
             <input
               aria-label="URL"
@@ -325,7 +325,7 @@ const PlaceAddUrlEntry = ({
                   setUrlFieldError('')
                 }
               }}
-              placeholder="네이버 지도 URL"
+              placeholder="https://map.naver.com/"
               type="text"
               value={rawUrl}
             />

@@ -14,6 +14,7 @@
   - 입력 항목 / 등록 버튼 동작 / 리뷰 입력 방식 / 등록 성공 후 상세 이동 유지
 - Naver lookup hardening
   - `naver.me` redirect 지원
+  - `pinId` query redirect short-link 지원
   - URL normalize / robust numeric placeId extraction
   - internal API/XHR 기반 place summary lookup
   - typed error / cache / delay / timeout 반영

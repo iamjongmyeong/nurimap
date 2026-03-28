@@ -9,6 +9,7 @@ const originalFetch = globalThis.fetch
 const originalKakaoRestApiKey = process.env.KAKAO_REST_API_KEY
 const sprint13FavoriteUrl = 'https://map.naver.com/p/favorite/myPlace/folder/52f873516c87492794d35b0f62ebe0f1/place/1648359924?c=16.00,0,0,0,dh&at=a&placePath=/home?from=map&fromPanelNum=2&timestamp=202603122222&locale=ko&svcName=map_pcv5'
 const sprint13SearchUrl = 'https://map.naver.com/p/search/%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5/place/1648359924?c=15.95,0,0,0,dh&placePath=/home?bk_query=%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5&entry=bmp&from=map&fromPanelNum=2&timestamp=202603122222&locale=ko&svcName=map_pcv5&searchText=%EC%A3%BC%EB%A7%89%EB%B3%B4%EB%A6%AC%EB%B0%A5'
+const sprint22PinnedLocationShortUrl = 'https://naver.me/F2Lcl96n'
 
 const createSummaryPayload = ({
   address = '서울 마포구 테스트동 1-1',
@@ -81,6 +82,20 @@ describe('Plan 05 place lookup service', () => {
         })
       }
 
+      if (url.includes('/p/api/place/summary/1063954725')) {
+        return new Response(JSON.stringify(createSummaryPayload({
+          placeId: '1063954725',
+          name: '수라간',
+          roadAddress: '서울 마포구 양화로19길 22-16',
+          address: '서울 마포구 서교동 368-22',
+          latitude: 37.5619497,
+          longitude: 126.9246381,
+        })), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
       if (url.includes('/p/api/place/summary/234567890')) {
         return new Response(JSON.stringify(createSummaryPayload({
           placeId: '234567890',
@@ -143,6 +158,19 @@ describe('Plan 05 place lookup service', () => {
         })
       }
 
+      if (url === sprint22PinnedLocationShortUrl) {
+        expect(init).toMatchObject({
+          method: 'HEAD',
+          redirect: 'manual',
+        })
+        return new Response(null, {
+          status: 307,
+          headers: {
+            Location: 'https://map.naver.com/?menu=location&lat=37.5619497&pinType=site&app=Y&version=2&appMenu=location&lng=126.9246381&title=%EC%88%98%EB%9D%BC%EA%B0%84&pinId=1063954725',
+          },
+        })
+      }
+
       throw new Error(`unexpected request: ${url}`)
     }) as typeof fetch
   })
@@ -197,6 +225,17 @@ describe('Plan 05 place lookup service', () => {
       expect(result.data.naver_place_id).toBe('1648359924')
       expect(result.data.canonical_url).toBe('https://map.naver.com/p/entry/place/1648359924')
       expect(result.data.name).toBe('주막보리밥')
+    }
+  })
+
+  it('supports naver short urls whose first redirect uses a pinId query', async () => {
+    const result = await lookupPlaceFromRawUrl(sprint22PinnedLocationShortUrl)
+
+    expect(result.status).toBe('success')
+    if (result.status === 'success') {
+      expect(result.data.naver_place_id).toBe('1063954725')
+      expect(result.data.canonical_url).toBe('https://map.naver.com/p/entry/place/1063954725')
+      expect(result.data.name).toBe('수라간')
     }
   })
 
