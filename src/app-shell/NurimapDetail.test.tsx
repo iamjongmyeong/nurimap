@@ -305,6 +305,55 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.queryByTestId('detail-review-cta')).not.toBeInTheDocument()
   })
 
+  it('shows only a spinner while add-rating submission is in progress', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    const baseFetch = createDetailFetchMock()
+    let releaseReviewResponse: (() => Promise<void>) | null = null
+
+    globalThis.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (getPlaceIdFromReviewUrl(url)) {
+        return new Promise<Response>((resolve) => {
+          releaseReviewResponse = async () => {
+            resolve(await baseFetch(input, init))
+          }
+        })
+      }
+
+      return baseFetch(input, init)
+    }) as typeof fetch
+
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+    await user.click(screen.getByTestId('review-add-rating-star-5'))
+    await user.type(screen.getByTestId('review-add-content-input'), '등록 중 스피너만 노출')
+    await user.click(screen.getByTestId('review-add-submit-button'))
+
+    const submitButton = screen.getByTestId('review-add-submit-button')
+
+    await waitFor(() => {
+      expect(submitButton).toBeDisabled()
+      expect(submitButton).not.toHaveTextContent('등록')
+      expect(submitButton).not.toHaveTextContent('등록 중')
+      expect(submitButton).toHaveAccessibleName('등록 중')
+      expect(screen.getByTestId('review-add-submit-spinner')).toBeInTheDocument()
+    })
+
+    await waitFor(() => {
+      expect(releaseReviewResponse).not.toBeNull()
+    })
+
+    await act(async () => {
+      await releaseReviewResponse?.()
+    })
+
+    expect(await screen.findByTestId('mobile-detail-page')).toBeInTheDocument()
+  })
+
   it('keeps a saved multiline review visible after returning to browse and reopening the same place', async () => {
     setViewport(390)
     const user = userEvent.setup()

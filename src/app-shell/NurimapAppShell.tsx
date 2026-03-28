@@ -809,6 +809,7 @@ const AddRatingScreen = ({
                 ) : null}
 
                 <button
+                  aria-label={submitState === 'submitting' ? '등록 중' : '등록'}
                   className="inline-flex h-12 w-full items-center justify-center rounded-[12px] bg-[#5862fb] px-0 py-3 text-sm font-semibold text-white transition hover:bg-[#4953f1] disabled:cursor-not-allowed disabled:opacity-50"
                   data-testid="review-add-submit-button"
                   disabled={submitState === 'submitting'}
@@ -819,8 +820,9 @@ const AddRatingScreen = ({
                 >
                   {submitState === 'submitting' ? (
                     <span aria-hidden="true" className="ui-spinner ui-spinner-sm" data-testid="review-add-submit-spinner" />
-                  ) : null}
-                  <span>{submitState === 'submitting' ? '등록 중' : '등록'}</span>
+                  ) : (
+                    <span>등록</span>
+                  )}
                 </button>
               </section>
             </>
