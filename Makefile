@@ -5,9 +5,9 @@ SUPABASE_STUDIO_HOST ?= 127.0.0.1
 SUPABASE_STUDIO_PORT ?= 54323
 SUPABASE_STUDIO_URL ?= http://$(SUPABASE_STUDIO_HOST):$(SUPABASE_STUDIO_PORT)
 PORT_CHECK_CMD = lsof -nP -iTCP:$(PORT) -sTCP:LISTEN
-VITE_DEV_CMD = pnpm dev -- --port $(PORT)
+VITE_DEV_CMD = pnpm exec vite --port $(PORT)
 VERCEL_DEV_HOST ?= localhost
-VERCEL_DEV_CMD = pnpm dev:vercel -- --listen $(VERCEL_DEV_HOST):$(PORT)
+VERCEL_DEV_CMD = pnpm exec vercel dev --local --listen $(VERCEL_DEV_HOST):$(PORT) --yes
 LAN_HOST_DETECTION_CMD = node -e "const os = require('node:os'); const isPrivate = (address) => /^10\\./.test(address) || /^192\\.168\\./.test(address) || /^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(address); for (const infos of Object.values(os.networkInterfaces())) { for (const info of infos ?? []) { if (info.family === 'IPv4' && !info.internal && isPrivate(info.address)) { console.log(info.address); process.exit(0); } } }"
 ENV_BOOTSTRAP = set -a; \
 	[ -f ./.env ] && source ./.env; \
