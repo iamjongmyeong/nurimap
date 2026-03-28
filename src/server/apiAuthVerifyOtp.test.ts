@@ -158,4 +158,38 @@ describe('/api/auth/verify-otp', () => {
     })
     expect(state.statusCode).toBe(200)
   })
+
+  it('derives a private-lan runtimeOrigin from forwarded host headers during verify', async () => {
+    verifyLoginOtpMock.mockResolvedValue({
+      status: 'success',
+      sessionId: 'session-123',
+      csrfToken: 'csrf-123',
+      nextPhase: 'authenticated',
+      user: {
+        id: 'user-1',
+        email: 'tester@nurimedia.co.kr',
+        name: '테스트 사용자',
+      },
+    })
+
+    const { response, state } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {
+        'x-forwarded-host': '192.168.0.24:5173',
+        'x-forwarded-proto': 'http',
+      },
+      body: {
+        email: 'tester@nurimedia.co.kr',
+        token: '123456',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(verifyLoginOtpMock).toHaveBeenCalledWith({
+      email: 'tester@nurimedia.co.kr',
+      runtimeOrigin: 'http://192.168.0.24:5173',
+      token: '123456',
+    })
+    expect(state.statusCode).toBe(200)
+  })
 })
