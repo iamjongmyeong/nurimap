@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:vercel": "vercel dev --local --yes",
     "build": "tsc -b && vite build",
     "guard:bypass": "node scripts/guard-bypass-email.mjs --metadata --tracked --source-file .env.local",
     "guard:bypass:ci": "node scripts/guard-bypass-email.mjs --tracked --history-metadata --require-denylist --source-env BYPASS_EMAIL_DENYLIST",

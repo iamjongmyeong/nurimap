@@ -255,6 +255,10 @@ const apiDevPlugin = (): Plugin => ({
 export default defineConfig({
   envPrefix: ['VITE_', 'NEXT_PUBLIC_', 'PUBLIC_'],
   plugins: [react(), tailwindcss(), apiDevPlugin()],
+  server: {
+    host: '0.0.0.0',
+    strictPort: true,
+  },
   test: {
     globals: true,
     environment: 'jsdom',
