@@ -90,6 +90,32 @@ describe('/api/auth/request-otp', () => {
     })
   })
 
+  it('forwards a private-lan Origin header to requestLoginOtp unchanged', async () => {
+    requestLoginOtpMock.mockResolvedValue({
+      status: 'success',
+      mode: 'otp',
+      message: '인증 코드를 보냈어요.',
+    })
+
+    const { response } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {
+        origin: 'http://192.168.0.24:5173',
+      },
+      body: {
+        email: 'tester@nurimedia.co.kr',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(requestLoginOtpMock).toHaveBeenCalledWith('tester@nurimedia.co.kr', {
+      requireBypass: false,
+      intent: undefined,
+      requestAttemptId: undefined,
+      runtimeOrigin: 'http://192.168.0.24:5173',
+    })
+  })
+
   it('forwards status intent to requestLoginOtp without changing response shape', async () => {
     requestLoginOtpMock.mockResolvedValue({
       status: 'success',
@@ -123,6 +149,32 @@ describe('/api/auth/request-otp', () => {
       mode: 'otp',
       message: '인증 코드를 보냈어요.',
       requestResolution: 'accepted',
+    })
+  })
+
+  it('derives a private-lan runtimeOrigin from the Host header when Origin is missing', async () => {
+    requestLoginOtpMock.mockResolvedValue({
+      status: 'success',
+      mode: 'otp',
+      message: '인증 코드를 보냈어요.',
+    })
+
+    const { response } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {
+        host: '10.0.0.42:4173',
+      },
+      body: {
+        email: 'tester@nurimedia.co.kr',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(requestLoginOtpMock).toHaveBeenCalledWith('tester@nurimedia.co.kr', {
+      requireBypass: false,
+      intent: undefined,
+      requestAttemptId: undefined,
+      runtimeOrigin: 'http://10.0.0.42:4173',
     })
   })
 
