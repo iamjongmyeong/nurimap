@@ -720,3 +720,21 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - .omx/plans/prd-supabase-private-schema-hardening.md
   - .omx/plans/test-spec-supabase-private-schema-hardening.md
 - Related commit: TBD
+
+## 2026-03-28 Local dev runtime - Make Vite LAN same-origin path the official iPhone validation contract
+- Context: iPhone에서 같은 private LAN의 로컬 Mac mini Docker/Supabase runtime을 검증하려면 `make dev` 자체가 공식 local path로 LAN 접근 가능해야 했고, auth bypass trust도 더 이상 loopback-only 설명으로는 부족했다. 동시에 기존 history에는 env-managed bypass를 배포 환경까지 열 수 있는 것처럼 읽히는 기록이 남아 있어, 현재 보안 경계와 durable docs를 다시 맞출 필요가 있었다.
+- Options considered:
+  - Option A: `vercel dev` / loopback-first local path를 공식 경로로 유지하고, iPhone/LAN 접근은 ad hoc host override나 별도 실험 경로로 처리한다.
+  - Option B: `make dev`의 공식 local path를 documented Vite LAN same-origin runtime으로 보고, bypass trust는 non-production local runtime의 loopback/localhost + RFC1918 private-LAN IP literal로만 제한한다.
+  - Option C: localhost-first 기본 경로는 유지한 채 별도 `make dev-lan` 또는 hostname trust 확장으로 iPhone 접근을 보강한다.
+- Decision: Option B를 선택한다.
+- Rationale: Vite의 LAN binding은 문서화된 local-runtime 동작이고, repo는 이미 local Vite dev path에서 auth/place API를 same-origin으로 제공할 수 있다. 공식 local path를 이 경계로 고정하면 기존 cookie-backed session contract를 유지한 채 iPhone의 login → list → detail → review save 흐름을 검증할 수 있고, trust를 loopback/localhost + RFC1918 IP literal로만 한정하면 arbitrary hostname/public host/preview/production으로 bypass가 새는 것을 막을 수 있다.
+- Impact: `docs/02-architecture/security-and-ops.md`는 local dev를 `make dev` 기반 same-origin private-LAN path까지 포함하는 source of truth로 갱신한다. bypass는 기본적으로 local-only/default-off로 유지되고, tracked docs/tests/examples/artifacts에는 실제 private IP/device name 대신 `private LAN` 같은 일반화 표현만 남긴다. 이 결정은 2026-03-09의 “env-managed bypass across environments” 기록을 현재 active runtime contract 관점에서 supersede한다.
+- Revisit trigger: 향후 hostname-based local trust가 꼭 필요해지거나, 공식 local runtime이 Vite LAN path가 아니게 되거나, Vercel이 stable LAN-first local path를 문서화해 trade-off가 달라지면 현재 경계를 명시적으로 재검토한다.
+- Related docs:
+  - docs/02-architecture/security-and-ops.md
+  - docs/99-archive/local-development.md
+  - .omx/plans/plan-iphone-local-lan-dev-path-consensus.md
+  - .omx/plans/prd-iphone-local-lan-dev-path.md
+  - .omx/plans/test-spec-iphone-local-lan-dev-path.md
+- Related commit: TBD
