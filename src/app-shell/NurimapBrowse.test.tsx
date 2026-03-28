@@ -296,7 +296,7 @@ describe('Sprint 16 browse refresh', () => {
     expect(label).toHaveTextContent('누리 식당')
     expect(label).toHaveStyle({
       color: 'rgb(88, 98, 251)',
-      fontSize: '10px',
+      fontSize: '12px',
       fontWeight: '500',
       lineHeight: '100%',
     })
@@ -351,7 +351,7 @@ describe('Sprint 16 browse refresh', () => {
       width: '22px',
     })
     expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle({
-      fontSize: '12px',
+      fontSize: '13px',
       fontWeight: '500',
       lineHeight: '100%',
     })
@@ -388,7 +388,7 @@ describe('Sprint 16 browse refresh', () => {
       width: '20px',
     })
     expect(screen.getByTestId('map-label-place-restaurant-1')).toHaveStyle({
-      fontSize: '10px',
+      fontSize: '12px',
       fontWeight: '500',
       lineHeight: '100%',
     })

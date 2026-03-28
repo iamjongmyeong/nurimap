@@ -74,7 +74,7 @@ const getMapZoomPresentation = (mapLevel: number): MapZoomPresentation => {
   if (mapLevel === 2) {
     return {
       hitTargetSize: 52,
-      labelFontSize: 12,
+      labelFontSize: 13,
       labelFontWeight: 500,
       labelGap: 2,
       labelStrokeWidth: 3,
@@ -86,7 +86,7 @@ const getMapZoomPresentation = (mapLevel: number): MapZoomPresentation => {
   if (mapLevel === 3) {
     return {
       hitTargetSize: 40,
-      labelFontSize: 10,
+      labelFontSize: 12,
       labelFontWeight: 500,
       labelGap: 0,
       labelStrokeWidth: 2,
