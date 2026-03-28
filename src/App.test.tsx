@@ -147,7 +147,7 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('desktop-detail-panel')).toBeInTheDocument()
   })
 
-  it('renders the mobile bottom tab bar over the full-screen map', () => {
+  it('renders the mobile bottom tab bar over the full-screen list page on first entry', () => {
     setViewport(390)
     render(<App />)
 
@@ -157,42 +157,6 @@ describe('Nurimap app shell', () => {
       height: 'var(--nurimap-viewport-height, 100dvh)',
       minHeight: 'var(--nurimap-viewport-height, 100dvh)',
     })
-    expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
-    expect(screen.getByTestId('map-canvas')).toHaveClass('h-full', 'min-h-0')
-    expect(screen.getByTestId('mobile-bottom-tab-bar')).toBeInTheDocument()
-    expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveClass('fixed')
-    expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveStyle({
-      paddingBottom: 'var(--nurimap-safe-area-bottom, 0px)',
-    })
-    expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveClass('h-14')
-    expect(screen.getByTestId('mobile-bottom-tab-bar').className).not.toContain('shadow-[')
-    expect(screen.getByTestId('mobile-bottom-tab-bar').className).toContain('before:bg-[#f0f0f0]')
-    expect(screen.getByTestId('mobile-bottom-tab-bar-grid')).toHaveClass('h-14')
-    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'true')
-    expect(screen.getByTestId('mobile-tab-map')).toHaveClass('h-10', 'w-10', 'px-2', 'pt-[2px]', 'pb-0', 'gap-1')
-    expect(screen.getByTestId('mobile-tab-add')).toHaveClass('h-10', 'w-10', 'px-2', 'pt-[2px]', 'pb-0', 'gap-1')
-    expect(screen.getByTestId('mobile-tab-list')).toHaveClass('h-10', 'w-10', 'px-2', 'pt-[2px]', 'pb-0', 'gap-1')
-    expect(screen.getByTestId('mobile-tab-map-icon')).toHaveClass('h-6', 'w-6', 'shrink-0')
-    expect(screen.getByTestId('mobile-tab-add-icon')).toHaveClass('h-6', 'w-6', 'shrink-0')
-    expect(screen.getByTestId('mobile-tab-list-icon')).toHaveClass('h-6', 'w-6', 'shrink-0')
-    expect(screen.getByText('지도')).toHaveClass('h-[10px]', 'whitespace-nowrap', "font-['Pretendard']", 'text-[10px]', 'font-normal', 'leading-[10px]')
-    expect(screen.getByText('추가')).toHaveClass('h-[10px]', 'whitespace-nowrap', "font-['Pretendard']", 'text-[10px]', 'font-normal', 'leading-[10px]')
-    expect(screen.getByText('목록')).toHaveClass('h-[10px]', 'whitespace-nowrap', "font-['Pretendard']", 'text-[10px]', 'font-normal', 'leading-[10px]')
-    expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-black.svg')
-    expect(screen.getByTestId('mobile-tab-add-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-plus-gray.svg')
-    expect(screen.getByTestId('mobile-tab-list-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-list-gray.svg')
-    expect(screen.getByText('지도')).toBeInTheDocument()
-    expect(screen.getByText('추가')).toBeInTheDocument()
-    expect(screen.getByText('목록')).toBeInTheDocument()
-  })
-
-  it('moves to the mobile place list page when the list button is clicked', async () => {
-    setViewport(390)
-    const user = userEvent.setup()
-    render(<App />)
-
-    await user.click(screen.getByRole('button', { name: '목록 보기' }))
-
     expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
     expect(screen.getByTestId('mobile-list-header')).toContainElement(screen.getByAltText('Nurimedia 로고'))
     expect(screen.getByTestId('mobile-list-header-content')).toHaveClass('pl-6', 'pr-5', 'pt-6', 'pb-4')
@@ -210,6 +174,44 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('mobile-list-logout-button')).toHaveClass('h-6', 'w-6')
     expect(screen.getByTestId('mobile-list-logout-button').className).not.toContain('border')
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveClass('fixed')
+    expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveStyle({
+      paddingBottom: 'var(--nurimap-safe-area-bottom, 0px)',
+    })
+    expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveClass('h-14')
+    expect(screen.getByTestId('mobile-bottom-tab-bar').className).not.toContain('shadow-[')
+    expect(screen.getByTestId('mobile-bottom-tab-bar').className).toContain('before:bg-[#f0f0f0]')
+    expect(screen.getByTestId('mobile-bottom-tab-bar-grid')).toHaveClass('h-14')
+    expect(Array.from(screen.getByTestId('mobile-bottom-tab-bar-grid').children).map((child) => child.getAttribute('data-testid'))).toEqual([
+      'mobile-tab-list',
+      'mobile-tab-add',
+      'mobile-tab-map',
+    ])
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'false')
+    expect(screen.getByTestId('mobile-tab-list')).toHaveClass('h-10', 'w-10', 'px-2', 'pt-[2px]', 'pb-0', 'gap-1')
+    expect(screen.getByTestId('mobile-tab-add')).toHaveClass('h-10', 'w-10', 'px-2', 'pt-[2px]', 'pb-0', 'gap-1')
+    expect(screen.getByTestId('mobile-tab-map')).toHaveClass('h-10', 'w-10', 'px-2', 'pt-[2px]', 'pb-0', 'gap-1')
+    expect(screen.getByTestId('mobile-tab-list-icon')).toHaveClass('h-6', 'w-6', 'shrink-0')
+    expect(screen.getByTestId('mobile-tab-add-icon')).toHaveClass('h-6', 'w-6', 'shrink-0')
+    expect(screen.getByTestId('mobile-tab-map-icon')).toHaveClass('h-6', 'w-6', 'shrink-0')
+    expect(screen.getByText('목록')).toHaveClass('h-[10px]', 'whitespace-nowrap', "font-['Pretendard']", 'text-[10px]', 'font-normal', 'leading-[10px]')
+    expect(screen.getByText('추가')).toHaveClass('h-[10px]', 'whitespace-nowrap', "font-['Pretendard']", 'text-[10px]', 'font-normal', 'leading-[10px]')
+    expect(screen.getByText('지도')).toHaveClass('h-[10px]', 'whitespace-nowrap', "font-['Pretendard']", 'text-[10px]', 'font-normal', 'leading-[10px]')
+    expect(screen.getByTestId('mobile-tab-list-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-list-black.svg')
+    expect(screen.getByTestId('mobile-tab-add-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-plus-gray.svg')
+    expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-gray.svg')
+    expect(screen.getByText('목록')).toBeInTheDocument()
+    expect(screen.getByText('추가')).toBeInTheDocument()
+    expect(screen.getByText('지도')).toBeInTheDocument()
+  })
+
+  it('moves to the mobile map page when the map button is clicked from the list-first root', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
     expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
     expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'false')
     expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-gray.svg')
@@ -217,7 +219,8 @@ describe('Nurimap app shell', () => {
 
     await user.click(screen.getByRole('button', { name: '지도' }))
 
-    expect(screen.queryByTestId('mobile-list-page')).not.toBeInTheDocument()
+    expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('map-canvas')).toHaveClass('h-full', 'min-h-0')
     expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'true')
     expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'false')
     expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-black.svg')
@@ -305,7 +308,6 @@ describe('Nurimap app shell', () => {
 
     expect(window.location.pathname).toBe(ADD_PLACE_ROUTE)
     expect(screen.getByTestId('mobile-place-add-page')).toBeInTheDocument()
-    expect(screen.queryByTestId('map-canvas')).not.toBeInTheDocument()
     expect(screen.queryByTestId('mobile-bottom-tab-bar')).not.toBeInTheDocument()
   })
 
@@ -340,13 +342,12 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
   })
 
-  it('opens the mobile place-add page on direct /add-place entry and can fall back to / on browser back', async () => {
+  it('opens the mobile place-add page on direct /add-place entry and falls back to the list-first root on browser back', async () => {
     setViewport(390)
     window.history.replaceState({}, '', ADD_PLACE_ROUTE)
     render(<App />)
 
     expect(screen.getByTestId('mobile-place-add-page')).toBeInTheDocument()
-    expect(screen.queryByTestId('map-canvas')).not.toBeInTheDocument()
     expect(window.location.pathname).toBe(ADD_PLACE_ROUTE)
 
     act(() => {
@@ -355,6 +356,9 @@ describe('Nurimap app shell', () => {
 
     await waitFor(() => {
       expect(window.location.pathname).toBe('/')
+      expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+      expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
+      expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'false')
     })
   })
 

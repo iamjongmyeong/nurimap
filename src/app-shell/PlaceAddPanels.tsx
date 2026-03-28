@@ -45,6 +45,10 @@ const REVIEW_LIMIT = 500
 const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-white px-3 text-base text-[#1f1f1f] placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
 const PLACE_ADD_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 const PLACE_LOOKUP_FALLBACK_ALERT_MESSAGE = '장소 정보 추출에 실패했어요 🥲\n장소 정보를 직접 입력해주세요.'
+const MOBILE_HISTORY_SESSION_KEY_FIELD = 'mobileBrowseSessionKey'
+const MOBILE_DETAIL_ORIGIN_FIELD = 'mobileDetailOriginNavigationState'
+const MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD = 'mobileDetailOriginSessionKey'
+const PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD = 'placeAddOriginNavigationState'
 
 const PLACE_TYPE_OPTIONS: SegmentedOption<PlaceType>[] = [
   { value: 'restaurant', label: '음식점', testId: 'place-type-option-restaurant' },
@@ -194,6 +198,12 @@ const hasCompletedRequiredFields = (draft: RegistrationDraft) =>
 const clampReviewContent = (value: string) => Array.from(value).slice(0, REVIEW_LIMIT).join('')
 const formatDialogMessage = (message: string) => message.replace(/([.!?])\s+/g, '$1\n')
 const getDetailRoutePath = (placeId: string) => `/places/${encodeURIComponent(placeId)}`
+const readHistoryStateRecord = (state: unknown): Record<string, unknown> =>
+  state && typeof state === 'object'
+    ? state as Record<string, unknown>
+    : {}
+const isBrowseNavigationState = (value: unknown): value is 'map_browse' | 'mobile_place_list_open' =>
+  value === 'map_browse' || value === 'mobile_place_list_open'
 const encodePlaceSubmissionId = (draft: {
   name: string
   roadAddress: string
@@ -494,7 +504,17 @@ const PlaceAddForm = ({
       if ('status' in payload && (payload.status === 'created' || payload.status === 'merged' || payload.status === 'updated')) {
         await new Promise((resolve) => setTimeout(resolve, 50))
         applyRegistrationResult(payload)
-        window.history.pushState({}, '', getDetailRoutePath(payload.place.id))
+        const currentState = readHistoryStateRecord(window.history.state)
+        const nextDetailState: Record<string, unknown> = {}
+        const detailOriginNavigationState = currentState[PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD]
+        const mobileHistorySessionKey = currentState[MOBILE_HISTORY_SESSION_KEY_FIELD]
+
+        if (isBrowseNavigationState(detailOriginNavigationState) && typeof mobileHistorySessionKey === 'string') {
+          nextDetailState[MOBILE_DETAIL_ORIGIN_FIELD] = detailOriginNavigationState
+          nextDetailState[MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD] = mobileHistorySessionKey
+        }
+
+        window.history.pushState(nextDetailState, '', getDetailRoutePath(payload.place.id))
         window.dispatchEvent(new PopStateEvent('popstate'))
         window.alert(formatDialogMessage(payload.message))
         setSubmitState('idle')

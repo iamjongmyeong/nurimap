@@ -25,7 +25,7 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 - 모바일 목록 페이지의 목록 row UI는 desktop browse row와 같은 구조를 재사용한다.
 - 모바일에서 `장소 추가`를 누르면 canonical `/add-place` route로 이동해 full-screen 등록 화면을 연다.
 - 데스크톱에서 `장소 추가`를 누르면 기존 sidebar place-add surface를 연다.
-- 모바일 등록 화면을 닫으면 사용자는 직전 목록 상태로 돌아가고, direct entry/refresh처럼 이전 context가 없으면 `/`로 복귀한다.
+- 모바일 등록 화면을 닫으면 사용자는 직전 목록 상태로 돌아가고, direct entry/refresh처럼 이전 context가 없으면 list-first `/`로 복귀한다.
 - 목록 상태는 `place_list_load = idle | loading | empty | ready | error`로 관리한다.
 - 목록 로딩 중에는 진행 중 상태를 표시한다.
 - 목록 데이터가 0건이면 empty state를 표시한다.
@@ -43,7 +43,7 @@ place 목록 표시, 목록 기반 탐색, 목록 영역 전환, canonical detai
 - 목록 데이터가 없으면 empty state가 보인다.
 - 목록 로딩 실패 시 재시도 액션을 확인할 수 있다.
 - 모바일 장소 추가 진입 시 `/add-place` route가 반영되고 full-screen 등록 화면이 열린다.
-- 모바일 등록 화면을 닫으면 목록 탐색 맥락으로 복귀하고, direct entry/refresh로 이전 context가 없을 때는 `/`로 복귀한다.
+- 모바일 등록 화면을 닫으면 목록 탐색 맥락으로 복귀하고, direct entry/refresh로 이전 context가 없을 때는 list-first `/`로 복귀한다.
 
 ## TDD Implementation Order
 1. 목록 표시 필드 테스트를 작성한다.

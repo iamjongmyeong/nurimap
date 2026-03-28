@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { MapPane } from './MapPane'
 import { useAuth } from '../auth/authContext'
 import {
@@ -81,6 +81,10 @@ const BROWSE_BOOTSTRAP_LOADING_BODY = '잠시만 기다려 주세요.'
 const BROWSE_BOOTSTRAP_ERROR_TITLE = '데이터를 불러오지 못했어요.'
 const BROWSE_BOOTSTRAP_ERROR_BODY = '네트워크 상태를 확인한 뒤 다시 시도해주세요.'
 const BROWSE_BOOTSTRAP_RETRY_LABEL = '다시 시도'
+const MOBILE_HISTORY_SESSION_KEY_FIELD = 'mobileBrowseSessionKey'
+const MOBILE_DETAIL_ORIGIN_FIELD = 'mobileDetailOriginNavigationState'
+const MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD = 'mobileDetailOriginSessionKey'
+const PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD = 'placeAddOriginNavigationState'
 const STAR_PATH =
   'M11.9995 19.3643L6.46613 22.6977C6.22168 22.8532 5.96613 22.9199 5.69946 22.8977C5.4328 22.8754 5.19946 22.7865 4.99946 22.631C4.79946 22.4754 4.64391 22.2812 4.5328 22.0483C4.42168 21.8154 4.39946 21.5541 4.46613 21.2643L5.9328 14.9643L1.0328 10.731C0.810573 10.531 0.671906 10.303 0.616795 10.047C0.561684 9.79099 0.578129 9.54121 0.666129 9.29766C0.754129 9.0541 0.887462 8.8541 1.06613 8.69766C1.2448 8.54121 1.48924 8.44121 1.79946 8.39766L8.26613 7.83099L10.7661 1.89766C10.8772 1.63099 11.0497 1.43099 11.2835 1.29766C11.5172 1.16432 11.7559 1.09766 11.9995 1.09766C12.243 1.09766 12.4817 1.16432 12.7155 1.29766C12.9492 1.43099 13.1217 1.63099 13.2328 1.89766L15.7328 7.83099L22.1995 8.39766C22.5106 8.4421 22.755 8.5421 22.9328 8.69766C23.1106 8.85321 23.2439 9.05321 23.3328 9.29766C23.4217 9.5421 23.4386 9.79232 23.3835 10.0483C23.3284 10.3043 23.1892 10.5319 22.9661 10.731L18.0661 14.9643L19.5328 21.2643C19.5995 21.5532 19.5772 21.8145 19.4661 22.0483C19.355 22.2821 19.1995 22.4763 18.9995 22.631C18.7995 22.7857 18.5661 22.8745 18.2995 22.8977C18.0328 22.9208 17.7772 22.8541 17.5328 22.6977L11.9995 19.3643Z'
 const SECONDARY_BUTTON_CLASSES = 'inline-flex h-12 items-center justify-center rounded-full border border-[#d9d8e6] bg-white px-4 py-3 text-sm font-semibold text-[#222127] transition hover:border-[#c8c7d7] hover:bg-[#fafaff] disabled:cursor-not-allowed disabled:opacity-50'
@@ -246,10 +250,72 @@ const readHistoryStateRecord = (state: unknown): Record<string, unknown> =>
     ? state as Record<string, unknown>
     : {}
 
-const readBrowseNavigationStateFromHistoryState = (state: unknown): BrowseNavigationState =>
-  readHistoryStateRecord(state).navigationState === 'mobile_place_list_open'
-    ? 'mobile_place_list_open'
-    : 'map_browse'
+const isBrowseNavigationState = (value: unknown): value is BrowseNavigationState =>
+  value === 'map_browse' || value === 'mobile_place_list_open'
+
+const readBrowseNavigationStateFromHistoryState = (
+  state: unknown,
+  fallback: BrowseNavigationState = 'map_browse',
+): BrowseNavigationState => {
+  const navigationState = readHistoryStateRecord(state).navigationState
+
+  return isBrowseNavigationState(navigationState)
+    ? navigationState
+    : fallback
+}
+
+const isMobileHistoryStateCurrentSession = (state: unknown, mobileHistorySessionKey: string) =>
+  readHistoryStateRecord(state)[MOBILE_HISTORY_SESSION_KEY_FIELD] === mobileHistorySessionKey
+
+const resolveMobileRootBrowseNavigationState = (state: unknown, mobileHistorySessionKey: string): BrowseNavigationState =>
+  isMobileHistoryStateCurrentSession(state, mobileHistorySessionKey)
+    ? readBrowseNavigationStateFromHistoryState(state, 'mobile_place_list_open')
+    : 'mobile_place_list_open'
+
+const readMobileDetailBrowseOriginFromHistoryState = (
+  state: unknown,
+  mobileHistorySessionKey: string,
+): BrowseNavigationState | null => {
+  const record = readHistoryStateRecord(state)
+
+  if (record[MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD] !== mobileHistorySessionKey) {
+    return null
+  }
+
+  return isBrowseNavigationState(record[MOBILE_DETAIL_ORIGIN_FIELD])
+    ? record[MOBILE_DETAIL_ORIGIN_FIELD]
+    : null
+}
+
+const buildBrowseHistoryState = ({
+  browseNavigationState,
+  currentState,
+  isDesktop,
+  mobileHistorySessionKey,
+}: {
+  browseNavigationState: BrowseNavigationState
+  currentState: Record<string, unknown>
+  isDesktop: boolean
+  mobileHistorySessionKey: string
+}) => {
+  const nextState: Record<string, unknown> = {
+    ...currentState,
+    navigationState: browseNavigationState,
+    detailChildSurface: 'detail',
+  }
+
+  if (isDesktop) {
+    delete nextState[MOBILE_HISTORY_SESSION_KEY_FIELD]
+  } else {
+    nextState[MOBILE_HISTORY_SESSION_KEY_FIELD] = mobileHistorySessionKey
+  }
+
+  delete nextState.placeAddOriginPath
+  delete nextState[MOBILE_DETAIL_ORIGIN_FIELD]
+  delete nextState[MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD]
+
+  return nextState
+}
 
 const readPlaceAddStepFromHistoryState = (state: unknown): PlaceAddStep =>
   readHistoryStateRecord(state).placeAddStep === 'manual_form'
@@ -940,14 +1006,15 @@ type MobilePrimaryTab = 'map' | 'add' | 'list'
 
 const MobileBottomTabBar = ({
   activeTab,
+  onOpenMapBrowse,
+  onOpenMobilePlaceList,
   onOpenPlaceAdd,
 }: {
   activeTab: MobilePrimaryTab
+  onOpenMapBrowse: () => void
+  onOpenMobilePlaceList: () => void
   onOpenPlaceAdd: () => void
 }) => {
-  const openMobilePlaceList = useAppShellStore((state) => state.openMobilePlaceList)
-  const returnToMapBrowse = useAppShellStore((state) => state.returnToMapBrowse)
-
   return (
     <nav
       aria-label="모바일 하단 탭"
@@ -956,13 +1023,13 @@ const MobileBottomTabBar = ({
       style={MOBILE_SAFE_AREA_BOTTOM_STYLE}
     >
       <div className="grid h-14 grid-cols-3 items-center" data-testid="mobile-bottom-tab-bar-grid">
-        <MobileBottomTabButton active={activeTab === 'map'} onClick={returnToMapBrowse} testId="mobile-tab-map">
+        <MobileBottomTabButton active={activeTab === 'list'} ariaLabel="목록 보기" onClick={onOpenMobilePlaceList} testId="mobile-tab-list">
           <MobileBottomTabIcon
             className="h-6 w-6 shrink-0"
-            src={activeTab === 'map' ? MOBILE_BOTTOM_TAB_MAP_ICON.active : MOBILE_BOTTOM_TAB_MAP_ICON.inactive}
-            testId="mobile-tab-map-icon"
+            src={activeTab === 'list' ? MOBILE_BOTTOM_TAB_LIST_ICON.active : MOBILE_BOTTOM_TAB_LIST_ICON.inactive}
+            testId="mobile-tab-list-icon"
           />
-          <span className="block h-[10px] whitespace-nowrap text-center font-['Pretendard'] text-[10px] font-normal leading-[10px]">지도</span>
+          <span className="block h-[10px] whitespace-nowrap text-center font-['Pretendard'] text-[10px] font-normal leading-[10px]">목록</span>
         </MobileBottomTabButton>
         <MobileBottomTabButton active={activeTab === 'add'} ariaLabel="장소 추가" onClick={onOpenPlaceAdd} testId="mobile-tab-add">
           <MobileBottomTabIcon
@@ -972,13 +1039,13 @@ const MobileBottomTabBar = ({
           />
           <span className="block h-[10px] whitespace-nowrap text-center font-['Pretendard'] text-[10px] font-normal leading-[10px]">추가</span>
         </MobileBottomTabButton>
-        <MobileBottomTabButton active={activeTab === 'list'} ariaLabel="목록 보기" onClick={openMobilePlaceList} testId="mobile-tab-list">
+        <MobileBottomTabButton active={activeTab === 'map'} onClick={onOpenMapBrowse} testId="mobile-tab-map">
           <MobileBottomTabIcon
             className="h-6 w-6 shrink-0"
-            src={activeTab === 'list' ? MOBILE_BOTTOM_TAB_LIST_ICON.active : MOBILE_BOTTOM_TAB_LIST_ICON.inactive}
-            testId="mobile-tab-list-icon"
+            src={activeTab === 'map' ? MOBILE_BOTTOM_TAB_MAP_ICON.active : MOBILE_BOTTOM_TAB_MAP_ICON.inactive}
+            testId="mobile-tab-map-icon"
           />
-          <span className="block h-[10px] whitespace-nowrap text-center font-['Pretendard'] text-[10px] font-normal leading-[10px]">목록</span>
+          <span className="block h-[10px] whitespace-nowrap text-center font-['Pretendard'] text-[10px] font-normal leading-[10px]">지도</span>
         </MobileBottomTabButton>
       </div>
     </nav>
@@ -1136,6 +1203,8 @@ const MobileAppShell = ({
   onContinuePlaceAddToManual,
   detailChildSurface,
   navigationState,
+  onOpenMapBrowse,
+  onOpenMobilePlaceList,
   onOpenPlaceAdd,
   placeAddPrefill,
   placeAddStep,
@@ -1151,6 +1220,8 @@ const MobileAppShell = ({
   onContinuePlaceAddToManual: (prefill?: PlaceAddPrefill) => void
   detailChildSurface: 'detail' | 'add_rating'
   navigationState: NavigationState
+  onOpenMapBrowse: () => void
+  onOpenMobilePlaceList: () => void
   onOpenPlaceAdd: () => void
   placeAddPrefill: PlaceAddPrefill | null
   placeAddStep: PlaceAddStep
@@ -1214,7 +1285,14 @@ const MobileAppShell = ({
           status={placeDetailLoad}
         />
       ) : null}
-      {showMobileBottomTabBar ? <MobileBottomTabBar activeTab={activeMobileTab} onOpenPlaceAdd={onOpenPlaceAdd} /> : null}
+      {showMobileBottomTabBar ? (
+        <MobileBottomTabBar
+          activeTab={activeMobileTab}
+          onOpenMapBrowse={onOpenMapBrowse}
+          onOpenMobilePlaceList={onOpenMobilePlaceList}
+          onOpenPlaceAdd={onOpenPlaceAdd}
+        />
+      ) : null}
     </main>
   )
 }
@@ -1241,6 +1319,7 @@ const readDetailChildSurfaceFromHistoryState = (state: unknown): 'detail' | 'add
 export const NurimapAppShell = () => {
   const { isDesktop } = useViewportMode()
   const pathname = useSyncExternalStore(subscribeToLocation, getLocationPathname, getLocationPathname)
+  const mobileHistorySessionKey = `mobile-browse-session-${useId()}`
   const navigationState = useAppShellStore((state) => state.navigationState)
   const detailChildSurface = useAppShellStore((state) => state.detailChildSurface)
   const closePlaceAdd = useAppShellStore((state) => state.closePlaceAdd)
@@ -1248,6 +1327,7 @@ export const NurimapAppShell = () => {
   const closePlaceDetail = useAppShellStore((state) => state.closePlaceDetail)
   const openDetailAddRating = useAppShellStore((state) => state.openDetailAddRating)
   const closeDetailAddRating = useAppShellStore((state) => state.closeDetailAddRating)
+  const openMobilePlaceList = useAppShellStore((state) => state.openMobilePlaceList)
   const restoreBrowseNavigationState = useAppShellStore((state) => state.restoreBrowseNavigationState)
   const syncDetailChildSurface = useAppShellStore((state) => state.syncDetailChildSurface)
   const places = useAppShellStore((state) => state.places)
@@ -1263,17 +1343,26 @@ export const NurimapAppShell = () => {
   const mapPlaces = places.filter(hasCoordinates)
   const routePlaceId = getPlaceIdFromPathname(pathname)
   const routePlaceAdd = isPlaceAddPathname(pathname)
+  const currentHistoryState = readHistoryStateRecord(window.history.state)
   const routeSelectedPlace = routePlaceId
     ? places.find((place) => place.id === routePlaceId)
     : undefined
   const selectedPlace = routePlaceId
     ? routeSelectedPlace
     : places.find((place) => place.id === selectedPlaceId)
+  const effectiveBrowseNavigationState: BrowseNavigationState =
+    !isDesktop && pathname === '/' && !routePlaceId && !routePlaceAdd
+      ? resolveMobileRootBrowseNavigationState(currentHistoryState, mobileHistorySessionKey)
+      : navigationState === 'mobile_place_list_open'
+        ? 'mobile_place_list_open'
+        : 'map_browse'
   const effectiveNavigationState = routePlaceId
     ? 'place_detail_open'
     : routePlaceAdd
       ? 'place_add_open'
-      : navigationState
+      : isBrowseNavigationState(navigationState)
+        ? effectiveBrowseNavigationState
+        : navigationState
   const effectiveDetailChildSurface = routePlaceId ? detailChildSurface : 'detail'
   const [placeAddStep, setPlaceAddStep] = useState<PlaceAddStep>(() => readPlaceAddStepFromHistoryState(window.history.state))
   const [placeAddPrefill, setPlaceAddPrefill] = useState<PlaceAddPrefill | null>(() => readPlaceAddPrefillFromHistoryState(window.history.state))
@@ -1308,11 +1397,12 @@ export const NurimapAppShell = () => {
       return
     }
 
-    const fallbackState: Record<string, unknown> = {
-      ...currentState,
-      navigationState: 'map_browse',
-      detailChildSurface: 'detail',
-    }
+    const fallbackState = buildBrowseHistoryState({
+      browseNavigationState: isDesktop ? 'map_browse' : 'mobile_place_list_open',
+      currentState,
+      isDesktop,
+      mobileHistorySessionKey,
+    })
 
     delete fallbackState.placeAddOriginPath
     delete fallbackState.placeAddStep
@@ -1324,34 +1414,41 @@ export const NurimapAppShell = () => {
       ...fallbackState,
       navigationState: 'place_add_open',
       placeAddOriginPath: '/',
+      [PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD]: isDesktop ? 'map_browse' : 'mobile_place_list_open',
       placeAddStep: 'url_entry',
     }, '', PLACE_ADD_ROUTE)
-  }, [routePlaceAdd])
+  }, [isDesktop, mobileHistorySessionKey, routePlaceAdd])
 
   useEffect(() => {
     if (pathname !== '/' || routePlaceId || routePlaceAdd) {
       return
     }
 
-    const currentState = readHistoryStateRecord(window.history.state)
-    const nextBrowseNavigationState = navigationState === 'mobile_place_list_open'
-      ? 'mobile_place_list_open'
-      : 'map_browse'
+    if (isBrowseNavigationState(navigationState) && navigationState !== effectiveBrowseNavigationState) {
+      restoreBrowseNavigationState(effectiveBrowseNavigationState)
+    }
 
-    if (currentState.navigationState === nextBrowseNavigationState && !('placeAddOriginPath' in currentState)) {
+    const currentState = readHistoryStateRecord(window.history.state)
+    const nextState = buildBrowseHistoryState({
+      browseNavigationState: effectiveBrowseNavigationState,
+      currentState,
+      isDesktop,
+      mobileHistorySessionKey,
+    })
+
+    if (
+      currentState.navigationState === nextState.navigationState &&
+      currentState.detailChildSurface === nextState.detailChildSurface &&
+      currentState.placeAddOriginPath === nextState.placeAddOriginPath &&
+      currentState[MOBILE_HISTORY_SESSION_KEY_FIELD] === nextState[MOBILE_HISTORY_SESSION_KEY_FIELD] &&
+      currentState[MOBILE_DETAIL_ORIGIN_FIELD] === nextState[MOBILE_DETAIL_ORIGIN_FIELD] &&
+      currentState[MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD] === nextState[MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD]
+    ) {
       return
     }
 
-    const nextState: Record<string, unknown> = {
-      ...currentState,
-      navigationState: nextBrowseNavigationState,
-      detailChildSurface: 'detail',
-    }
-
-    delete nextState.placeAddOriginPath
-
     window.history.replaceState(nextState, '', pathname)
-  }, [navigationState, pathname, routePlaceAdd, routePlaceId])
+  }, [effectiveBrowseNavigationState, isDesktop, mobileHistorySessionKey, navigationState, pathname, restoreBrowseNavigationState, routePlaceAdd, routePlaceId])
 
   useEffect(() => {
     const handlePopState = () => {
@@ -1366,14 +1463,18 @@ export const NurimapAppShell = () => {
         return
       }
 
-      restoreBrowseNavigationState(readBrowseNavigationStateFromHistoryState(window.history.state))
+      restoreBrowseNavigationState(
+        isDesktop
+          ? readBrowseNavigationStateFromHistoryState(window.history.state)
+          : resolveMobileRootBrowseNavigationState(window.history.state, mobileHistorySessionKey),
+      )
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [restoreBrowseNavigationState, syncDetailChildSurface])
+  }, [isDesktop, mobileHistorySessionKey, restoreBrowseNavigationState, syncDetailChildSurface])
 
   useEffect(() => {
     if (isDesktop) {
@@ -1514,22 +1615,74 @@ export const NurimapAppShell = () => {
 
   const handleOpenPlaceDetail = (placeId: string) => {
     openPlaceDetail(placeId)
+    if (!isDesktop && window.location.pathname === '/') {
+      const currentState = readHistoryStateRecord(window.history.state)
+      navigateToPath(getDetailRoutePath(placeId), false, {
+        ...currentState,
+        navigationState: 'place_detail_open',
+        detailChildSurface: 'detail',
+        [MOBILE_DETAIL_ORIGIN_FIELD]: effectiveBrowseNavigationState,
+        [MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD]: mobileHistorySessionKey,
+      })
+      return
+    }
+
     navigateToPath(getDetailRoutePath(placeId))
   }
 
   const handleReturnToMapBrowse = () => {
-    closePlaceDetail()
-    navigateToPath('/', true, { navigationState: 'map_browse', detailChildSurface: 'detail' })
+    if (isDesktop) {
+      closePlaceDetail()
+      navigateToPath('/', true, { navigationState: 'map_browse', detailChildSurface: 'detail' })
+      return
+    }
+
+    const targetBrowseNavigationState =
+      readMobileDetailBrowseOriginFromHistoryState(window.history.state, mobileHistorySessionKey) ?? 'mobile_place_list_open'
+
+    restoreBrowseNavigationState(targetBrowseNavigationState)
+    navigateToPath('/', true, buildBrowseHistoryState({
+      browseNavigationState: targetBrowseNavigationState,
+      currentState: readHistoryStateRecord(window.history.state),
+      isDesktop: false,
+      mobileHistorySessionKey,
+    }))
   }
 
   const handleOpenPlaceAdd = () => {
     const currentState = readHistoryStateRecord(window.history.state)
+    const placeAddOriginNavigationState = window.location.pathname === '/'
+      ? effectiveBrowseNavigationState
+      : isDesktop
+        ? 'map_browse'
+        : readBrowseNavigationStateFromHistoryState(currentState, 'mobile_place_list_open')
     navigateToPath(PLACE_ADD_ROUTE, false, {
       ...currentState,
       navigationState: 'place_add_open',
       placeAddOriginPath: window.location.pathname,
+      [PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD]: placeAddOriginNavigationState,
       placeAddStep: 'url_entry',
     })
+  }
+
+  const handleOpenMobilePlaceList = () => {
+    openMobilePlaceList()
+    navigateToPath('/', true, buildBrowseHistoryState({
+      browseNavigationState: 'mobile_place_list_open',
+      currentState: readHistoryStateRecord(window.history.state),
+      isDesktop: false,
+      mobileHistorySessionKey,
+    }))
+  }
+
+  const handleOpenMapBrowse = () => {
+    restoreBrowseNavigationState('map_browse')
+    navigateToPath('/', true, buildBrowseHistoryState({
+      browseNavigationState: 'map_browse',
+      currentState: readHistoryStateRecord(window.history.state),
+      isDesktop: false,
+      mobileHistorySessionKey,
+    }))
   }
 
   const handleClosePlaceAdd = () => {
@@ -1669,6 +1822,8 @@ export const NurimapAppShell = () => {
       onContinuePlaceAddToManual={handleContinuePlaceAddToManual}
       detailChildSurface={effectiveDetailChildSurface}
       navigationState={effectiveNavigationState}
+      onOpenMapBrowse={handleOpenMapBrowse}
+      onOpenMobilePlaceList={handleOpenMobilePlaceList}
       onOpenPlaceAdd={handleOpenPlaceAdd}
       placeAddPrefill={effectivePlaceAddPrefill}
       placeAddStep={effectivePlaceAddStep}

@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { MOCK_PLACES } from './mockPlaces'
-import { resetAppShellStore } from './appShellStore'
+import { resetAppShellStore, useAppShellStore } from './appShellStore'
 
 const originalFetch = globalThis.fetch
 const GEOCODE_FAILURE_MESSAGE = '주소를 찾지 못했어요. 입력한 주소를 다시 확인해 주세요.'
@@ -264,6 +264,33 @@ describe('Plan 06 place registration flow', () => {
       paddingBottom: 'calc(16px + var(--nurimap-safe-area-bottom, 0px))',
       scrollPaddingBottom: 'calc(24px + var(--nurimap-safe-area-bottom, 0px))',
     })
+  })
+
+  it('returns to the map screen after a mobile place-add success that started from map browse', async () => {
+    globalThis.fetch = createRegistrationFetchMock() as typeof fetch
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '지도' }))
+    await user.click(screen.getByRole('button', { name: '장소 추가' }))
+    await screen.findByTestId('place-add-url-entry-screen')
+    await user.click(screen.getByTestId('place-add-direct-entry-button'))
+    await screen.findByRole('heading', { name: '직접 장소 등록' })
+    await user.type(screen.getByLabelText('이름'), '모바일 지도 시작 등록')
+    await user.type(screen.getByLabelText('주소'), '서울 마포구 지도복귀로 1')
+    await user.click(screen.getByTestId('place-submit-button'))
+
+    expect(await screen.findByTestId('mobile-detail-page')).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/places/place-direct-entry-123456789')
+
+    await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
+
+    expect(window.location.pathname).toBe('/')
+    expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'true')
+    expect(screen.queryByTestId('mobile-list-page')).not.toBeInTheDocument()
+    expect(useAppShellStore.getState().selectedPlaceId).toBeNull()
   })
 
   it('applies the updated place-add field styles and back-only header affordance', async () => {

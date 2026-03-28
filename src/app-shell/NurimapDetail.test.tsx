@@ -1,9 +1,13 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
 import { MOCK_PLACES } from './mockPlaces'
 import type { PlaceSummary } from './types'
+
+vi.mock('agentation', () => ({
+  Agentation: () => null,
+}))
 
 const originalFetch = globalThis.fetch
 
@@ -382,19 +386,22 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('review-add-content-input')).toHaveValue('a'.repeat(500))
   })
 
-  it('returns to the map screen on mobile back without auto-zoom and without a selected-looking browse state', async () => {
+  it('returns to the map screen on mobile map-origin in-app back without auto-zoom and without a selected-looking browse state', async () => {
     setViewport(390)
     useAppShellStore.setState({ mapLevel: 4 })
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '목록 보기' }))
-    await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
+    await user.click(screen.getByRole('button', { name: '지도' }))
+    await user.click(screen.getByTestId('map-marker-place-restaurant-1'))
     expect(window.location.pathname).toBe('/places/place-restaurant-1')
+
     await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
 
     expect(window.location.pathname).toBe('/')
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
+    expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'true')
     expect(useAppShellStore.getState().selectedPlaceId).toBeNull()
     expect(useAppShellStore.getState().mapLevel).toBe(4)
     expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
@@ -404,14 +411,43 @@ describe('Sprint 16 place detail refresh', () => {
     expect(screen.getByTestId('place-list-item-place-restaurant-1').className).not.toContain('bg-[#f7f8ff]')
   })
 
-  it('returns to the map screen on mobile browser back without auto-zoom and without a selected-looking browse state', async () => {
+  it('returns to the map screen on mobile map-origin history.back without auto-zoom and without a selected-looking browse state', async () => {
     setViewport(390)
     useAppShellStore.setState({ mapLevel: 4 })
     const user = userEvent.setup()
     render(<App />)
 
+    await user.click(screen.getByRole('button', { name: '지도' }))
+    await user.click(screen.getByTestId('map-marker-place-cafe-1'))
+    expect(window.location.pathname).toBe('/places/place-cafe-1')
+
+    act(() => {
+      window.history.back()
+    })
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/')
+      expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
+      expect(screen.getByTestId('map-canvas')).toBeInTheDocument()
+      expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'true')
+    })
+
+    expect(useAppShellStore.getState().selectedPlaceId).toBeNull()
+    expect(useAppShellStore.getState().mapLevel).toBe(4)
+    expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()
+
     await user.click(screen.getByRole('button', { name: '목록 보기' }))
-    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    expect(screen.getByTestId('place-list-item-place-cafe-1').className).not.toContain('bg-[#f7f8ff]')
+  })
+
+  it('falls back to the list screen on mobile no-origin synthetic browser restore without a selected-looking browse state', async () => {
+    setViewport(390)
+    useAppShellStore.setState({ mapLevel: 4 })
+    window.history.replaceState({}, '', '/places/place-cafe-1')
+    render(<App />)
+
+    expect(await screen.findByTestId('mobile-detail-page')).toBeInTheDocument()
     expect(window.location.pathname).toBe('/places/place-cafe-1')
 
     act(() => {
@@ -421,12 +457,12 @@ describe('Sprint 16 place detail refresh', () => {
 
     expect(window.location.pathname).toBe('/')
     expect(screen.queryByTestId('mobile-detail-page')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
     expect(useAppShellStore.getState().selectedPlaceId).toBeNull()
     expect(useAppShellStore.getState().mapLevel).toBe(4)
     expect(screen.queryByTestId('map-center')).not.toBeInTheDocument()
     expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '목록 보기' }))
     expect(screen.getByTestId('place-list-item-place-cafe-1').className).not.toContain('bg-[#f7f8ff]')
   })
 

@@ -19,7 +19,7 @@
 
 ## Surface Contract
 - desktop은 전체 지도 + 왼쪽 sidebar를 browse / detail / place add의 공용 container로 사용한다.
-- mobile browse는 전체 지도 surface 위에 하단 고정 3탭 바(`지도`, `추가`, `목록`)를 사용하고, map/list primary surface 사이를 이동할 때 active 탭이 현재 surface와 함께 바뀐다. 목록 surface는 상단 고정 brand/logout header를 유지한다. mobile place add는 canonical `/add-place` full-screen page로 열리고, 이때 하단 GNB는 숨긴다. detail은 full-screen page로 열린다.
+- mobile browse는 list-first entry를 사용하고, 전체 지도 surface 위에 하단 고정 3탭 바(`목록`, `추가`, `지도`)를 사용한다. map/list primary surface 사이를 이동할 때 active tab이 현재 surface와 함께 바뀐다. 목록 surface는 상단 고정 brand/logout header를 유지한다. mobile place add는 canonical `/add-place` full-screen page로 열리고, 이때 하단 GNB는 숨긴다. detail은 full-screen page로 열린다.
 - desktop detail은 별도 floating panel이 아니라 기존 목록 영역 안에서 열린다.
 - place add는 desktop에서는 기존 목록 영역 계열 surface를 재사용하고, mobile에서는 canonical `/add-place` page로 분리한다.
 - mobile add-rating은 detail에 종속된 child surface이며 standalone durable page로 분리하지 않는다.
@@ -28,7 +28,8 @@
 
 ## Transition Contract
 - 목록 선택과 지도 선택은 같은 place selection을 공유하고 canonical detail URL(`/places/:placeId`)과 동기화된다.
-- desktop detail back, mobile detail back affordance, browser back은 모두 browse context(`/`) 복귀와 호환돼야 한다.
+- desktop detail back은 browse context(`/`) 복귀와 호환돼야 한다.
+- mobile detail back affordance와 browser back은 origin-aware다. list-origin은 목록으로, map-origin은 지도로, origin-less direct-entry/refresh detail은 목록 fallback으로 복귀한다.
 - direct detail entry(`/places/:placeId`)도 현재 breakpoint에 맞는 같은 detail surface로 열려야 한다.
 - detail 하단 CTA로 연 add-rating은 current detail context 안에서 열리고, save/back/cancel은 같은 detail로 복귀해야 한다.
 - add-rating은 route를 별도 `/places/:placeId/add-rating` 같은 durable state로 승격하지 않는다.

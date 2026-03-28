@@ -6,7 +6,7 @@ Nurimap의 기본 앱 셸, 데스크톱/모바일 browse 레이아웃, map/list/
 ## Scope
 - 앱 기본 레이아웃
 - 데스크톱 sidebar browse container
-- 모바일 map/list/detail/add/add-rating surface split
+- 모바일 list-first map/list/detail/add/add-rating surface split
 - 모바일 browse 하단 고정 탭 바
 - 목록 영역 전환
 - 기본 빈 상태/로딩 상태
@@ -31,11 +31,12 @@ Nurimap의 기본 앱 셸, 데스크톱/모바일 browse 레이아웃, map/list/
 - 데스크톱에서는 지도 전체 화면 + 왼쪽 sidebar browse container 구조를 사용한다.
 - 데스크톱의 목록, 상세, 장소 추가는 별도 floating panel이 아니라 같은 sidebar browse container 안에서 전환된다.
 - 데스크톱 place-add는 `/add-place` 내부의 URL-entry step과 기존 manual form을 같은 sidebar container 안에서 staged flow로 보여준다.
-- 모바일 browse에서는 지도 전체 화면 + 하단 고정 3탭 바 구조를 사용한다.
-- 모바일 하단 탭 바는 `지도`, `추가`, `목록` 세 탭으로 구성한다.
-- 모바일 하단 탭 바는 map/list primary surface에서 유지되고 active 탭은 현재 surface와 동기화된다.
-- 모바일 `지도` 탭은 기본 active browse state이며 현재 지도 surface를 유지한다.
+- 모바일 browse는 list-first entry를 사용하고, 지도 전체 화면 + 하단 고정 3탭 바 구조를 사용한다.
+- 모바일 하단 탭 바는 `목록`, `추가`, `지도` 세 탭으로 구성한다.
+- 모바일 하단 탭 바는 list/map primary surface에서 유지되고 active 탭은 현재 surface와 동기화된다.
+- 모바일 `목록` 탭은 기본 active browse state이며 현재 목록 surface를 유지한다.
 - 모바일 `목록` 탭은 list-family full-screen surface로 이동한다.
+- 모바일 `지도` 탭은 현재 지도 surface로 이동한다.
 - 모바일 `추가` 탭은 canonical `/add-place` route로 이동한다.
 - 모바일 `/add-place`는 standalone full-screen page로 열리고 하단 탭 바는 보이지 않는다.
 - `/add-place` 진입 시 모바일과 데스크톱 모두 URL-entry step을 먼저 보여야 한다.
@@ -49,7 +50,7 @@ Nurimap의 기본 앱 셸, 데스크톱/모바일 browse 레이아웃, map/list/
 - 데스크톱과 모바일 기본 구조가 문서 정의와 일치한다.
 - place 데이터가 없어도 레이아웃이 깨지지 않는다.
 - 데스크톱의 detail/add가 지도 위 overlay가 아니라 sidebar browse container 안에서 전환된다.
-- 모바일에서 하단 고정 3탭 바와 active `지도` 탭이 보인다.
+- 모바일에서 하단 고정 3탭 바와 active `목록` 탭이 보인다.
 - 모바일에서 map/list 전환 시 active 탭이 현재 surface와 함께 바뀐다.
 - 모바일 place add는 `/add-place` route와 연결된 full-screen page로 열린다.
 - 모바일 place add는 URL-entry step을 먼저 보여주고, manual form은 그 다음 단계로 열린다.

@@ -1,8 +1,12 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { MOCK_PLACES } from './mockPlaces'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
+
+vi.mock('agentation', () => ({
+  Agentation: () => null,
+}))
 
 const originalFetch = globalThis.fetch
 
@@ -539,12 +543,11 @@ describe('Sprint 16 browse refresh', () => {
     expect(screen.getByRole('button', { name: '목록으로 돌아가기' })).toBeInTheDocument()
   })
 
-  it('opens the refreshed mobile list and full-screen detail flow', async () => {
+  it('opens the refreshed mobile list-first root and full-screen detail flow', async () => {
     setViewport(390)
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '목록 보기' }))
     expect(screen.getByTestId('mobile-list-header')).toContainElement(screen.getByAltText('Nurimedia 로고'))
     expect(screen.getByTestId('mobile-list-page')).toHaveTextContent('누리맵')
     expect(screen.getByTestId('mobile-list-logout-button')).toHaveAccessibleName('로그아웃')
@@ -558,14 +561,14 @@ describe('Sprint 16 browse refresh', () => {
     expect(screen.getByTestId('mobile-detail-page')).toHaveTextContent('누리 식당')
   })
 
-  it('does not pan or zoom the Kakao map on mobile detail open or in-app back', async () => {
+  it('does not pan or zoom the Kakao map on mobile list-origin detail open or in-app back to the list', async () => {
     setViewport(390)
     useAppShellStore.setState({ mapLevel: 1 })
     const user = userEvent.setup()
     const { panTo, setLevel } = installKakaoRuntimeMock(1)
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
     await user.click(screen.getByTestId('place-list-item-place-restaurant-1'))
 
     expect(window.location.pathname).toBe('/places/place-restaurant-1')
@@ -576,21 +579,53 @@ describe('Sprint 16 browse refresh', () => {
     await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
 
     expect(window.location.pathname).toBe('/')
+    expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
     expect(useAppShellStore.getState().mapLevel).toBe(1)
     expect(setLevel).not.toHaveBeenCalled()
     expect(panTo).not.toHaveBeenCalled()
   })
 
-  it('does not pan or zoom the Kakao map on mobile browser/history back from detail', async () => {
+  it('does not pan or zoom the Kakao map on mobile list-origin history.back from detail to the list', async () => {
     setViewport(390)
     useAppShellStore.setState({ mapLevel: 1 })
     const user = userEvent.setup()
     const { panTo, setLevel } = installKakaoRuntimeMock(1)
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
     await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
 
+    expect(window.location.pathname).toBe('/places/place-cafe-1')
+    expect(useAppShellStore.getState().mapLevel).toBe(1)
+    expect(setLevel).not.toHaveBeenCalled()
+    expect(panTo).not.toHaveBeenCalled()
+
+    act(() => {
+      window.history.back()
+    })
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/')
+      expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+      expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
+    })
+
+    expect(useAppShellStore.getState().selectedPlaceId).toBeNull()
+    expect(screen.getByTestId('place-list-item-place-cafe-1').className).not.toContain('bg-[#f7f8ff]')
+    expect(useAppShellStore.getState().mapLevel).toBe(1)
+    expect(setLevel).not.toHaveBeenCalled()
+    expect(panTo).not.toHaveBeenCalled()
+  })
+
+  it('does not pan or zoom the Kakao map when no-origin mobile detail fallback restores the list via synthetic popstate', async () => {
+    setViewport(390)
+    useAppShellStore.setState({ mapLevel: 1 })
+    window.history.replaceState({}, '', '/places/place-cafe-1')
+    const { panTo, setLevel } = installKakaoRuntimeMock(1)
+    render(<App />)
+
+    expect(await screen.findByTestId('mobile-detail-page')).toBeInTheDocument()
     expect(window.location.pathname).toBe('/places/place-cafe-1')
     expect(useAppShellStore.getState().mapLevel).toBe(1)
     expect(setLevel).not.toHaveBeenCalled()
@@ -602,6 +637,8 @@ describe('Sprint 16 browse refresh', () => {
     })
 
     expect(window.location.pathname).toBe('/')
+    expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
     expect(useAppShellStore.getState().mapLevel).toBe(1)
     expect(setLevel).not.toHaveBeenCalled()
     expect(panTo).not.toHaveBeenCalled()
