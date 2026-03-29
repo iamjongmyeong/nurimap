@@ -78,7 +78,7 @@ import {
 
 const originalEnv = { ...process.env }
 
-describe('Sprint 18 otp auth request flow', () => {
+describe('authService OTP auth flow', () => {
   beforeEach(() => {
     process.env = { ...originalEnv }
     vi.restoreAllMocks()

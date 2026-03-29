@@ -10,7 +10,7 @@ import {
   recordVerifiedOtpState,
 } from './authPolicy'
 
-describe('Sprint 18 auth policy', () => {
+describe('authPolicy', () => {
   it('allows only the configured email domain', () => {
     expect(isAllowedEmailDomain('user@nurimedia.co.kr', 'nurimedia.co.kr')).toBe(true)
     expect(isAllowedEmailDomain('user@example.com', 'nurimedia.co.kr')).toBe(false)

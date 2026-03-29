@@ -163,7 +163,7 @@ const openDirectEntryForm = async (user: ReturnType<typeof userEvent.setup>) => 
   await screen.findByRole('heading', { name: '직접 장소 등록' })
 }
 
-describe('Plan 05 direct place entry shell flow', () => {
+describe('Place lookup and direct entry flow', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.spyOn(window, 'alert').mockImplementation(() => {})

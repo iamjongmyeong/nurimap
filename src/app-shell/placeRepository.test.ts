@@ -29,7 +29,7 @@ const cloneMockPlaces = () =>
     reviews: place.reviews.map((review) => ({ ...review })),
   }))
 
-describe('Plan 06 place repository', () => {
+describe('placeRepository', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })

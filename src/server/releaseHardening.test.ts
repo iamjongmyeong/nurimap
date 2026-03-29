@@ -44,7 +44,7 @@ const collectRuntimeFiles = (dir: string) =>
     excludedDirectories: ['test'],
   })
 
-describe('Plan 11 release hardening', () => {
+describe('release hardening', () => {
   beforeEach(() => {
     process.env = { ...originalEnv }
     vi.restoreAllMocks()

@@ -171,7 +171,7 @@ const fillDirectEntryForm = async ({
   await user.type(screen.getByLabelText('주소'), address)
 }
 
-describe('Plan 06 place registration flow', () => {
+describe('Place registration flow', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.spyOn(window, 'alert').mockImplementation(() => {})

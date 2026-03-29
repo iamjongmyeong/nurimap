@@ -7,7 +7,7 @@ const validFavoriteUrl = 'https://map.naver.com/p/favorite/myPlace/folder/52f873
 const validMobileUrl = 'https://m.place.naver.com/restaurant/38282260/home?entry=pll'
 const validPinnedLocationUrl = 'https://map.naver.com/?menu=location&lat=37.5619497&pinType=site&app=Y&version=2&appMenu=location&lng=126.9246381&title=%EC%88%98%EB%9D%BC%EA%B0%84&pinId=1063954725'
 
-describe('Plan 04 naver url normalization', () => {
+describe('naverUrl normalization', () => {
   it('recognizes the search place url shape', () => {
     expect(normalizeNaverMapUrl(validSearchUrl)).toEqual({
       canonicalUrl: 'https://map.naver.com/p/entry/place/123456789',

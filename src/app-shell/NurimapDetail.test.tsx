@@ -99,7 +99,7 @@ const setViewport = (width: number) => {
   })
 }
 
-describe('Sprint 16 place detail refresh', () => {
+describe('Nurimap place detail', () => {
   beforeEach(() => {
     resetAppShellStore()
     window.history.replaceState({}, '', '/')

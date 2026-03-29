@@ -111,8 +111,49 @@ async function attachCollectors(page, email, dialogs, apiResponses) {
   });
 }
 
-async function loginAndSaveName(page, email, profileName) {
+async function ensureAuthRequestScreen(page, dialogs, { mobile = false } = {}) {
   await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  const requestButton = page.getByRole('button', { name: '인증 코드 전송' });
+  const resetEmailButton = page.getByRole('button', { name: '이메일 다시 입력' });
+  const mobileListLogoutButton = page.getByTestId('mobile-list-logout-button');
+  const logoutButton = mobile ? mobileListLogoutButton : page.getByRole('button', { name: '로그아웃' });
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (await requestButton.isVisible().catch(() => false)) {
+      return;
+    }
+
+    if (await resetEmailButton.isVisible().catch(() => false)) {
+      await resetEmailButton.click();
+      await requestButton.waitFor({ state: 'visible', timeout: 15000 });
+      return;
+    }
+
+    if (mobile && !(await mobileListLogoutButton.isVisible().catch(() => false))) {
+      const mobileTabList = page.getByTestId('mobile-tab-list');
+      if (await mobileTabList.isVisible().catch(() => false)) {
+        await mobileTabList.click();
+      }
+    }
+
+    if (await logoutButton.isVisible().catch(() => false)) {
+      page.once('dialog', async (dialog) => {
+        dialogs.push({ type: dialog.type(), message: dialog.message(), action: 'accept' });
+        await dialog.accept();
+      });
+      await logoutButton.click();
+      await requestButton.waitFor({ state: 'visible', timeout: 15000 });
+      return;
+    }
+
+    await page.waitForTimeout(500);
+  }
+
+  throw new Error('Could not reach the auth request screen from the local runtime');
+}
+
+async function loginAndSaveName(page, email, profileName) {
+  await ensureAuthRequestScreen(page, [], { mobile: page.viewportSize()?.width ? page.viewportSize().width < 768 : false });
   await page.getByLabel('이메일').fill(email);
   await page.getByRole('button', { name: '인증 코드 전송' }).click();
   await page.getByText('로그인 코드를 보냈어요.').waitFor({ state: 'visible', timeout: 15000 });
@@ -122,6 +163,17 @@ async function loginAndSaveName(page, email, profileName) {
   await page.getByRole('button', { name: '저장' }).waitFor({ state: 'visible', timeout: 15000 });
   await page.getByLabel('이름').fill(profileName);
   await page.getByRole('button', { name: '저장' }).click();
+}
+
+async function openDesktopUrlEntryForm(page) {
+  await page.locator('[data-testid="desktop-add-button"]').click();
+  await page.getByTestId('place-add-url-entry-screen').waitFor({ state: 'visible', timeout: 15000 });
+}
+
+async function openDesktopDirectEntryForm(page) {
+  await openDesktopUrlEntryForm(page);
+  await page.getByTestId('place-add-direct-entry-button').click();
+  await page.getByLabel('이름').waitFor({ state: 'visible', timeout: 15000 });
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -146,7 +198,7 @@ await runScenario('invalid_domain_error', async () => {
   const context = await createContext(browser, { width: 1280, height: 900 });
   const page = await context.newPage();
   await attachCollectors(page, 'invalid@example.com', dialogs, apiResponses);
-  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await ensureAuthRequestScreen(page, dialogs);
   await page.getByLabel('이메일').fill('invalid@example.com');
   await page.getByRole('button', { name: '인증 코드 전송' }).click();
   await page.getByText('누리미디어 구성원만 사용할 수 있어요.').waitFor({ state: 'visible', timeout: 15000 });
@@ -173,7 +225,7 @@ await runScenario('session_restore_direct_detail_and_review_cta_hide', async () 
   await page.getByRole('button', { name: '목록 보기' }).waitFor({ state: 'visible', timeout: 15000 });
 
   const places = await page.evaluate(async () => {
-    const response = await fetch('/api/place-list');
+    const response = await fetch('/api/places');
     return await response.json();
   });
   const targetPlace = (places?.places ?? []).find((place) => !['세션리뷰', '리뷰플레이', '플레이라이트'].includes(place.added_by_name));
@@ -208,6 +260,146 @@ await runScenario('session_restore_direct_detail_and_review_cta_hide', async () 
   };
 });
 
+await runScenario('mobile_list_first_root_and_map_origin_add_back', async () => {
+  const unique = Date.now().toString().slice(-6);
+  const email = `playwright-mobile-root-${unique}@nurimedia.co.kr`;
+  const profileName = '모바일루트';
+  const placeName = `모바일 지도 시작 등록 ${unique}`;
+  const placeAddress = '서울 마포구 등록로 1';
+  const dialogs = [];
+  const apiResponses = [];
+  const context = await createContext(browser, { width: 390, height: 844 });
+  const page = await context.newPage();
+  await attachCollectors(page, email, dialogs, apiResponses);
+
+  await loginAndSaveName(page, email, profileName);
+  await page.getByTestId('mobile-list-page').waitFor({ state: 'visible', timeout: 15000 });
+
+  const listTabActiveAtRoot = await page.getByTestId('mobile-tab-list').getAttribute('data-active');
+  const mapTabActiveAtRoot = await page.getByTestId('mobile-tab-map').getAttribute('data-active');
+
+  await page.getByTestId('mobile-tab-map').click();
+  await page.getByTestId('map-canvas').waitFor({ state: 'visible', timeout: 15000 });
+  const listTabActiveOnMap = await page.getByTestId('mobile-tab-list').getAttribute('data-active');
+  const mapTabActiveOnMap = await page.getByTestId('mobile-tab-map').getAttribute('data-active');
+
+  await page.getByTestId('mobile-tab-add').click();
+  await page.getByTestId('place-add-url-entry-screen').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByTestId('place-add-direct-entry-button').click();
+  await page.getByLabel('이름').fill(placeName);
+  await page.getByLabel('주소').fill(placeAddress);
+  await page.locator('[data-testid="place-submit-button"]').click();
+
+  await page.waitForURL(/\/places\//, { timeout: 15000 });
+  await page.getByTestId('mobile-detail-page').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByText(placeName).waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByRole('button', { name: '뒤로 가기' }).click();
+
+  await page.getByTestId('map-canvas').waitFor({ state: 'visible', timeout: 15000 });
+  const mapTabActiveAfterBack = await page.getByTestId('mobile-tab-map').getAttribute('data-active');
+  const listPageVisibleAfterBack = await page.getByTestId('mobile-list-page').isVisible().catch(() => false);
+
+  await context.close();
+  return {
+    dialogs,
+    apiResponses,
+    listTabActiveAtRoot,
+    mapTabActiveAtRoot,
+    listTabActiveOnMap,
+    mapTabActiveOnMap,
+    mapTabActiveAfterBack,
+    listPageVisibleAfterBack,
+    createdPlace: {
+      name: placeName,
+      address: placeAddress,
+    },
+  };
+});
+
+await runScenario('url_entry_invalid_url_inline_error', async () => {
+  const unique = Date.now().toString().slice(-6);
+  const email = `playwright-url-invalid-${unique}@nurimedia.co.kr`;
+  const profileName = 'URL에러';
+  const dialogs = [];
+  const apiResponses = [];
+  const context = await createContext(browser, { width: 1280, height: 900 });
+  const page = await context.newPage();
+  await attachCollectors(page, email, dialogs, apiResponses);
+
+  await loginAndSaveName(page, email, profileName);
+  await page.locator('[data-testid="desktop-add-button"]').waitFor({ state: 'visible', timeout: 15000 });
+  await openDesktopUrlEntryForm(page);
+
+  const urlInput = page.getByTestId('place-add-url-entry-input');
+  await urlInput.fill('https://example.com/nope');
+  await page.getByTestId('place-add-url-entry-submit-button').click();
+  await page.getByTestId('place-add-url-entry-error').waitFor({ state: 'visible', timeout: 15000 });
+
+  const errorText = await page.getByTestId('place-add-url-entry-error').textContent();
+  const ariaInvalid = await urlInput.getAttribute('aria-invalid');
+  const stayedOnUrlEntry = await page.getByTestId('place-add-url-entry-screen').isVisible();
+  const manualHeadingVisible = await page.getByRole('heading', { name: '직접 장소 등록' }).isVisible().catch(() => false);
+
+  await urlInput.fill('https://example.com/nope?retry=1');
+  const errorClearedAfterEdit = !(await page.getByTestId('place-add-url-entry-error').isVisible().catch(() => false));
+
+  await context.close();
+  return {
+    dialogs,
+    apiResponses,
+    errorText,
+    ariaInvalid,
+    stayedOnUrlEntry,
+    manualHeadingVisible,
+    errorClearedAfterEdit,
+  };
+});
+
+await runScenario('url_entry_lookup_failed_manual_fallback', async () => {
+  const unique = Date.now().toString().slice(-6);
+  const email = `playwright-url-fallback-${unique}@nurimedia.co.kr`;
+  const profileName = 'URL폴백';
+  const dialogs = [];
+  const apiResponses = [];
+  const context = await createContext(browser, { width: 390, height: 844 });
+  const page = await context.newPage();
+  await attachCollectors(page, email, dialogs, apiResponses);
+
+  await page.route(`${baseUrl}/api/place-lookups`, async (route) => {
+    await route.fulfill({
+      status: 502,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'error',
+        error: {
+          code: 'lookup_failed',
+          message: '장소 정보를 가져오지 못했어요. 다시 시도해 주세요.',
+        },
+      }),
+    });
+  });
+
+  await loginAndSaveName(page, email, profileName);
+  await page.getByTestId('mobile-list-page').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByRole('button', { name: '장소 추가' }).click();
+  await page.getByTestId('place-add-url-entry-screen').waitFor({ state: 'visible', timeout: 15000 });
+
+  await page.getByTestId('place-add-url-entry-input').fill('https://map.naver.com/p/entry/place/123456789');
+  await page.getByTestId('place-add-url-entry-submit-button').click();
+
+  await page.getByRole('heading', { name: '직접 장소 등록' }).waitFor({ state: 'visible', timeout: 15000 });
+  const nameValue = await page.getByLabel('이름').inputValue();
+  const addressValue = await page.getByLabel('주소').inputValue();
+
+  await context.close();
+  return {
+    dialogs,
+    apiResponses,
+    nameValue,
+    addressValue,
+  };
+});
+
 await runScenario('duplicate_registration_cancel', async () => {
   const unique = Date.now().toString().slice(-6);
   const email = `playwright-dup-cancel-${unique}@nurimedia.co.kr`;
@@ -221,7 +413,7 @@ await runScenario('duplicate_registration_cancel', async () => {
   await page.locator('[data-testid="desktop-add-button"]').waitFor({ state: 'visible', timeout: 15000 });
 
   const places = await page.evaluate(async () => {
-    const response = await fetch('/api/place-list');
+    const response = await fetch('/api/places');
     return await response.json();
   });
   const targetPlace = (places?.places ?? []).find((place) => place.added_by_name === '테스트');
@@ -232,7 +424,7 @@ await runScenario('duplicate_registration_cancel', async () => {
     await dialog.dismiss();
   });
 
-  await page.locator('[data-testid="desktop-add-button"]').click();
+  await openDesktopDirectEntryForm(page);
   await page.getByLabel('이름').fill(targetPlace.name);
   await page.getByLabel('주소').fill(targetPlace.road_address);
   await page.locator('[data-testid="review-content-input"]').fill(`중복 취소 검증 ${unique}`);
@@ -264,7 +456,7 @@ await runScenario('duplicate_registration_confirm_merge', async () => {
   await page.locator('[data-testid="desktop-add-button"]').waitFor({ state: 'visible', timeout: 15000 });
 
   const places = await page.evaluate(async () => {
-    const response = await fetch('/api/place-list');
+    const response = await fetch('/api/places');
     return await response.json();
   });
   const targetPlace = (places?.places ?? []).find((place) => place.added_by_name === '테스트');
@@ -282,7 +474,7 @@ await runScenario('duplicate_registration_confirm_merge', async () => {
     }
   });
 
-  await page.locator('[data-testid="desktop-add-button"]').click();
+  await openDesktopDirectEntryForm(page);
   await page.getByLabel('이름').fill(targetPlace.name);
   await page.getByLabel('주소').fill(targetPlace.road_address);
   await page.locator('[data-testid="review-content-input"]').fill(reviewContent);

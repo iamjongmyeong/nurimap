@@ -29,7 +29,7 @@ const setViewport = (width: number) => {
   })
 }
 
-describe('Sprint 18 OTP auth flow', () => {
+describe('AuthProvider email auth flow', () => {
   beforeEach(() => {
     resetTestAuthState()
     vi.restoreAllMocks()

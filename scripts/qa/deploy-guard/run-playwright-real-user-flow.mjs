@@ -19,6 +19,42 @@ await mkdir(artifactDir, { recursive: true });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+async function openDesktopDirectEntryForm(page) {
+  await page.locator('[data-testid="desktop-add-button"]').click();
+  await page.getByTestId('place-add-url-entry-screen').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByTestId('place-add-direct-entry-button').click();
+  await page.getByLabel('이름').waitFor({ state: 'visible', timeout: 15000 });
+}
+
+async function ensureAuthRequestScreen(page) {
+  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  const requestButton = page.getByRole('button', { name: '인증 코드 전송' });
+  const resetEmailButton = page.getByRole('button', { name: '이메일 다시 입력' });
+  const logoutButton = page.getByRole('button', { name: '로그아웃' });
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (await requestButton.isVisible().catch(() => false)) {
+      return;
+    }
+
+    if (await resetEmailButton.isVisible().catch(() => false)) {
+      await resetEmailButton.click();
+      await requestButton.waitFor({ state: 'visible', timeout: 15000 });
+      return;
+    }
+
+    if (await logoutButton.isVisible().catch(() => false)) {
+      await logoutButton.click();
+      await requestButton.waitFor({ state: 'visible', timeout: 15000 });
+      return;
+    }
+
+    await page.waitForTimeout(500);
+  }
+
+  throw new Error('Could not reach the auth request screen from the local runtime');
+}
+
 async function fetchOtpCode() {
   const deadline = Date.now() + 30000;
   while (Date.now() < deadline) {
@@ -135,7 +171,7 @@ const result = {
 };
 
 try {
-  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await ensureAuthRequestScreen(page);
   console.log('step: auth form');
   await page.getByLabel('이메일').fill(email);
   await page.getByRole('button', { name: '인증 코드 전송' }).click();
@@ -164,7 +200,8 @@ try {
   console.log('step: authenticated shell');
   result.notes.push('Authenticated shell reached');
 
-  await page.locator('[data-testid="desktop-add-button"]').click();
+  await openDesktopDirectEntryForm(page);
+  result.notes.push('Place add URL-entry screen observed before direct entry');
   await page.getByLabel('이름').fill(placeName);
   await page.getByLabel('주소').fill(placeAddress);
   await page.locator('[data-testid="review-content-input"]').fill(reviewContent);

@@ -42,7 +42,7 @@ const createSummaryPayload = ({
   },
 })
 
-describe('Plan 05 place lookup service', () => {
+describe('placeLookupService', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     __resetPlaceLookupCaches()

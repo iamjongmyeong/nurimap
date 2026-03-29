@@ -156,7 +156,7 @@ const setViewport = (width: number) => {
   })
 }
 
-describe('Sprint 16 browse refresh', () => {
+describe('Nurimap browse', () => {
   beforeEach(() => {
     resetAppShellStore()
     delete window.kakao
