@@ -83,8 +83,10 @@ body {
   min-height: 100dvh;
 }
 
-button {
-  font: inherit;
+@layer base {
+  button {
+    font: inherit;
+  }
 }
 
 .place-submit-button[data-required-fields="incomplete"] {

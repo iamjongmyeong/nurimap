@@ -345,7 +345,7 @@ describe('Place registration flow', () => {
     expect(reviewInput).toHaveClass('w-full', 'h-[144px]', 'min-h-[144px]', 'resize-none', 'overflow-y-auto', 'px-3', 'py-3')
     expect(screen.queryByText('0 / 500')).not.toBeInTheDocument()
     const submitButton = screen.getByTestId('place-submit-button')
-    expect(submitButton).toHaveClass('mt-6', 'h-12', 'py-3')
+    expect(submitButton).toHaveClass('mt-6', 'h-12', 'py-3', 'font-semibold')
     expect(submitButton).toHaveAttribute('data-required-fields', 'incomplete')
 
     await user.type(nameInput, '누리미디어')
