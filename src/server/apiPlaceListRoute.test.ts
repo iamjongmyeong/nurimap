@@ -22,8 +22,13 @@ vi.mock('../server-core/place/placeDataService.js', () => ({
 import handler from '../../api/places/index.js'
 
 const createResponse = () => {
-  const state: { body?: unknown; statusCode?: number } = {}
+  const state: { body?: unknown; headers?: Record<string, unknown>; statusCode?: number } = {}
   const response = {
+    setHeader: vi.fn((name: string, value: unknown) => {
+      state.headers ??= {}
+      state.headers[name] = value
+      return response
+    }),
     status: vi.fn((statusCode: number) => {
       state.statusCode = statusCode
       return response
@@ -59,6 +64,7 @@ describe('GET /api/places', () => {
 
     expect(listPlacesForUserMock).toHaveBeenCalledWith('user-1')
     expect(state.statusCode).toBe(200)
+    expect(state.headers?.['Cache-Control']).toEqual(expect.stringContaining('no-store'))
     expect(state.body).toEqual({ status: 'success', places: [{ id: 'place-1', name: '누리 식당' }] })
   })
 })

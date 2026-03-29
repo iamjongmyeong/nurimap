@@ -80,6 +80,21 @@ describe('release hardening', () => {
     )
   })
 
+  it('applies core browser security headers in Vercel config', () => {
+    const vercelConfig = JSON.parse(readFileSync(path.resolve(process.cwd(), 'vercel.json'), 'utf8')) as {
+      headers?: Array<{ source: string; headers: Array<{ key: string; value: string }> }>
+    }
+
+    const globalHeaderRule = vercelConfig.headers?.find((rule) => rule.source === '/(.*)')
+    expect(globalHeaderRule?.headers).toEqual(expect.arrayContaining([
+      { key: 'Content-Security-Policy', value: expect.stringContaining("default-src 'self'") },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Referrer-Policy', value: 'no-referrer' },
+      { key: 'X-Frame-Options', value: 'DENY' },
+      { key: 'Strict-Transport-Security', value: expect.stringContaining('max-age=31536000') },
+    ]))
+  })
+
   it('preserves the /auth/verify fallback rewrite in Vercel config', () => {
     const vercelConfig = JSON.parse(readFileSync(path.resolve(process.cwd(), 'vercel.json'), 'utf8')) as {
       rewrites?: Array<{ source: string; destination: string }>
@@ -152,5 +167,22 @@ describe('release hardening', () => {
     expect(result.status).toBe('error')
     expect(warnSpy).toHaveBeenCalled()
     expect(JSON.stringify(warnSpy.mock.calls)).toContain('place_lookup.lookup_failed')
+  })
+
+  it('keeps deploy-guard scripts redacting auth token fields from saved API responses', () => {
+    const realUserFlowScript = readFileSync(
+      path.resolve(process.cwd(), 'scripts/qa/deploy-guard/run-playwright-real-user-flow.mjs'),
+      'utf8',
+    )
+    const edgeUserActionsScript = readFileSync(
+      path.resolve(process.cwd(), 'scripts/qa/deploy-guard/run-playwright-edge-user-actions.mjs'),
+      'utf8',
+    )
+
+    for (const source of [realUserFlowScript, edgeUserActionsScript]) {
+      expect(source).toContain('[REDACTED_TOKEN_HASH]')
+      expect(source).toContain('[REDACTED_SESSION_ID]')
+      expect(source).toContain('[REDACTED_CSRF_TOKEN]')
+    }
   })
 })

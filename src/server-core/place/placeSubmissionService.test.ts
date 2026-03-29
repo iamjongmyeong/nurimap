@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const persistPlaceRegistrationMock = vi.hoisted(() => vi.fn())
 
@@ -12,6 +12,8 @@ import {
   createPlaceSubmission,
   PLACE_SUBMISSION_INVALID_MESSAGE,
 } from './placeSubmissionService'
+
+const originalEnv = { ...process.env }
 
 const draft = {
   place_type: 'cafe',
@@ -35,6 +37,14 @@ const lookupData = {
 describe('placeSubmissionService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    process.env = {
+      ...originalEnv,
+      PLACE_SUBMISSION_TOKEN_SECRET: 'place-submission-test-secret',
+    }
+  })
+
+  afterEach(() => {
+    process.env = { ...originalEnv }
   })
 
   it('returns a signed submission id for conflict flows and confirms with the same persisted payload', async () => {
@@ -132,5 +142,17 @@ describe('placeSubmissionService', () => {
       message: PLACE_SUBMISSION_INVALID_MESSAGE,
     })
     expect(persistPlaceRegistrationMock).not.toHaveBeenCalled()
+  })
+
+  it('requires PLACE_SUBMISSION_TOKEN_SECRET outside test mode', () => {
+    delete process.env.PLACE_SUBMISSION_TOKEN_SECRET
+    process.env.NODE_ENV = 'development'
+
+    expect(() => __createPlaceSubmissionIdForTests({
+      userId: 'user-1',
+      draft,
+      lookupData,
+      now: new Date('2026-03-27T00:00:00.000Z'),
+    })).toThrow('Place submission secret is missing. Set PLACE_SUBMISSION_TOKEN_SECRET.')
   })
 })

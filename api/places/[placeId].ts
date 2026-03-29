@@ -6,6 +6,12 @@ import {
 } from '../../src/server-core/auth/requestContext.js'
 import { getPlaceDetailForUser } from '../../src/server-core/place/placeDataService.js'
 
+const setNoStoreHeaders = (res: VercelResponse) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+  res.setHeader('Pragma', 'no-cache')
+  res.setHeader('Expires', '0')
+}
+
 const readPlaceId = (req: VercelRequest) =>
   Array.isArray(req.query?.placeId)
     ? req.query.placeId[0] ?? ''
@@ -14,6 +20,8 @@ const readPlaceId = (req: VercelRequest) =>
       : ''
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  setNoStoreHeaders(res)
+
   if (req.method !== 'GET') {
     res.status(405).json(METHOD_NOT_ALLOWED_RESPONSE_BODY)
     return

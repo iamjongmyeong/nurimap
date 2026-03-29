@@ -10,6 +10,16 @@ await mkdir(artifactDir, { recursive: true });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function sanitizeApiResponseBody(json, email) {
+  return JSON.stringify(json)
+    .replaceAll(email, '[REDACTED_EMAIL]')
+    .replace(/"tokenHash":"[^"]+"/g, '"tokenHash":"[REDACTED_TOKEN_HASH]"')
+    .replace(/"sessionId":"[^"]+"/g, '"sessionId":"[REDACTED_SESSION_ID]"')
+    .replace(/"csrfToken":"[^"]+"/g, '"csrfToken":"[REDACTED_CSRF_TOKEN]"')
+    .replace(/"access_token":"[^"]+"/g, '"access_token":"[REDACTED_ACCESS_TOKEN]"')
+    .replace(/"refresh_token":"[^"]+"/g, '"refresh_token":"[REDACTED_REFRESH_TOKEN]"');
+}
+
 async function fetchOtpCode(email) {
   const deadline = Date.now() + 30000;
   while (Date.now() < deadline) {
@@ -104,7 +114,7 @@ async function attachCollectors(page, email, dialogs, apiResponses) {
       const contentType = response.headers()['content-type'] ?? '';
       if (contentType.includes('application/json')) {
         const json = await response.json();
-        entry.body = JSON.stringify(json).replaceAll(email, '[REDACTED_EMAIL]');
+        entry.body = sanitizeApiResponseBody(json, email);
       }
     } catch {}
     apiResponses.push(entry);
@@ -494,5 +504,4 @@ await runScenario('duplicate_registration_confirm_merge', async () => {
 
 await browser.close();
 await writeFile(resultPath, JSON.stringify(result, null, 2));
-console.log(resultPath);
 if (result.scenarios.some((scenario) => !scenario.passed)) process.exit(1);

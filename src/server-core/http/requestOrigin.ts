@@ -81,12 +81,6 @@ export const isLoopbackOrPrivateLanRuntimeUrl = (runtimeUrl: string | null | und
 }
 
 export const getRequestRuntimeOrigin = (headers: Record<string, string | string[] | undefined>) => {
-  const originHeader = getFirstHeaderValue(headers.origin)
-  const normalizedOrigin = normalizeHttpUrl(originHeader)
-  if (normalizedOrigin) {
-    return normalizedOrigin
-  }
-
   const hostHeader = getFirstHeaderValue(headers['x-forwarded-host']) ?? getFirstHeaderValue(headers.host)
   if (!hostHeader) {
     return null

@@ -6,7 +6,15 @@ import {
 } from '../../src/server-core/auth/requestContext.js'
 import { listPlacesForUser } from '../../src/server-core/place/placeDataService.js'
 
+const setNoStoreHeaders = (res: VercelResponse) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+  res.setHeader('Pragma', 'no-cache')
+  res.setHeader('Expires', '0')
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  setNoStoreHeaders(res)
+
   if (req.method !== 'GET') {
     res.status(405).json(METHOD_NOT_ALLOWED_RESPONSE_BODY)
     return

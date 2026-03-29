@@ -225,20 +225,8 @@ const isEmailAllowedForAuth = (email: string, runtimeOrigin?: string) => {
 const toVerificationType = (verificationType: string | undefined): AuthVerifyType =>
   verificationType === 'magiclink' || verificationType === 'invite' ? verificationType : 'signup'
 
-const getPublicAppUrl = () => normalizeHttpUrl(process.env.PUBLIC_APP_URL)
-
-const shouldTrustRuntimeOriginForLocalBypass = () => process.env.NODE_ENV !== 'production'
-
-const getEffectiveLocalBypassRuntimeUrl = (runtimeOrigin?: string) => {
-  const normalizedRuntimeOrigin = shouldTrustRuntimeOriginForLocalBypass()
-    ? normalizeHttpUrl(runtimeOrigin)
-    : null
-
-  return normalizedRuntimeOrigin ?? getPublicAppUrl()
-}
-
 const isLocalBypassRuntime = (runtimeOrigin?: string) =>
-  isLoopbackOrPrivateLanRuntimeUrl(getEffectiveLocalBypassRuntimeUrl(runtimeOrigin))
+  isLoopbackOrPrivateLanRuntimeUrl(normalizeHttpUrl(runtimeOrigin))
 
 const isBypassLoginEmail = (email: string, runtimeOrigin?: string) => {
   if (process.env.AUTH_BYPASS_ENABLED !== 'true' || !isLocalBypassRuntime(runtimeOrigin)) {
@@ -681,7 +669,6 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
     ? options.requestAttemptId.trim()
     : null
   const normalizedEmail = normalizeEmail(email)
-  const publicAppUrl = getPublicAppUrl()
   const localRuntimeOrigin = options.runtimeOrigin ? normalizeHttpUrl(options.runtimeOrigin) : null
   const bypassLoginEmail = isBypassLoginEmail(normalizedEmail, options.runtimeOrigin)
 
@@ -690,9 +677,9 @@ export const requestLoginOtp = async (email: string, options: RequestLoginOtpOpt
   }
 
   if (bypassLoginEmail) {
-    const bypassRedirectUrl = localRuntimeOrigin ?? publicAppUrl
+    const bypassRedirectUrl = localRuntimeOrigin
     if (!bypassRedirectUrl) {
-      return deliveryFailedResult(normalizedEmail, { failure_stage: 'public_app_url' })
+      return deliveryFailedResult(normalizedEmail, { failure_stage: 'runtime_origin' })
     }
 
     return await generateImmediateBypassPayload(normalizedEmail, bypassRedirectUrl)
@@ -877,6 +864,21 @@ export const verifyLoginOtp = async ({
 
   const verifiedUser = data.user
   const persistedEmail = (verifiedUser.email ?? normalizedEmail).trim().toLowerCase()
+  if (tokenHash && !isBypassLoginEmail(persistedEmail, runtimeOrigin)) {
+    if (data.session?.access_token) {
+      try {
+        await adminAuth.admin.signOut(data.session.access_token)
+      } catch {
+        // best-effort cleanup only
+      }
+    }
+
+    return {
+      status: 'error',
+      message: OTP_VERIFY_FAILURE_MESSAGE,
+    }
+  }
+
   if (!isEmailAllowedForAuth(persistedEmail, runtimeOrigin)) {
     if (data.session?.access_token) {
       try {

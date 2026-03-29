@@ -89,7 +89,7 @@ describe('/api/auth/verify-otp', () => {
     const request = {
       method: 'POST',
       headers: {
-        origin: 'http://localhost:5173',
+        host: 'localhost:5173',
       },
       body: {
         email: 'tester@nurimedia.co.kr',
@@ -139,7 +139,7 @@ describe('/api/auth/verify-otp', () => {
     await handler({
       method: 'POST',
       headers: {
-        origin: 'http://localhost:5173',
+        host: 'localhost:5173',
       },
       body: {
         email: 'bypass.user@example.com',
@@ -191,5 +191,38 @@ describe('/api/auth/verify-otp', () => {
       token: '123456',
     })
     expect(state.statusCode).toBe(200)
+  })
+
+  it('ignores a spoofed Origin header during verify and uses the actual Host-derived runtimeOrigin', async () => {
+    verifyLoginOtpMock.mockResolvedValue({
+      status: 'success',
+      sessionId: 'session-123',
+      csrfToken: 'csrf-123',
+      nextPhase: 'authenticated',
+      user: {
+        id: 'user-1',
+        email: 'tester@nurimedia.co.kr',
+        name: '테스트 사용자',
+      },
+    })
+
+    const { response } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {
+        origin: 'https://attacker.example.com',
+        host: 'localhost:5173',
+      },
+      body: {
+        email: 'tester@nurimedia.co.kr',
+        token: '123456',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(verifyLoginOtpMock).toHaveBeenCalledWith({
+      email: 'tester@nurimedia.co.kr',
+      runtimeOrigin: 'http://localhost:5173',
+      token: '123456',
+    })
   })
 })

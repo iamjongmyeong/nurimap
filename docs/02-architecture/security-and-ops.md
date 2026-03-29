@@ -92,9 +92,10 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
   - DB target: `DATABASE_URL` 또는 동등한 server DB URL
   - verified remote DB TLS가 필요한 경우: `DATABASE_SSL_ROOT_CERT` (fallback alias: `SUPABASE_DB_ROOT_CERT`)
   - Supabase server target: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`
+  - place submission signing secret: `PLACE_SUBMISSION_TOKEN_SECRET`
   - browser bootstrap/public origin: `PUBLIC_APP_URL`
 - browser에 노출 가능한 key는 public client/runtime key로 한정한다. 예: `NEXT_PUBLIC_SUPABASE_*`, `PUBLIC_KAKAO_MAP_APP_KEY`.
-- bypass는 local dev 전용이다. preview/development/production에서 env가 남아 있더라도 runtime은 bypass를 거절해야 하며, local dev에서도 trust 대상은 loopback/localhost + RFC1918 private-LAN IP literal로 한정한다. arbitrary hostname/public IP/preview/prod origin은 허용하지 않으며, local bypass 사용은 운영 로그와 QA handoff에서 구분 가능해야 한다.
+- bypass는 local dev 전용이다. preview/development/production에서 env가 남아 있더라도 runtime은 bypass를 거절해야 하며, bypass 판정은 `PUBLIC_APP_URL`보다 server가 관측한 실제 request runtime context를 우선한다. local dev에서도 trust 대상은 loopback/localhost + RFC1918 private-LAN IP literal로 한정한다. arbitrary hostname/public IP/preview/prod origin은 허용하지 않으며, local bypass 사용은 운영 로그와 QA handoff에서 구분 가능해야 한다.
 
 ## Authorization Policy
 - place 등록과 리뷰 작성은 인증된 사용자만 수행한다.

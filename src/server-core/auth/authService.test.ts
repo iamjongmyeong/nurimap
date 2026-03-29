@@ -149,7 +149,10 @@ describe('authService OTP auth flow', () => {
     })
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const result = await requestLoginOtp('bypass.user@example.com', { requireBypass: true })
+    const result = await requestLoginOtp('bypass.user@example.com', {
+      requireBypass: true,
+      runtimeOrigin: 'http://127.0.0.1:4173',
+    })
 
     expect(result).toEqual({
       status: 'success',
@@ -252,11 +255,20 @@ describe('authService OTP auth flow', () => {
     })
   })
 
-  it('does not trust a local runtime origin override for bypass in production mode', async () => {
+  it('allows bypass-only requests on a local runtime origin even when NODE_ENV is production', async () => {
     process.env.NODE_ENV = 'production'
     process.env.AUTH_BYPASS_ENABLED = 'true'
     process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
     process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
+    generateLinkMock.mockResolvedValue({
+      data: {
+        properties: {
+          hashed_token: 'bypass-token-hash',
+          verification_type: 'magiclink',
+        },
+      },
+      error: null,
+    })
 
     const result = await requestLoginOtp('bypass.user@example.com', {
       requireBypass: true,
@@ -264,11 +276,19 @@ describe('authService OTP auth flow', () => {
     })
 
     expect(result).toEqual({
-      status: 'error',
-      code: 'bypass_required',
-      message: '로컬 auto-login을 사용하려면 bypass 계정과 서버 bypass 설정이 필요해요.',
+      status: 'success',
+      mode: 'bypass',
+      message: '테스트 계정으로 바로 로그인합니다.',
+      tokenHash: 'bypass-token-hash',
+      verificationType: 'magiclink',
     })
-    expect(generateLinkMock).not.toHaveBeenCalled()
+    expect(generateLinkMock).toHaveBeenCalledWith({
+      type: 'magiclink',
+      email: 'bypass.user@example.com',
+      options: {
+        redirectTo: 'http://localhost:5173',
+      },
+    })
   })
 
   it('does not trust a public ipv4 runtime origin override for bypass', async () => {
@@ -979,6 +999,7 @@ describe('authService OTP auth flow', () => {
 
     const result = await verifyLoginOtp({
       email: '',
+      runtimeOrigin: 'http://127.0.0.1:4173',
       token: '',
       tokenHash: 'token-hash',
       verificationType: 'magiclink',
@@ -1087,11 +1108,72 @@ describe('authService OTP auth flow', () => {
     })
   })
 
-  it('does not trust a local runtime origin override for token-hash verification in production mode', async () => {
+  it('allows token-hash verification on a local runtime origin even when NODE_ENV is production', async () => {
     process.env.NODE_ENV = 'production'
     process.env.PUBLIC_APP_URL = 'https://nurimap.jongmyeong.me'
     process.env.AUTH_BYPASS_ENABLED = 'true'
     process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'bypass.user@example.com',
+          app_metadata: {
+            nurimap_auth: {
+              day_key: '2026-03-22',
+              day_count: 1,
+              last_requested_at: '2026-03-22T00:00:00.000Z',
+              last_verified_at: null,
+            },
+          },
+          user_metadata: {},
+        },
+        session: {
+          access_token: 'provider-access-token',
+        },
+      },
+      error: null,
+    })
+
+    await expect(verifyLoginOtp({
+      email: '',
+      runtimeOrigin: 'http://localhost:5173',
+      token: '',
+      tokenHash: 'token-hash',
+      verificationType: 'magiclink',
+    })).resolves.toMatchObject({ status: 'success' })
+
+    expect(verifyOtpMock).toHaveBeenCalledWith({
+      token_hash: 'token-hash',
+      type: 'magiclink',
+    })
+  })
+
+  it('rejects token-hash verification when the verified user is not a bypass allowlist email', async () => {
+    process.env.AUTH_BYPASS_ENABLED = 'true'
+    process.env.AUTH_ALLOWED_EMAIL_DOMAIN = 'nurimedia.co.kr'
+    process.env.AUTH_BYPASS_EMAILS = 'bypass.user@example.com'
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'tester@nurimedia.co.kr',
+          app_metadata: {
+            nurimap_auth: {
+              day_key: '2026-03-22',
+              day_count: 1,
+              last_requested_at: '2026-03-22T00:00:00.000Z',
+              last_verified_at: null,
+            },
+          },
+          user_metadata: {},
+        },
+        session: {
+          access_token: 'provider-access-token',
+        },
+      },
+      error: null,
+    })
 
     await expect(verifyLoginOtp({
       email: '',
@@ -1104,8 +1186,8 @@ describe('authService OTP auth flow', () => {
       message: '이 코드는 사용할 수 없어요.',
     })
 
-    expect(verifyOtpMock).not.toHaveBeenCalled()
     expect(createAppSessionMock).not.toHaveBeenCalled()
+    expect(adminSignOutMock).toHaveBeenCalledWith('provider-access-token')
   })
 
   it('rejects token-hash verification on a public ipv4 runtime origin', async () => {

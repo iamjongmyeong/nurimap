@@ -67,7 +67,7 @@ describe('/api/auth/request-otp', () => {
     await handler({
       method: 'POST',
       headers: {
-        origin: 'http://localhost:5173',
+        host: 'localhost:5173',
       },
       body: {
         email: 'tester@nurimedia.co.kr',

@@ -19,6 +19,16 @@ await mkdir(artifactDir, { recursive: true });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function sanitizeApiResponseBody(json, email) {
+  return JSON.stringify(json)
+    .replaceAll(email, '[REDACTED_EMAIL]')
+    .replace(/"tokenHash":"[^"]+"/g, '"tokenHash":"[REDACTED_TOKEN_HASH]"')
+    .replace(/"sessionId":"[^"]+"/g, '"sessionId":"[REDACTED_SESSION_ID]"')
+    .replace(/"csrfToken":"[^"]+"/g, '"csrfToken":"[REDACTED_CSRF_TOKEN]"')
+    .replace(/"access_token":"[^"]+"/g, '"access_token":"[REDACTED_ACCESS_TOKEN]"')
+    .replace(/"refresh_token":"[^"]+"/g, '"refresh_token":"[REDACTED_REFRESH_TOKEN]"');
+}
+
 async function openDesktopDirectEntryForm(page) {
   await page.locator('[data-testid="desktop-add-button"]').click();
   await page.getByTestId('place-add-url-entry-screen').waitFor({ state: 'visible', timeout: 15000 });
@@ -147,9 +157,7 @@ page.on('response', async (response) => {
     const contentType = response.headers()['content-type'] ?? '';
     if (contentType.includes('application/json')) {
       const json = await response.json();
-      entry.body = JSON.stringify(json)
-        .replaceAll(email, '[REDACTED_EMAIL]')
-        .replace(/"tokenHash":"[^"]+"/g, '"tokenHash":"[REDACTED_TOKEN_HASH]"');
+      entry.body = sanitizeApiResponseBody(json, email);
     }
   } catch {}
   apiResponses.push(entry);
@@ -172,18 +180,15 @@ const result = {
 
 try {
   await ensureAuthRequestScreen(page);
-  console.log('step: auth form');
   await page.getByLabel('이메일').fill(email);
   await page.getByRole('button', { name: '인증 코드 전송' }).click();
   await page.getByText('로그인 코드를 보냈어요.').waitFor({ state: 'visible', timeout: 15000 });
 
-  console.log('step: waiting otp');
   const otpCode = await fetchOtpCode();
   result.notes.push('OTP email observed in local Mailpit API');
 
   await page.getByLabel('인증 코드').fill(otpCode);
   await page.getByRole('button', { name: '인증' }).click();
-  console.log('step: submitted otp');
 
   const nameInput = page.getByLabel('이름');
   const saveButton = page.getByRole('button', { name: '저장' });
@@ -197,7 +202,6 @@ try {
   }
 
   await page.locator('[data-testid="desktop-add-button"]').waitFor({ state: 'visible', timeout: 15000 });
-  console.log('step: authenticated shell');
   result.notes.push('Authenticated shell reached');
 
   await openDesktopDirectEntryForm(page);
@@ -206,7 +210,6 @@ try {
   await page.getByLabel('주소').fill(placeAddress);
   await page.locator('[data-testid="review-content-input"]').fill(reviewContent);
   await page.locator('[data-testid="place-submit-button"]').click();
-  console.log('step: submitted place');
 
   await page.waitForURL(/\/places\//, { timeout: 15000 });
   await page.getByTestId('desktop-detail-panel').waitFor({ state: 'visible', timeout: 15000 });
@@ -235,5 +238,4 @@ try {
   await browser.close();
 }
 
-console.log(resultPath);
 if (!result.passed) process.exit(1);

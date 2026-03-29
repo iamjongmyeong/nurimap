@@ -66,7 +66,7 @@ describe('/api/auth/request-otp', () => {
     await handler({
       method: 'POST',
       headers: {
-        origin: 'http://localhost:5173',
+        host: 'localhost:5173',
       },
       body: {
         email: 'tester@nurimedia.co.kr',
@@ -90,7 +90,7 @@ describe('/api/auth/request-otp', () => {
     })
   })
 
-  it('forwards a private-lan Origin header to requestLoginOtp unchanged', async () => {
+  it('forwards a private-lan Host header to requestLoginOtp unchanged', async () => {
     requestLoginOtpMock.mockResolvedValue({
       status: 'success',
       mode: 'otp',
@@ -101,7 +101,7 @@ describe('/api/auth/request-otp', () => {
     await handler({
       method: 'POST',
       headers: {
-        origin: 'http://192.168.0.24:5173',
+        host: '192.168.0.24:5173',
       },
       body: {
         email: 'tester@nurimedia.co.kr',
@@ -175,6 +175,33 @@ describe('/api/auth/request-otp', () => {
       intent: undefined,
       requestAttemptId: undefined,
       runtimeOrigin: 'http://10.0.0.42:4173',
+    })
+  })
+
+  it('ignores a spoofed Origin header and uses the actual Host-derived runtimeOrigin', async () => {
+    requestLoginOtpMock.mockResolvedValue({
+      status: 'success',
+      mode: 'otp',
+      message: '인증 코드를 보냈어요.',
+    })
+
+    const { response } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {
+        origin: 'https://attacker.example.com',
+        host: 'localhost:5173',
+      },
+      body: {
+        email: 'tester@nurimedia.co.kr',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(requestLoginOtpMock).toHaveBeenCalledWith('tester@nurimedia.co.kr', {
+      requireBypass: false,
+      intent: undefined,
+      requestAttemptId: undefined,
+      runtimeOrigin: 'http://localhost:5173',
     })
   })
 

@@ -44,10 +44,6 @@ const getString = (value: string | undefined | null) => {
 
 const getPlaceSubmissionSecret = () => {
   const resolvedSecret = getString(process.env.PLACE_SUBMISSION_TOKEN_SECRET)
-    ?? getString(process.env.SUPABASE_SECRET_KEY)
-    ?? getString(process.env.SUPABASE_SERVICE_ROLE_KEY)
-    ?? getString(process.env.DATABASE_URL)
-    ?? getString(process.env.POSTGRES_URL)
 
   if (resolvedSecret) {
     return resolvedSecret
@@ -57,7 +53,7 @@ const getPlaceSubmissionSecret = () => {
     return 'nurimap-place-submission-test-secret'
   }
 
-  throw new Error('Place submission secret is missing.')
+  throw new Error('Place submission secret is missing. Set PLACE_SUBMISSION_TOKEN_SECRET.')
 }
 
 const encodePayload = (payload: PlaceSubmissionTokenPayload) =>

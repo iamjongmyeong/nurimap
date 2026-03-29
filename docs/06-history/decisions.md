@@ -738,3 +738,20 @@ Sprint 12 이전의 legacy entry는 당시 명칭을 유지하기 위해 `Plan X
   - .omx/plans/prd-iphone-local-lan-dev-path.md
   - .omx/plans/test-spec-iphone-local-lan-dev-path.md
 - Related commit: TBD
+
+## 2026-03-29 Security hardening - Local-only bypass trust, dedicated place-submission signing secret, and release-surface tightening
+- Context: current auth bypass still depended on request-derived origin semantics that could be spoofed more easily than host-derived local runtime evidence, place-submission confirmation tokens could fall back to unrelated Supabase/DB credentials for signing, authenticated collection/detail reads were cacheable by default, QA artifact collectors did not consistently redact auth token fields, and dependency audit still contained production/dev advisories.
+- Options considered:
+  - Option A: keep current bypass trust behavior and credential fallback structure, then address only dependency updates.
+  - Option B: tighten bypass to actual local runtime context, require a dedicated `PLACE_SUBMISSION_TOKEN_SECRET`, harden browser/release surfaces, and reduce remaining dependency advisories with targeted updates/overrides.
+- Decision: Option B를 선택한다.
+- Rationale: local dev + iPhone private-LAN QA는 유지해야 했지만 preview/staging/production/public host에서는 bypass가 절대 열리면 안 됐다. 따라서 bypass 판정은 `PUBLIC_APP_URL`보다 server가 관측한 actual request runtime context를 우선하도록 고정하고, verify 단계에서도 bypass email/local 조건을 재검사하는 편이 더 안전하다. place-submission confirmation token은 app-owned signing concern이므로 Supabase admin/DB credentials와 분리된 전용 secret으로 서명해야 blast radius와 rotation scope를 줄일 수 있다. 여기에 no-store, browser security headers, QA artifact redaction, dependency remediation를 함께 적용하면 release surface를 실질적으로 줄이면서도 현재 runtime contract를 깨지 않는다.
+- Impact: bypass는 `localhost` + RFC1918 private-LAN actual request context에서만 허용되고, preview/development/production/public IP/arbitrary hostname에서는 env가 남아 있어도 차단된다. `PLACE_SUBMISSION_TOKEN_SECRET`는 place-submission confirmation token signing의 required env가 되고, `SUPABASE_SECRET_KEY`/`DATABASE_URL` 등 unrelated credentials fallback은 제거된다. authenticated `GET /api/places*` 응답은 `no-store`를 적용하고, Vercel global headers는 CSP / nosniff / referrer / frame / HSTS를 포함하도록 강화된다. deploy-guard QA scripts는 tokenHash/session/csrf/access/refresh token을 저장 전에 redact하고, repo dependency tree는 audit 0 상태까지 정리한다.
+- Revisit trigger: local host trust를 hostname까지 확장해야 할 product/runtime 요구가 생기거나, place-submission confirmation token을 stateful server persistence로 바꿔야 할 이유가 생기거나, upstream dependency releases로 overrides를 제거할 수 있게 되면 현재 hardening contract를 재검토한다.
+- Related docs:
+  - docs/02-architecture/security-and-ops.md
+  - docs/06-history/decisions.md
+  - vercel.json
+  - scripts/qa/deploy-guard/run-playwright-real-user-flow.mjs
+  - scripts/qa/deploy-guard/run-playwright-edge-user-actions.mjs
+- Related commit: e80a870
