@@ -64,6 +64,28 @@ const createAppShellFetchMock = () =>
     return new Response(JSON.stringify({ status: 'missing' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   })
 
+const createAuthenticatedAppShellFetchMock = () => {
+  const baseFetchMock = createAppShellFetchMock()
+
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input)
+
+    if (url === '/api/auth/session') {
+      return new Response(JSON.stringify({
+        status: 'authenticated',
+        user: {
+          id: 'user-1',
+          email: 'tester@nurimedia.co.kr',
+          name: '테스트 사용자',
+        },
+        csrfHeaderName: 'x-nurimap-csrf-token',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    return await baseFetchMock(input)
+  })
+}
+
 const setViewport = (width: number, height = 844) => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
@@ -225,6 +247,38 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'false')
     expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-black.svg')
     expect(screen.getByTestId('mobile-tab-list-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-list-gray.svg')
+  })
+
+  it('renders the mobile list-first page instead of the unified browse bootstrap while the Kakao runtime is still bootstrapping', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('PUBLIC_KAKAO_MAP_APP_KEY', 'test-kakao-key')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    globalThis.fetch = createAuthenticatedAppShellFetchMock() as typeof fetch
+    setViewport(390)
+    render(<App />)
+
+    expect(await screen.findByTestId('mobile-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'false')
+    expect(screen.queryByTestId('browse-bootstrap-loading')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('browse-bootstrap-error')).not.toBeInTheDocument()
+  })
+
+  it('shows the map surface loading state instead of the unified browse bootstrap when the map tab is opened before the Kakao runtime is ready', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('PUBLIC_KAKAO_MAP_APP_KEY', 'test-kakao-key')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    globalThis.fetch = createAuthenticatedAppShellFetchMock() as typeof fetch
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await screen.findByTestId('mobile-list-page')
+    await user.click(screen.getByRole('button', { name: '지도' }))
+
+    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('map-loading-state')).toBeInTheDocument()
+    expect(screen.queryByTestId('browse-bootstrap-loading')).not.toBeInTheDocument()
   })
 
   it('locks document scroll for the mobile shell and restores it on unmount', () => {

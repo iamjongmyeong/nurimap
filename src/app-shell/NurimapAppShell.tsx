@@ -1748,15 +1748,19 @@ export const NurimapAppShell = () => {
   }
 
   const isBrowseSurface = effectiveNavigationState === 'map_browse' || effectiveNavigationState === 'mobile_place_list_open'
+  const shouldBypassUnifiedMobileBrowseBootstrap = !isDesktop && isBrowseSurface
   const isDetailBootstrapLoading =
     effectiveNavigationState === 'place_detail_open'
     && placeDetailLoad === 'loading'
   const hasBrowseBootstrapError =
     placeListLoad === 'error'
-    || mapRuntimeStatus === 'error'
-    || mapRuntimeStatus === 'unavailable'
+    || (
+      !shouldBypassUnifiedMobileBrowseBootstrap
+      && (mapRuntimeStatus === 'error' || mapRuntimeStatus === 'unavailable')
+    )
   const isBrowseBootstrapLoading =
     !hasBrowseBootstrapError
+    && !shouldBypassUnifiedMobileBrowseBootstrap
     && (placeListLoad === 'idle' || placeListLoad === 'loading' || mapRuntimeStatus === 'loading')
 
   const handleRetryBrowseBootstrap = async () => {

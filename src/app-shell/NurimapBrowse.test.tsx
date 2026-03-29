@@ -644,6 +644,45 @@ describe('Nurimap browse', () => {
     expect(panTo).not.toHaveBeenCalled()
   })
 
+  it('shows the mobile list-first root instead of the unified browse loading state while mobile browse data is bootstrapping', () => {
+    setViewport(390)
+    useAppShellStore.setState({ placeListLoad: 'loading' })
+    render(<App />)
+
+    expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
+    expect(screen.queryByTestId('browse-bootstrap-loading')).not.toBeInTheDocument()
+  })
+
+  it('shows the mobile list-first root while the Kakao runtime is still bootstrapping on mobile', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('PUBLIC_KAKAO_MAP_APP_KEY', 'test-kakao-key')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    setViewport(390)
+    window.history.replaceState({}, '', '/?auth_test_state=authenticated')
+    render(<App />)
+
+    expect(await screen.findByTestId('mobile-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
+    expect(screen.queryByTestId('browse-bootstrap-loading')).not.toBeInTheDocument()
+  })
+
+  it('shows the map loading surface instead of the unified browse loading state when the mobile map tab is opened before the Kakao runtime is ready', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('PUBLIC_KAKAO_MAP_APP_KEY', 'test-kakao-key')
+    vi.stubEnv('VITE_LOCAL_AUTO_LOGIN', 'false')
+    setViewport(390)
+    window.history.replaceState({}, '', '/?auth_test_state=authenticated')
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '지도' }))
+
+    expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('map-loading-state')).toBeInTheDocument()
+    expect(screen.queryByTestId('browse-bootstrap-loading')).not.toBeInTheDocument()
+  })
+
   it('renders the unified loading state while browse data is still bootstrapping', () => {
     setViewport(1280)
     useAppShellStore.setState({ placeListLoad: 'loading' })
