@@ -118,6 +118,7 @@ describe('release hardening', () => {
       'SUPABASE_JWT_SECRET',
       'RESEND_API_KEY',
       'KAKAO_REST_API_KEY',
+      'SENTRY_AUTH_TOKEN',
     ]
 
     for (const file of clientFiles) {
@@ -184,5 +185,14 @@ describe('release hardening', () => {
       expect(source).toContain('[REDACTED_SESSION_ID]')
       expect(source).toContain('[REDACTED_CSRF_TOKEN]')
     }
+  })
+
+  it('enables Vite sourcemaps and the Sentry Vite plugin for release uploads', () => {
+    const viteConfigSource = readFileSync(path.resolve(process.cwd(), 'vite.config.ts'), 'utf8')
+
+    expect(viteConfigSource).toContain("import { sentryVitePlugin } from '@sentry/vite-plugin'")
+    expect(viteConfigSource).toContain("build: {\n      sourcemap: command === 'build',")
+    expect(viteConfigSource).toContain('sentryVitePlugin({')
+    expect(viteConfigSource).toContain('authToken: env.SENTRY_AUTH_TOKEN.trim()')
   })
 })

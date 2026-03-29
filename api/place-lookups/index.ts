@@ -7,7 +7,10 @@ import {
 import { checkUserScopedRateLimit } from '../../src/server-core/http/requestRateLimit.js'
 import { lookupPlaceFromRawUrl } from '../../src/server-core/place/placeLookupService.js'
 import { logPlaceLookupFailure } from '../../src/server-core/runtime/opsLogger.js'
+import { initServerSentry } from '../../src/server-core/runtime/sentry.js'
 import { NAVER_URL_ERROR_MESSAGE } from '../../src/shared/naverUrl.js'
+
+initServerSentry()
 
 const PLACE_LOOKUP_RATE_LIMIT_MESSAGE = '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.'
 const PLACE_LOOKUP_RATE_LIMIT = {

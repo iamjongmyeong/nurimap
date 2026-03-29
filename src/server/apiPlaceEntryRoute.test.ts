@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
+  captureServerExceptionMock,
   confirmPlaceSubmissionMock,
   checkUserScopedRateLimitMock,
   findActiveAppSessionByIdMock,
@@ -13,6 +14,7 @@ const {
   readCsrfTokenFromHeadersMock,
   readSessionIdFromCookieHeaderMock,
 } = vi.hoisted(() => ({
+  captureServerExceptionMock: vi.fn(),
   confirmPlaceSubmissionMock: vi.fn(),
   checkUserScopedRateLimitMock: vi.fn(),
   findActiveAppSessionByIdMock: vi.fn(),
@@ -48,6 +50,11 @@ vi.mock('../server-core/place/placeSubmissionService.js', () => ({
 
 vi.mock('../server-core/http/requestRateLimit.js', () => ({
   checkUserScopedRateLimit: checkUserScopedRateLimitMock,
+}))
+
+vi.mock('../server-core/runtime/sentry.js', () => ({
+  captureServerException: captureServerExceptionMock,
+  initServerSentry: vi.fn(),
 }))
 
 import confirmHandler from '../../api/place-submissions/[submissionId]/confirmations.js'
@@ -122,6 +129,7 @@ describe('canonical place submission routes', () => {
       },
     })
     expect(createPlaceSubmissionMock).not.toHaveBeenCalled()
+    expect(captureServerExceptionMock).not.toHaveBeenCalled()
   })
 
   it('returns a JSON 500 error when canonical place submission preparation throws unexpectedly', async () => {
@@ -157,6 +165,16 @@ describe('canonical place submission routes', () => {
       error: {
         code: 'internal_error',
         message: '등록하지 못했어요. 잠시 후 다시 시도해 주세요.',
+      },
+    })
+    expect(captureServerExceptionMock).toHaveBeenCalledWith({
+      error: expect.any(Error),
+      req: request,
+      route: '/api/place-submissions',
+      user: {
+        id: 'user-1',
+        email: 'tester@nurimedia.co.kr',
+        name: '테스트 사용자',
       },
     })
   })
@@ -268,5 +286,6 @@ describe('canonical place submission routes', () => {
         message: '확인 요청이 만료되었어요. 다시 시도해 주세요.',
       },
     })
+    expect(captureServerExceptionMock).not.toHaveBeenCalled()
   })
 })

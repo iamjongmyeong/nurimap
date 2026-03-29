@@ -7,6 +7,9 @@ import {
 } from '../../src/server-core/auth/appSessionService.js'
 import { verifyLoginOtp } from '../../src/server-core/auth/authService.js'
 import { getRequestRuntimeOrigin } from '../../src/server-core/http/requestOrigin.js'
+import { initServerSentry } from '../../src/server-core/runtime/sentry.js'
+
+initServerSentry()
 
 const isSecureRequest = (req: VercelRequest) =>
   process.env.NODE_ENV === 'production' || req.headers['x-forwarded-proto'] === 'https'

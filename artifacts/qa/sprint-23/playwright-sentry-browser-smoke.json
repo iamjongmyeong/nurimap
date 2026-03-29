@@ -1,0 +1,11 @@
+{
+  "requestCount": 5,
+  "envelopeCaptured": true,
+  "containsEmail": true,
+  "containsUsername": true,
+  "containsEnvironment": true,
+  "containsRelease": true,
+  "containsRuntimeTag": true,
+  "containsControlledMessage": true,
+  "lastRequestPreview": "{\"event_id\":\"700539fb3a77479cba71b840d641ae0d\",\"sent_at\":\"2026-03-29T05:44:04.566Z\",\"sdk\":{\"name\":\"sentry.javascript.react\",\"version\":\"10.46.0\"},\"trace\":{\"environment\":\"production\",\"release\":\"cbb61455d9256a3ec7deb75e08e705a31501774e\",\"public_key\":\"f530e321449434bbbae0b767e9cd13e2\",\"trace_id\":\"fc5a403e56cd4155aec8585b8411b480\",\"org_id\":\"4511122464571392\"}}\n{\"type\":\"event\"}\n{\"exception\":{\"values\":[{\"type\":\"Error\",\"value\":\"Controlled browser Sentry smoke uncaught\"}]},\"environment\":\"production\",\"release\":\"cbb61455d9256a3ec7deb75e08e705a31501774e\",\"tags\":{\"runtime\":\"browser\"},\"user\":{\"email\":\"tester@nurimedia.co.kr\",\"username\":\"테스트 사용자\"}}"
+}

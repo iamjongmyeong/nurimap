@@ -1,0 +1,351 @@
+{
+  "id": "dpl_H28GDnyRasvPEq72capnN1RvFR9U",
+  "name": "nurimap",
+  "url": "nurimap-qphaqa4qv-jongmyeong-projects.vercel.app",
+  "target": "production",
+  "readyState": "READY",
+  "createdAt": 1774763700972,
+  "aliases": [
+    "nurimap.vercel.app",
+    "nurimap.jongmyeong.me",
+    "nurimap-jongmyeong-projects.vercel.app",
+    "nurimap-jongmyeong-jongmyeong-projects.vercel.app"
+  ],
+  "builds": [
+    {
+      "id": "bld_8ylr09wqy",
+      "deploymentId": "dpl_H28GDnyRasvPEq72capnN1RvFR9U",
+      "entrypoint": ".",
+      "readyState": "READY",
+      "readyStateAt": 1774763701545,
+      "createdAt": 1774763701545,
+      "createdIn": "sfo1",
+      "use": "@vercel/vc-build",
+      "config": {
+        "framework": "vite",
+        "nodeVersion": "20.x",
+        "projectCreatedAt": 1772965456924,
+        "vercelConfig": {
+          "headers": [
+            {
+              "source": "/(.*)",
+              "headers": [
+                {
+                  "key": "X-Robots-Tag",
+                  "value": "noindex, nofollow"
+                },
+                {
+                  "key": "Content-Security-Policy",
+                  "value": "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https:"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "Referrer-Policy",
+                  "value": "no-referrer"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=31536000; includeSubDomains"
+                }
+              ]
+            }
+          ],
+          "rewrites": [
+            {
+              "source": "/auth/verify",
+              "destination": "/"
+            },
+            {
+              "source": "/places/:match*",
+              "destination": "/"
+            }
+          ],
+          "name": "nurimap",
+          "version": 2
+        }
+      },
+      "middleware": [],
+      "output": [
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/place-submissions/shared",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/33395aacc8fe91225c889b47b19c7175dbff7ac6f990944eb36c76d65d37aafd",
+          "mode": 49590,
+          "size": 16899,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-0d80ea993fef97b7626510c1d8fbdb3684",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/auth/request-otp",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/afb08f664ca29dfda206e3f4c20bdb6e8c26d9bd6079b94daa13fc35ca2d73bc",
+          "mode": 49590,
+          "size": 2415207,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-1a59f1db89a0e63d61b25d70d8d1d38dd1",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/auth/verify-otp",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/82968b18835c7ecdd3e3d0230436b55801348a9c80dea95bf8ec349694e230b2",
+          "mode": 49590,
+          "size": 2415963,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-256ab5c6b7c40942fb5546a919145c6a94",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/auth/session",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/2e0eedcd2d992b7acef052305ad6a1cb9acbc6872e236b85e5f77087e67d93e7",
+          "mode": 49590,
+          "size": 2418547,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-f874d0b4fab8081d5df470cc485bd54c69",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/place-submissions/[submissionId]/confirmations",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/4da774b1fd85375bb696dd1a016dc322cc8dbefabbfc541a5aae744da3721a96",
+          "mode": 49590,
+          "size": 2445773,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-5ccf5660884c0df3ee984cfbf75deeb44f",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/auth/profile",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/0f403528458d2b523308572a3ed28fb8181dcd4fd340f36760f9b91ae5ed023c",
+          "mode": 49590,
+          "size": 2418036,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-ecb41570319532258833137118fc589f95",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/place-submissions/index",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/1d0919327c0f772836a02421f410c2573fd5846223dac4bece5cb32431e192ac",
+          "mode": 49590,
+          "size": 2445807,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-f0a00f205392a165d62969100fba115983",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/place-submissions/index",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/1d0919327c0f772836a02421f410c2573fd5846223dac4bece5cb32431e192ac",
+          "mode": 49590,
+          "size": 2445807,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-f0a00f205392a165d62969100fba115983",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/places/[placeId]",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/1f47ef4e1b268e5dbcdc55a7d8447ce8309ea453a84fbad66b0c98ecbeac5d41",
+          "mode": 49590,
+          "size": 2427343,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-d173697660f97ebbafcd3905684ff24f13",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/places/index",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/623daa1af64db4ec82a0ce5f9e3042f535363a337d9a7fe6773374544fa1b1ee",
+          "mode": 49590,
+          "size": 2426919,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-8920243449485e6f64c7c92c941f64f1c8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/places/index",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/623daa1af64db4ec82a0ce5f9e3042f535363a337d9a7fe6773374544fa1b1ee",
+          "mode": 49590,
+          "size": 2426919,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-8920243449485e6f64c7c92c941f64f1c8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/place-lookups/index",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/95745d3f6bec9f8773a903432ce4f9e20cd697ae72096a9ae0999ecaf28fc3f5",
+          "mode": 49590,
+          "size": 2434429,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-cfdc93329fbca4b7f149fef779ae6baa91",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/place-lookups/index",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/95745d3f6bec9f8773a903432ce4f9e20cd697ae72096a9ae0999ecaf28fc3f5",
+          "mode": 49590,
+          "size": 2434429,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-cfdc93329fbca4b7f149fef779ae6baa91",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/places/[placeId]/reviews/index",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/b5d1734746646b86cef252f23eef8b8f4ac9a2de470628f1cfd488deea0df124",
+          "mode": 49590,
+          "size": 2427465,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-6a6f4609c632b2f79bfcf7330895fe104a",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/places/[placeId]/reviews/index",
+          "digest": "prj_2kmRlfWFunPlyiLBUCH61AsvLR7E/b5d1734746646b86cef252f23eef8b8f4ac9a2de470628f1cfd488deea0df124",
+          "mode": 49590,
+          "size": 2427465,
+          "lambda": {
+            "functionName": "team_WIa3jPxS20EzHr9dUQKCuBau-6a6f4609c632b2f79bfcf7330895fe104a",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs20.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        }
+      ],
+      "fingerprint": null
+    }
+  ],
+  "contextName": "jongmyeong-projects"
+}

@@ -7,6 +7,7 @@ import {
 import { checkUserScopedRateLimit } from '../../src/server-core/http/requestRateLimit.js'
 import { createPlaceSubmission } from '../../src/server-core/place/placeSubmissionService.js'
 import { logPlaceEntryFailure } from '../../src/server-core/runtime/opsLogger.js'
+import { captureServerException, initServerSentry } from '../../src/server-core/runtime/sentry.js'
 import {
   GENERIC_PLACE_SUBMISSION_ERROR_MESSAGE,
   getPlaceRegistrationDraftFromBody,
@@ -14,6 +15,8 @@ import {
   PLACE_SUBMISSION_RATE_LIMIT_MESSAGE,
   resolvePlaceLookupDataFromBody,
 } from './shared.js'
+
+initServerSentry()
 
 const getSuccessStatusCode = (status: 'created' | 'merged' | 'updated') =>
   status === 'created' ? 201 : 200
@@ -95,6 +98,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       details: {
         error_message: error instanceof Error ? error.message : 'unknown_error',
       },
+    })
+    await captureServerException({
+      error,
+      req,
+      route: '/api/place-submissions',
+      user: requestContext.authSession.user,
     })
     res.status(500).json({
       error: {

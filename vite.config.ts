@@ -1,7 +1,9 @@
+import { execSync } from 'node:child_process'
 import tailwindcss from '@tailwindcss/vite'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 import react from '@vitejs/plugin-react'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import type { Plugin } from 'vite'
+import { loadEnv, type Plugin } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { defineConfig } from 'vitest/config'
 import { createSupabaseStudioBannerPlugin } from './vite.agentationBanner'
@@ -253,17 +255,84 @@ const apiDevPlugin = (): Plugin => ({
   },
 })
 
-export default defineConfig({
-  envPrefix: ['VITE_', 'NEXT_PUBLIC_', 'PUBLIC_'],
-  plugins: [react(), tailwindcss(), apiDevPlugin(), createSupabaseStudioBannerPlugin()],
-  server: {
-    host: '0.0.0.0',
-    strictPort: true,
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: './src/test/setup.ts',
-    css: true,
-  },
+const getGitSha = () => {
+  try {
+    return execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+  } catch {
+    return undefined
+  }
+}
+
+const resolveSentryRelease = (env: Record<string, string>) => {
+  if (env.SENTRY_RELEASE?.trim()) {
+    return env.SENTRY_RELEASE.trim()
+  }
+
+  const releaseSource = env.SENTRY_RELEASE_SOURCE?.trim()
+  if (releaseSource && env[releaseSource]?.trim()) {
+    return env[releaseSource].trim()
+  }
+
+  return getGitSha()
+}
+
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const sentryEnvironment = env.SENTRY_ENVIRONMENT?.trim() || 'production'
+  const sentryRelease = resolveSentryRelease(env)
+  const shouldEnableSentryPlugin = command === 'build'
+    && Boolean(env.SENTRY_AUTH_TOKEN?.trim())
+    && Boolean(env.SENTRY_ORG?.trim())
+    && Boolean(env.SENTRY_PROJECT?.trim())
+
+  return {
+    envPrefix: ['VITE_', 'NEXT_PUBLIC_', 'PUBLIC_'],
+    define: {
+      'globalThis.__NURIMAP_SENTRY_RELEASE__': JSON.stringify(sentryRelease ?? null),
+      'globalThis.__NURIMAP_SENTRY_ENVIRONMENT__': JSON.stringify(sentryEnvironment),
+    },
+    build: {
+      sourcemap: command === 'build',
+    },
+    plugins: [
+      react(),
+      tailwindcss(),
+      apiDevPlugin(),
+      createSupabaseStudioBannerPlugin(),
+      ...(shouldEnableSentryPlugin
+        ? [sentryVitePlugin({
+          org: env.SENTRY_ORG.trim(),
+          project: env.SENTRY_PROJECT.trim(),
+          authToken: env.SENTRY_AUTH_TOKEN.trim(),
+          telemetry: false,
+          release: sentryRelease
+            ? {
+              name: sentryRelease,
+              inject: true,
+              create: true,
+              finalize: true,
+            }
+            : undefined,
+          sourcemaps: {
+            filesToDeleteAfterUpload: ['dist/**/*.js.map', 'dist/**/*.mjs.map', 'dist/**/*.css.map'],
+          },
+          bundleSizeOptimizations: {
+            excludeTracing: true,
+          },
+        })]
+        : []),
+    ],
+    server: {
+      host: '0.0.0.0',
+      strictPort: true,
+    },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: './src/test/setup.ts',
+      css: true,
+    },
+  }
 })

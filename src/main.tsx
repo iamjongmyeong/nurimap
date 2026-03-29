@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import App from './App'
 import './index.css'
+import { initBrowserSentry } from './monitoring/browserSentry'
+
+initBrowserSentry()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

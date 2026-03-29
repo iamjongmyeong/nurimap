@@ -2,6 +2,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { requestLoginOtp } from '../../src/server-core/auth/authService.js'
 import { getRequestRuntimeOrigin } from '../../src/server-core/http/requestOrigin.js'
+import { initServerSentry } from '../../src/server-core/runtime/sentry.js'
+
+initServerSentry()
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

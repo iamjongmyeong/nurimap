@@ -5,6 +5,9 @@ import {
   METHOD_NOT_ALLOWED_RESPONSE_BODY,
 } from '../../src/server-core/auth/requestContext.js'
 import { getPlaceDetailForUser } from '../../src/server-core/place/placeDataService.js'
+import { initServerSentry } from '../../src/server-core/runtime/sentry.js'
+
+initServerSentry()
 
 const setNoStoreHeaders = (res: VercelResponse) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')

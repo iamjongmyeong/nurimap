@@ -7,11 +7,14 @@ import {
 import { checkUserScopedRateLimit } from '../../../src/server-core/http/requestRateLimit.js'
 import { confirmPlaceSubmission } from '../../../src/server-core/place/placeSubmissionService.js'
 import { logPlaceEntryFailure } from '../../../src/server-core/runtime/opsLogger.js'
+import { captureServerException, initServerSentry } from '../../../src/server-core/runtime/sentry.js'
 import {
   GENERIC_PLACE_SUBMISSION_ERROR_MESSAGE,
   PLACE_SUBMISSION_RATE_LIMIT,
   PLACE_SUBMISSION_RATE_LIMIT_MESSAGE,
 } from '../shared.js'
+
+initServerSentry()
 
 const readSubmissionId = (req: VercelRequest) =>
   Array.isArray(req.query?.submissionId)
@@ -92,6 +95,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       details: {
         error_message: error instanceof Error ? error.message : 'unknown_error',
       },
+    })
+    await captureServerException({
+      error,
+      req,
+      route: '/api/place-submissions/[submissionId]/confirmations',
+      user: requestContext.authSession.user,
     })
     res.status(500).json({
       error: {

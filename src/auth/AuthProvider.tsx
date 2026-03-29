@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AuthContext, type AuthContextValue, type AuthPhase } from './authContext'
+import { clearBrowserSentryUser, syncBrowserSentryUser } from '../monitoring/browserSentry'
 import {
   getSessionViaApi,
   requestOtpViaApi,
@@ -196,6 +197,15 @@ const formatCooldownTime = (remainingSeconds: number) => {
   const seconds = remainingSeconds % 60
 
   return `${minutes}분 ${String(seconds).padStart(2, '0')}초`
+}
+
+const getResolvedName = (value: unknown) => {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  return trimmed ? trimmed : null
 }
 
 const EmailRequestShell = ({
@@ -475,6 +485,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [message, setMessage] = useState<string | null>(null)
   const [failureReason, setFailureReason] = useState<string | null>(null)
   const [email, setEmail] = useState('')
+  const [name, setName] = useState<string | null>(null)
   const [requestedEmail, setRequestedEmail] = useState<string | null>(null)
   const [otpCode, setOtpCode] = useState('')
   const [hasResentOtp, setHasResentOtp] = useState(false)
@@ -543,6 +554,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setCsrfHeaderName(csrfHeaderName)
     setCsrfToken(readCookieValue(CSRF_COOKIE_NAME))
     setEmail(user?.email ?? '')
+    setName(getResolvedName(user?.user_metadata?.name))
     setRequestedEmail(null)
     setOtpCode('')
     setHasResentOtp(false)
@@ -1025,6 +1037,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     setMessage(null)
+    setName(name)
     setPhase('authenticated')
   }
 
@@ -1048,6 +1061,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAccessToken(null)
     setCsrfHeaderName(null)
     setCsrfToken(null)
+    setName(null)
     setCooldownState(null)
     setRequestedEmail(null)
     setOtpCode('')
@@ -1063,6 +1077,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const resolvedFailureReason = rawFailureReason ?? GENERIC_AUTH_FAILURE_MESSAGE
   const resolvedEmail = requestedEmail ?? (email || (isTestMode ? effectiveTestState.user?.email ?? '' : ''))
   const resolvedAccessToken = isTestMode && effectiveTestState.phase === 'authenticated' ? 'test-access-token' : accessToken
+
+  useEffect(() => {
+    if (resolvedPhase !== 'authenticated' && resolvedPhase !== 'name_required') {
+      clearBrowserSentryUser()
+      return
+    }
+
+    syncBrowserSentryUser({
+      email: resolvedEmail,
+      name,
+    })
+  }, [name, resolvedEmail, resolvedPhase])
 
   const value: AuthContextValue = {
     accessToken: resolvedAccessToken,

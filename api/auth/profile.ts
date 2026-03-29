@@ -5,6 +5,9 @@ import {
   getAuthenticatedRequestContext,
   METHOD_NOT_ALLOWED_RESPONSE_BODY,
 } from '../../src/server-core/auth/requestContext.js'
+import { captureServerException, initServerSentry } from '../../src/server-core/runtime/sentry.js'
+
+initServerSentry()
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'PATCH') {
@@ -35,6 +38,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   } catch (error) {
     const isValidationError = error instanceof Error && error.message === 'Name is invalid.'
+    if (!isValidationError) {
+      await captureServerException({
+        error,
+        req,
+        route: '/api/auth/profile',
+        user: requestContext.authSession.user,
+      })
+    }
     res.status(isValidationError ? 422 : 500).json({
       error: {
         code: isValidationError ? 'invalid_name' : 'internal_error',
