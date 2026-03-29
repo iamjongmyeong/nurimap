@@ -38,9 +38,11 @@ export const getPlaceRegistrationDraftFromBody = (body: unknown): PersistedPlace
   const record = (body ?? {}) as Record<string, unknown>
 
   return {
-    place_type: record.placeType === 'restaurant' || record.placeType === 'cafe'
-      ? record.placeType
-      : 'restaurant',
+    place_type:
+      record.placeType === 'restaurant'
+      || record.placeType === 'cafe'
+        ? record.placeType
+        : 'restaurant',
     zeropay_status:
       record.zeropayStatus === 'available'
       || record.zeropayStatus === 'unavailable'

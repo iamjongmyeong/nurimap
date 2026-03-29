@@ -45,6 +45,11 @@ const REVIEW_LIMIT = 500
 const BASE_TEXT_FIELD_CLASSES = 'w-full rounded-xl border border-[#EBEBEB] bg-white px-3 text-base text-[#1f1f1f] placeholder:text-[#C9C9C9] focus:border-[#5862FB] focus:outline-none focus:ring-0 focus:shadow-none'
 const PLACE_ADD_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 const PLACE_LOOKUP_FALLBACK_ALERT_MESSAGE = '장소 정보 추출에 실패했어요 🥲\n장소 정보를 직접 입력해주세요.'
+const PLACE_ADD_URL_ENTRY_HELPER_STEPS = [
+  "네이버 지도에서 '공유' 버튼 클릭",
+  'URL 복사한 뒤 입력',
+  '이름/주소 불러오기 실패하면 직접 입력',
+] as const
 const MOBILE_HISTORY_SESSION_KEY_FIELD = 'mobileBrowseSessionKey'
 const MOBILE_DETAIL_ORIGIN_FIELD = 'mobileDetailOriginNavigationState'
 const MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD = 'mobileDetailOriginSessionKey'
@@ -65,53 +70,59 @@ const BackArrowIcon = () => (
   <img alt="" aria-hidden="true" height="24" src={PLACE_ADD_BACK_ICON_SRC} width="24" />
 )
 
-const InfoCircleIcon = () => (
-  <svg aria-hidden="true" className="h-[14px] w-[14px] shrink-0" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="7" cy="7" fill="#5862FB" r="7" />
-    <circle cx="7" cy="4.15" fill="white" r="0.9" />
-    <rect fill="white" height="4.6" rx="0.6" width="1.2" x="6.4" y="5.3" />
-  </svg>
-)
-
 const SegmentedField = <T extends string>({
-  buttonSizeClasses,
   label,
   onChange,
   options,
   testId,
   value,
 }: {
-  buttonSizeClasses: string
   label: string
   onChange: (value: T) => void
   options: SegmentedOption<T>[]
   testId: string
   value: T
-}) => (
-  <div className="space-y-2" data-testid={testId}>
-    <p className="text-xs font-medium text-[#1f1f1f]">{label}</p>
-    <div className="flex flex-wrap gap-3">
-      {options.map((option) => {
-        const isSelected = option.value === value
-        return (
-          <button
-            className={`${buttonSizeClasses} min-w-[101px] cursor-pointer rounded-xl border px-4 text-base transition-colors ${
-              isSelected
-                ? 'border-[#5862FB] bg-[#EEF] font-medium text-[#5862FB]'
-                : 'border-[#EBEBEB] bg-white text-[#C9C9C9]'
-            }`}
-            data-testid={option.testId}
-            key={option.value}
-            onClick={() => onChange(option.value)}
-            type="button"
-          >
-            {option.label}
-          </button>
-        )
-      })}
+}) => {
+  const selectedIndex = Math.max(options.findIndex((option) => option.value === value), 0)
+
+  return (
+    <div className="space-y-3" data-testid={testId}>
+      <p className="text-xs font-medium tracking-[-0.3px] text-[#1c1c1c]">{label}</p>
+      <div
+        className="relative flex w-full items-center rounded-xl bg-[#F4F4F5] p-1"
+        data-testid={`${testId}-toggle`}
+      >
+        <div
+          aria-hidden="true"
+          className="absolute bottom-1 left-1 top-1 rounded-lg bg-white shadow-[0_1px_3px_rgba(28,28,28,0.06)] transition-transform duration-200 ease-out motion-reduce:transition-none"
+          data-testid={`${testId}-indicator`}
+          style={{
+            width: `calc((100% - 8px) / ${options.length})`,
+            transform: `translateX(${selectedIndex * 100}%)`,
+          }}
+        />
+        
+        {options.map((option) => {
+          const isSelected = option.value === value
+          return (
+            <button
+              aria-pressed={isSelected}
+              className={`relative z-10 flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center rounded-lg px-[10px] py-2 text-base leading-6 transition-colors duration-200 motion-reduce:transition-none ${
+                isSelected ? 'text-[#1C1C1C]' : 'text-[#7A7A7A]'
+              }`}
+              data-testid={option.testId}
+              key={option.value}
+              onClick={() => onChange(option.value)}
+              type="button"
+            >
+              <span className="truncate">{option.label}</span>
+            </button>
+          )
+        })}
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 const StarRatingField = ({
   isDesktop,
@@ -295,18 +306,16 @@ const PlaceAddUrlEntry = ({
 
       <div className="flex-1 min-h-0 bg-white px-6">
         <div className="mx-auto flex w-full max-w-[400px] flex-col gap-6 pt-4">
-          <div
-            className="flex w-full items-center gap-2 rounded-xl bg-[#EEF] p-4"
-            data-testid="place-add-url-entry-helper"
-          >
-            <InfoCircleIcon />
-            <p className="break-keep text-sm font-medium tracking-[-0.35px] text-[#5458F7]">
-              네이버 지도 링크를 복사해서 입력해주세요.
-            </p>
+          <div className="w-full rounded-xl bg-[#EEF] p-4" data-testid="place-add-url-entry-helper">
+            <ol className="list-decimal break-keep pl-6 text-base font-medium leading-6 tracking-[-0.4px] text-[#5862FB]">
+              {PLACE_ADD_URL_ENTRY_HELPER_STEPS.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
           </div>
           <div className="flex flex-col gap-2" data-testid="place-add-url-entry-field">
             <label className="text-xs font-medium tracking-[-0.3px] text-[#1c1c1c]" htmlFor="place-add-naver-url-input">
-              네이버 지도 URL
+              URL
             </label>
             <input
               aria-label="URL"
@@ -325,7 +334,7 @@ const PlaceAddUrlEntry = ({
                   setUrlFieldError('')
                 }
               }}
-              placeholder="https://map.naver.com/"
+              placeholder="https://naver.me/"
               type="text"
               value={rawUrl}
             />
@@ -380,7 +389,6 @@ const PlaceAddForm = ({
   const { isDesktop } = useViewportMode()
   const applyRegistrationResult = useAppShellStore((state) => state.applyRegistrationResult)
   const inputClasses = `h-12 py-3 ${BASE_TEXT_FIELD_CLASSES}`
-  const segmentedButtonSizeClasses = 'h-12 py-3'
   const submitButtonSizeClasses = 'h-12 py-3'
   const textareaClasses = `h-[144px] min-h-[144px] resize-none overflow-y-auto py-3 ${BASE_TEXT_FIELD_CLASSES}`
   const scrollRegionClassName = isDesktop
@@ -584,8 +592,8 @@ const PlaceAddForm = ({
               {fieldErrors.road_address ? <span className="mt-2 block text-xs text-[#e53935]">{fieldErrors.road_address}</span> : null}
             </div>
 
-            <SegmentedField buttonSizeClasses={segmentedButtonSizeClasses} label="장소 구분" onChange={(place_type) => updateDraft({ place_type })} options={PLACE_TYPE_OPTIONS} testId="place-type-field" value={draft.place_type} />
-            <SegmentedField buttonSizeClasses={segmentedButtonSizeClasses} label="제로페이" onChange={(zeropay_status) => updateDraft({ zeropay_status })} options={ZEROPAY_OPTIONS} testId="zeropay-field" value={draft.zeropay_status} />
+            <SegmentedField label="장소 구분" onChange={(place_type) => updateDraft({ place_type })} options={PLACE_TYPE_OPTIONS} testId="place-type-field" value={draft.place_type} />
+            <SegmentedField label="제로페이" onChange={(zeropay_status) => updateDraft({ zeropay_status })} options={ZEROPAY_OPTIONS} testId="zeropay-field" value={draft.zeropay_status} />
             <StarRatingField isDesktop={isDesktop} rating={draft.rating_score} onChange={(rating_score) => updateDraft({ rating_score })} />
 
             <div className="w-full" data-testid="review-field">

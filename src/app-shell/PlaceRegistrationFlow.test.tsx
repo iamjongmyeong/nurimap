@@ -44,7 +44,10 @@ const buildCreatedPlacePayload = (body: Record<string, unknown>) => {
   const ratingScore = typeof body.ratingScore === 'number' ? body.ratingScore : 5
   const name = typeof body.name === 'string' ? body.name : '등록 테스트 장소'
   const roadAddress = typeof body.roadAddress === 'string' ? body.roadAddress : '서울 마포구 등록로 1'
-  const placeType = body.placeType === 'cafe' ? 'cafe' : 'restaurant'
+  const placeType =
+    body.placeType === 'cafe'
+      ? body.placeType
+      : 'restaurant'
   const zeropayStatus =
     body.zeropayStatus === 'available'
     || body.zeropayStatus === 'unavailable'
@@ -307,22 +310,36 @@ describe('Place registration flow', () => {
     const nameInput = screen.getByLabelText('이름')
     const addressInput = screen.getByLabelText('주소')
     const reviewInput = screen.getByTestId('review-content-input')
+    const placeTypeRestaurantButton = screen.getByTestId('place-type-option-restaurant')
     const placeTypeCafeButton = screen.getByTestId('place-type-option-cafe')
+    const placeTypeToggle = screen.getByTestId('place-type-field-toggle')
+    const placeTypeIndicator = screen.getByTestId('place-type-field-indicator')
+    const zeropayAvailableButton = screen.getByTestId('zeropay-option-available')
     const zeropayUnavailableButton = screen.getByTestId('zeropay-option-unavailable')
     const zeropayNeedsVerificationButton = screen.getByTestId('zeropay-option-needs-verification')
+    const zeropayToggle = screen.getByTestId('zeropay-field-toggle')
+    const zeropayIndicator = screen.getByTestId('zeropay-field-indicator')
 
     expect(screen.getByTestId('desktop-sidebar')).toHaveClass('place-add-surface')
     expect(nameInput).toHaveClass('h-12', 'py-3', 'border-[#EBEBEB]', 'focus:border-[#5862FB]')
     expect(nameInput).toHaveClass('text-base', 'placeholder:text-[#C9C9C9]')
     expect(addressInput).toHaveClass('h-12', 'py-3', 'border-[#EBEBEB]', 'focus:border-[#5862FB]')
     expect(addressInput).toHaveClass('text-base', 'placeholder:text-[#C9C9C9]')
-    expect(screen.getByTestId('place-type-option-restaurant')).toHaveClass('h-12', 'py-3', 'cursor-pointer')
-    expect(screen.getByTestId('place-type-field')).toHaveClass('space-y-2')
-    expect(placeTypeCafeButton).toHaveClass('h-12', 'py-3', 'text-base', 'text-[#C9C9C9]')
-    expect(screen.getByTestId('zeropay-option-available')).toHaveClass('h-12', 'py-3', 'cursor-pointer')
-    expect(screen.getByTestId('zeropay-field')).toHaveClass('space-y-2')
-    expect(zeropayUnavailableButton).toHaveClass('h-12', 'py-3', 'text-base', 'text-[#C9C9C9]')
-    expect(zeropayNeedsVerificationButton).toHaveClass('h-12', 'py-3', 'text-base', 'text-[#C9C9C9]')
+    expect(screen.getByTestId('place-type-field')).toHaveClass('space-y-3')
+    expect(placeTypeToggle).toHaveClass('relative', 'rounded-xl', 'bg-[#F4F4F5]', 'p-1')
+    expect(placeTypeIndicator).toHaveClass('absolute', 'left-1', 'top-1', 'bottom-1', 'rounded-lg', 'bg-white', 'transition-transform')
+    expect(placeTypeIndicator).toHaveStyle({ transform: 'translateX(0%)' })
+    expect(placeTypeRestaurantButton).toHaveClass('relative', 'z-10', 'h-10', 'flex-1', 'rounded-lg', 'text-[#1C1C1C]')
+    expect(placeTypeRestaurantButton).toHaveAttribute('aria-pressed', 'true')
+    expect(placeTypeCafeButton).toHaveClass('relative', 'z-10', 'h-10', 'flex-1', 'rounded-lg', 'text-[#7A7A7A]')
+    expect(screen.getByTestId('zeropay-field')).toHaveClass('space-y-3')
+    expect(zeropayToggle).toHaveClass('relative', 'rounded-xl', 'bg-[#F4F4F5]', 'p-1')
+    expect(zeropayIndicator).toHaveClass('absolute', 'left-1', 'top-1', 'bottom-1', 'rounded-lg', 'bg-white', 'transition-transform')
+    expect(zeropayIndicator).toHaveStyle({ transform: 'translateX(0%)' })
+    expect(zeropayAvailableButton).toHaveClass('relative', 'z-10', 'h-10', 'flex-1', 'rounded-lg', 'text-[#1C1C1C]')
+    expect(zeropayAvailableButton).toHaveAttribute('aria-pressed', 'true')
+    expect(zeropayUnavailableButton).toHaveClass('relative', 'z-10', 'h-10', 'flex-1', 'rounded-lg', 'text-[#7A7A7A]')
+    expect(zeropayNeedsVerificationButton).toHaveClass('relative', 'z-10', 'h-10', 'flex-1', 'rounded-lg', 'text-[#7A7A7A]')
     expect(screen.getByTestId('rating-field')).toHaveClass('space-y-3')
     expect(screen.getByTestId('rating-star-3')).toHaveClass('cursor-pointer', 'hover:scale-110')
     expect(reviewInput).toHaveClass('w-full', 'h-[144px]', 'min-h-[144px]', 'resize-none', 'overflow-y-auto', 'px-3', 'py-3')
@@ -335,6 +352,39 @@ describe('Place registration flow', () => {
     await user.type(addressInput, '서울 마포구 양화로19길 22-16')
 
     expect(submitButton).toHaveAttribute('data-required-fields', 'complete')
+  })
+
+  it('slides the selected toggle indicator when another option is chosen', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openDirectEntryForm(user)
+
+    const placeTypeIndicator = screen.getByTestId('place-type-field-indicator')
+    const placeTypeRestaurantButton = screen.getByTestId('place-type-option-restaurant')
+    const placeTypeCafeButton = screen.getByTestId('place-type-option-cafe')
+    const zeropayIndicator = screen.getByTestId('zeropay-field-indicator')
+    const zeropayAvailableButton = screen.getByTestId('zeropay-option-available')
+    const zeropayUnavailableButton = screen.getByTestId('zeropay-option-unavailable')
+    const zeropayNeedsVerificationButton = screen.getByTestId('zeropay-option-needs-verification')
+
+    expect(placeTypeIndicator).toHaveStyle({ transform: 'translateX(0%)' })
+    expect(zeropayIndicator).toHaveStyle({ transform: 'translateX(0%)' })
+
+    await user.click(placeTypeCafeButton)
+    expect(placeTypeRestaurantButton).toHaveAttribute('aria-pressed', 'false')
+    expect(placeTypeCafeButton).toHaveAttribute('aria-pressed', 'true')
+    expect(placeTypeIndicator).toHaveStyle({ transform: 'translateX(100%)' })
+
+    await user.click(zeropayUnavailableButton)
+    expect(zeropayAvailableButton).toHaveAttribute('aria-pressed', 'false')
+    expect(zeropayUnavailableButton).toHaveAttribute('aria-pressed', 'true')
+    expect(zeropayIndicator).toHaveStyle({ transform: 'translateX(100%)' })
+
+    await user.click(zeropayNeedsVerificationButton)
+    expect(zeropayNeedsVerificationButton).toHaveAttribute('aria-pressed', 'true')
+    expect(zeropayIndicator).toHaveStyle({ transform: 'translateX(200%)' })
   })
 
   it('keeps the review textarea fixed at 144px and scrollable for multiline input', async () => {

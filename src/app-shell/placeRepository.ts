@@ -1,5 +1,5 @@
 import { MOCK_PLACES } from './mockPlaces'
-import type { PlaceSummary, ReviewSummary, ZeropayStatus } from './types'
+import type { PlaceSummary, PlaceType, ReviewSummary, ZeropayStatus } from './types'
 import type { PlaceLookupErrorCode, PlaceLookupSuccess } from '../shared/placeLookupTypes.js'
 
 export const CURRENT_USER_NAME = '테스트 사용자'
@@ -9,7 +9,7 @@ const DUPLICATE_PLACE_CONFIRM_MESSAGE = '이미 등록된 장소예요. 지금 �
 const OVERWRITE_REVIEW_CONFIRM_MESSAGE = '이미 내가 리뷰를 남긴 장소예요. 지금 입력한 정보를 반영할까요?'
 
 export type RegistrationDraft = {
-  place_type: 'restaurant' | 'cafe'
+  place_type: PlaceType
   zeropay_status: ZeropayStatus
   rating_score: number
   review_content: string

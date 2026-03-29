@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { MOCK_PLACES } from './mockPlaces'
@@ -33,7 +33,10 @@ const buildCreatedPlacePayload = (body: Record<string, unknown>) => {
   const ratingScore = typeof body.ratingScore === 'number' ? body.ratingScore : 5
   const name = typeof body.name === 'string' ? body.name : '등록 테스트 장소'
   const roadAddress = typeof body.roadAddress === 'string' ? body.roadAddress : '서울 마포구 등록로 1'
-  const placeType = body.placeType === 'cafe' ? 'cafe' : 'restaurant'
+  const placeType =
+    body.placeType === 'cafe'
+      ? body.placeType
+      : 'restaurant'
   const zeropayStatus =
     body.zeropayStatus === 'available'
     || body.zeropayStatus === 'unavailable'
@@ -187,10 +190,17 @@ describe('Place lookup and direct entry flow', () => {
 
     expect(window.location.pathname).toBe('/add-place')
     expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
-    expect(screen.getByTestId('place-add-url-entry-helper')).toBeInTheDocument()
-    expect(screen.getByText('네이버 지도 링크를 복사해서 입력해주세요.')).toBeInTheDocument()
-    expect(screen.getByText('네이버 지도 URL')).toBeInTheDocument()
-    expect(screen.getByTestId('place-add-url-entry-input')).toHaveAttribute('placeholder', 'https://map.naver.com/')
+    const helper = screen.getByTestId('place-add-url-entry-helper')
+
+    expect(helper).toBeInTheDocument()
+    expect(within(helper).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(helper).getByText("네이버 지도에서 '공유' 버튼 클릭")).toBeInTheDocument()
+    expect(within(helper).getByText('URL 복사한 뒤 입력')).toBeInTheDocument()
+    expect(within(helper).getByText('이름/주소 불러오기 실패하면 직접 입력')).toBeInTheDocument()
+    expect(within(helper).queryByText('네이버 지도 링크를 복사해서 입력해주세요.')).not.toBeInTheDocument()
+    expect(helper.querySelector('svg, img')).toBeNull()
+    expect(screen.getByText('URL')).toBeInTheDocument()
+    expect(screen.getByTestId('place-add-url-entry-input')).toHaveAttribute('placeholder', 'https://naver.me/')
     expect(screen.getByRole('button', { name: '장소 정보 가져오기' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '직접 입력하기' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '직접 장소 등록' })).not.toBeInTheDocument()
@@ -242,7 +252,7 @@ describe('Place lookup and direct entry flow', () => {
     render(<App />)
 
     await openPlaceAddEntryScreen(user)
-    await user.type(screen.getByLabelText('네이버 지도 URL'), 'https://map.naver.com/p/entry/place/123456789')
+    await user.type(screen.getByLabelText('URL'), 'https://map.naver.com/p/entry/place/123456789')
     await user.click(screen.getByRole('button', { name: '장소 정보 가져오기' }))
 
     expect(await screen.findByRole('heading', { name: '직접 장소 등록' })).toBeInTheDocument()
@@ -299,7 +309,7 @@ describe('Place lookup and direct entry flow', () => {
     render(<App />)
 
     await openPlaceAddEntryScreen(user)
-    await user.type(screen.getByLabelText('네이버 지도 URL'), 'https://map.naver.com/p/entry/place/bad')
+    await user.type(screen.getByLabelText('URL'), 'https://map.naver.com/p/entry/place/bad')
     await user.click(screen.getByRole('button', { name: '장소 정보 가져오기' }))
 
     expect(window.alert).toHaveBeenCalledWith('장소 정보 추출에 실패했어요 🥲\n장소 정보를 직접 입력해주세요.')
@@ -352,7 +362,7 @@ describe('Place lookup and direct entry flow', () => {
     render(<App />)
 
     await openPlaceAddEntryScreen(user)
-    const urlInput = screen.getByLabelText('네이버 지도 URL')
+    const urlInput = screen.getByLabelText('URL')
 
     await user.type(urlInput, 'https://example.com/nope')
     await user.click(screen.getByRole('button', { name: '장소 정보 가져오기' }))
@@ -418,7 +428,7 @@ describe('Place lookup and direct entry flow', () => {
     expect(lookupButton).toBeDisabled()
     expect(lookupButton).toHaveClass('disabled:opacity-50')
 
-    await user.type(screen.getByLabelText('네이버 지도 URL'), 'https://map.naver.com/p/entry/place/123456789')
+    await user.type(screen.getByLabelText('URL'), 'https://map.naver.com/p/entry/place/123456789')
     expect(lookupButton).toBeEnabled()
 
     const clickPromise = user.click(lookupButton)
