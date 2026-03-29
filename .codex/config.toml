@@ -23,6 +23,10 @@ max_depth = 2
 [mcp_servers.figma]
 url = "https://mcp.figma.com/mcp"
 
+# Sentry MCP Server
+[mcp_servers.sentry]
+url = "https://mcp.sentry.dev/mcp/sentry/mcp-server?experimental=1"
+
 # ============================================================
 # oh-my-codex (OMX) Configuration
 # Managed by omx setup - manual edits preserved on next setup
