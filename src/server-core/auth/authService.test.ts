@@ -1231,7 +1231,7 @@ describe('authService OTP auth flow', () => {
   })
 
   it('loads an authenticated session user from the opaque app session id', async () => {
-    findActiveAppSessionByIdMock.mockResolvedValue({
+    touchAppSessionMock.mockResolvedValue({
       id: 'db-session-uuid',
       user_id: 'user-1',
       csrf_token_hash: 'hashed',
@@ -1263,7 +1263,44 @@ describe('authService OTP auth flow', () => {
         name: '테스트 사용자',
       },
     })
-    expect(touchAppSessionMock).toHaveBeenCalledWith({ sessionId: 'session-123' })
+    expect(findActiveAppSessionByIdMock).not.toHaveBeenCalled()
+    expect(touchAppSessionMock).toHaveBeenCalledWith({ client: expect.any(Object), sessionId: 'session-123' })
+  })
+
+  it('returns missing when the app session is absent during touch recovery', async () => {
+    touchAppSessionMock.mockResolvedValue(null)
+
+    await expect(getAuthenticatedSession('session-123')).resolves.toEqual({
+      status: 'missing',
+    })
+
+    expect(findActiveAppSessionByIdMock).not.toHaveBeenCalled()
+  })
+
+  it('returns missing when the session exists but the user profile is gone', async () => {
+    touchAppSessionMock.mockResolvedValue({
+      id: 'db-session-uuid',
+      user_id: 'user-404',
+      csrf_token_hash: 'hashed',
+      expires_at: '2026-06-20T00:00:00.000Z',
+      revoked_at: null,
+      created_at: '2026-03-22T00:00:00.000Z',
+      updated_at: '2026-03-22T00:00:00.000Z',
+      last_seen_at: '2026-03-22T00:00:00.000Z',
+    })
+    withDatabaseConnectionMock.mockImplementation(async (work: (client: { query: ReturnType<typeof vi.fn> }) => Promise<unknown>) =>
+      work({
+        query: vi.fn().mockResolvedValue({
+          rows: [],
+        }),
+      }))
+
+    await expect(getAuthenticatedSession('session-123')).resolves.toEqual({
+      status: 'missing',
+    })
+
+    expect(findActiveAppSessionByIdMock).not.toHaveBeenCalled()
+    expect(touchAppSessionMock).toHaveBeenCalledWith({ client: expect.any(Object), sessionId: 'session-123' })
   })
 
   it('saves a validated display name through backend-owned profile logic', async () => {

@@ -16,16 +16,16 @@ import {
   type PlaceDetailLoadState,
   type PlaceListLoadState,
 } from './appShellStore'
-import type { PlaceSummary, PlaceType, ZeropayStatus } from './types'
+import { hasPlaceDetail, type PlaceListItem, type PlaceSummary, type PlaceType, type ZeropayStatus } from './types'
 import { useKakaoScript } from './useKakaoScript'
 import { useViewportMode } from './useViewportMode'
 
-type PlaceWithCoordinates = PlaceSummary & {
+type PlaceWithCoordinates = PlaceListItem & {
   latitude: number
   longitude: number
 }
 
-const hasCoordinates = (place: PlaceSummary): place is PlaceWithCoordinates =>
+const hasCoordinates = (place: PlaceListItem): place is PlaceWithCoordinates =>
   place.latitude !== undefined && place.longitude !== undefined
 
 const PLACE_TYPE_LABEL: Record<PlaceType, string> = {
@@ -441,7 +441,7 @@ const PlaceListItem = ({
   showDivider,
 }: {
   onSelect: (placeId: string) => void
-  place: PlaceSummary
+  place: PlaceListItem
   selected: boolean
   showDivider: boolean
 }) => (
@@ -484,7 +484,7 @@ const PlaceListPanel = ({
   status,
   onSelect,
 }: {
-  places: PlaceSummary[]
+  places: PlaceListItem[]
   selectedPlaceId: string | null
   status: PlaceListLoadState
   onSelect: (placeId: string) => void
@@ -865,7 +865,7 @@ const DesktopBrowseSidebar = ({
 }: {
   onOpenPlaceAdd: () => void
   onOpenPlaceDetail: (placeId: string) => void
-  places: PlaceSummary[]
+  places: PlaceListItem[]
   selectedPlaceId: string | null
 }) => {
   const { signOut } = useAuth()
@@ -971,7 +971,7 @@ const DesktopSidebar = ({
   navigationState: NavigationState
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
-  places: PlaceSummary[]
+  places: PlaceListItem[]
   selectedPlace: PlaceSummary | undefined
   selectedPlaceId: string | null
 }) => {
@@ -1095,7 +1095,7 @@ const MobileListPage = ({
   selectedPlaceId,
 }: {
   onOpenPlaceDetail: (placeId: string) => void
-  places: PlaceSummary[]
+  places: PlaceListItem[]
   selectedPlaceId: string | null
 }) => {
   const { signOut } = useAuth()
@@ -1206,7 +1206,7 @@ const DesktopAppShell = ({
   placeAddPrefill: PlaceAddPrefill | null
   placeAddStep: PlaceAddStep
   navigationState: NavigationState
-  mapPlaces: PlaceSummary[]
+  mapPlaces: PlaceListItem[]
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
   selectedPlace: PlaceSummary | undefined
@@ -1274,7 +1274,7 @@ const MobileAppShell = ({
   onOpenPlaceAdd: () => void
   placeAddPrefill: PlaceAddPrefill | null
   placeAddStep: PlaceAddStep
-  mapPlaces: PlaceSummary[]
+  mapPlaces: PlaceListItem[]
   onAddRatingBack: () => void
   onOpenAddRating: () => void
   onOpenPlaceDetail: (placeId: string) => void
@@ -1399,6 +1399,7 @@ export const NurimapAppShell = () => {
   const selectedPlace = routePlaceId
     ? routeSelectedPlace
     : places.find((place) => place.id === selectedPlaceId)
+  const selectedPlaceDetail = hasPlaceDetail(selectedPlace) ? selectedPlace : undefined
   const effectiveBrowseNavigationState: BrowseNavigationState =
     !isDesktop && pathname === '/' && !routePlaceId && !routePlaceAdd
       ? resolveMobileRootBrowseNavigationState(currentHistoryState, mobileHistorySessionKey)
@@ -1595,7 +1596,7 @@ export const NurimapAppShell = () => {
       return
     }
 
-    if (!routeSelectedPlace) {
+    if (!routeSelectedPlace || !hasPlaceDetail(routeSelectedPlace)) {
       if (placeDetailLoad !== 'loading') {
         void loadPlaceDetailFromApi(routePlaceId)
       }
@@ -1663,7 +1664,11 @@ export const NurimapAppShell = () => {
   }
 
   const handleOpenPlaceDetail = (placeId: string) => {
+    const targetPlace = places.find((place) => place.id === placeId)
     openPlaceDetail(placeId)
+    if (!targetPlace || !hasPlaceDetail(targetPlace)) {
+      void loadPlaceDetailFromApi(placeId)
+    }
     if (!isDesktop && window.location.pathname === '/') {
       const currentState = readHistoryStateRecord(window.history.state)
       navigateToPath(getDetailRoutePath(placeId), false, {
@@ -1871,7 +1876,7 @@ export const NurimapAppShell = () => {
       mapPlaces={mapPlaces}
       onOpenPlaceDetail={handleOpenPlaceDetail}
       onReturnToMapBrowse={handleReturnToMapBrowse}
-      selectedPlace={selectedPlace}
+      selectedPlace={selectedPlaceDetail}
     />
   ) : (
     <MobileAppShell
@@ -1890,7 +1895,7 @@ export const NurimapAppShell = () => {
       onOpenPlaceDetail={handleOpenPlaceDetail}
       onReturnToMapBrowse={handleReturnToMapBrowse}
       onSubmitReview={handleSubmitReview}
-      selectedPlace={selectedPlace}
+      selectedPlace={selectedPlaceDetail}
     />
   )
 }

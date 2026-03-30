@@ -8,7 +8,7 @@ import {
   type ReviewDraft,
   type ReviewSubmissionResult,
 } from './placeRepository'
-import type { PlaceSummary } from './types'
+import { hasPlaceDetail, type PlaceListItem } from './types'
 
 export type NavigationState =
   | 'map_browse'
@@ -28,7 +28,7 @@ type AppShellState = {
   placeDetailLoad: PlaceDetailLoadState
   selectedPlaceId: string | null
   mapLevel: number
-  places: PlaceSummary[]
+  places: PlaceListItem[]
   openMobilePlaceList: () => void
   closePlaceAdd: () => void
   openPlaceDetail: (placeId: string) => void
@@ -42,7 +42,7 @@ type AppShellState = {
   setPlaceListLoad: (status: PlaceListLoadState) => void
   setPlaceDetailLoad: (status: PlaceDetailLoadState) => void
   setMapLevel: (level: number) => void
-  setPlaces: (places: PlaceSummary[]) => void
+  setPlaces: (places: PlaceListItem[]) => void
   applyRegistrationResult: (result: PlaceRegistrationResult) => void
   loadPlaces: () => Promise<void>
   loadPlaceDetail: (placeId: string) => Promise<void>
@@ -72,12 +72,12 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   openMobilePlaceList: () => set({ navigationState: 'mobile_place_list_open', detailChildSurface: 'detail' }),
   closePlaceAdd: () => set({ navigationState: 'map_browse', detailChildSurface: 'detail' }),
   openPlaceDetail: (placeId) =>
-    set({
+    set((state) => ({
       navigationState: 'place_detail_open',
       detailChildSurface: 'detail',
-      placeDetailLoad: 'ready',
+      placeDetailLoad: hasPlaceDetail(state.places.find((candidate) => candidate.id === placeId)) ? 'ready' : 'loading',
       selectedPlaceId: placeId,
-    }),
+    })),
   closePlaceDetail: () => set({ navigationState: 'map_browse', detailChildSurface: 'detail', selectedPlaceId: null }),
   openDetailAddRating: () => set({ detailChildSurface: 'add_rating' }),
   closeDetailAddRating: () => set({ detailChildSurface: 'detail' }),

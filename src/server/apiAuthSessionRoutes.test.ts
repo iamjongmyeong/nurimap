@@ -136,6 +136,28 @@ describe('/api/auth session routes', () => {
     expect(state.body).toEqual({ status: 'success' })
   })
 
+  it('returns 403 and does not sign out when DELETE /api/auth/session has an invalid csrf pair', async () => {
+    findActiveAppSessionByIdMock.mockResolvedValue({
+      id: 'session-123',
+      csrf_token_hash: 'hashed',
+    })
+    readCsrfTokenFromCookieHeaderMock.mockReturnValue('csrf-cookie')
+    readCsrfTokenFromHeadersMock.mockReturnValue('csrf-header')
+    isValidCsrfTokenPairMock.mockReturnValue(false)
+
+    const { response, state } = createResponse()
+    await sessionHandler({ method: 'DELETE', headers: {} } as unknown as VercelRequest, response)
+
+    expect(signOutAppSessionMock).not.toHaveBeenCalled()
+    expect(state.statusCode).toBe(403)
+    expect(state.body).toEqual({
+      error: {
+        code: 'csrf_invalid',
+        message: 'Invalid CSRF token.',
+      },
+    })
+  })
+
   it('saves name through PATCH /api/auth/profile', async () => {
     findActiveAppSessionByIdMock.mockResolvedValue({
       id: 'session-123',

@@ -11,7 +11,7 @@ export type ReviewSummary = {
 
 export type MyReviewSummary = ReviewSummary | null
 
-export type PlaceSummary = {
+export type PlaceListSummary = {
   id: string
   naver_place_id: string
   naver_place_url: string
@@ -24,6 +24,21 @@ export type PlaceSummary = {
   average_rating: number
   review_count: number
   added_by_name: string
+}
+
+export type PlaceDetail = PlaceListSummary & {
   my_review: MyReviewSummary
   reviews: ReviewSummary[]
 }
+
+export type PlaceSummary = PlaceDetail
+
+export type PlaceListItem = PlaceListSummary | PlaceDetail
+
+export const hasPlaceDetail = (
+  place: PlaceListItem | PlaceDetail | PlaceListSummary | null | undefined,
+): place is PlaceDetail =>
+  place !== null
+  && place !== undefined
+  && 'my_review' in place
+  && 'reviews' in place

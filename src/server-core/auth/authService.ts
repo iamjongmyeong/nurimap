@@ -14,7 +14,6 @@ import {
 import {
   createAppSession,
   createAppSessionTokens,
-  findActiveAppSessionById,
   revokeAppSession,
   touchAppSession,
 } from './appSessionService.js'
@@ -964,14 +963,12 @@ export const getAuthenticatedSession = async (sessionId: string | null): Promise
     return { status: 'missing' }
   }
 
-  const session = await findActiveAppSessionById({ sessionId })
-  if (!session) {
-    return { status: 'missing' }
-  }
+  const resolvedSession = await withDatabaseConnection(async (client) => {
+    const session = await touchAppSession({ client, sessionId })
+    if (!session) {
+      return null
+    }
 
-  await touchAppSession({ sessionId })
-
-  const user = await withDatabaseConnection(async (client) => {
     const { rows } = await client.query<AuthSessionUser>(
       `
         select
@@ -985,17 +982,25 @@ export const getAuthenticatedSession = async (sessionId: string | null): Promise
       [session.user_id],
     )
 
-    return rows[0] ?? null
+    const user = rows[0] ?? null
+    if (!user) {
+      return null
+    }
+
+    return {
+      session,
+      user,
+    }
   })
 
-  if (!user) {
+  if (!resolvedSession) {
     return { status: 'missing' }
   }
 
   return {
     status: 'authenticated',
     sessionId,
-    user,
+    user: resolvedSession.user,
   }
 }
 
