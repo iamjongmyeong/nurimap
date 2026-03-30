@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg'
 
-import type { PlaceSummary, ReviewSummary } from '../../shared/placeTypes.js'
+import type { PlaceDetail, PlaceListSummary, PlaceSummary, ReviewSummary } from '../../shared/placeTypes.js'
 import type { PlaceLookupSuccess } from '../../shared/placeLookupTypes.js'
 import { withDatabaseConnection, withDatabaseTransaction } from '../runtime/database.js'
 
@@ -96,7 +96,22 @@ const mapReviewRow = (row: ReviewRow): ReviewSummary => ({
   rating_score: row.rating_score,
 })
 
-const buildPlaceSummary = ({
+const buildPlaceListSummary = (place: PlaceRow): PlaceListSummary => ({
+  id: place.id,
+  naver_place_id: place.naver_place_id,
+  naver_place_url: place.naver_place_url,
+  name: place.name,
+  road_address: place.road_address,
+  latitude: place.latitude ?? undefined,
+  longitude: place.longitude ?? undefined,
+  place_type: place.place_type,
+  zeropay_status: place.zeropay_status,
+  average_rating: roundAverage(Number(place.average_rating ?? 0)),
+  review_count: Number(place.review_count ?? 0),
+  added_by_name: place.added_by_name,
+})
+
+const buildPlaceDetail = ({
   place,
   reviews,
   viewerUserId,
@@ -104,7 +119,7 @@ const buildPlaceSummary = ({
   place: PlaceRow
   reviews: ReviewRow[]
   viewerUserId: string | null
-}): PlaceSummary => {
+}): PlaceDetail => {
   const placeReviews = reviews
     .filter((review) => review.place_id === place.id)
     .sort((left, right) => right.created_at.localeCompare(left.created_at))
@@ -116,18 +131,7 @@ const buildPlaceSummary = ({
   const myReview = myReviewRow ? mapReviewRow(myReviewRow) : null
 
   return {
-    id: place.id,
-    naver_place_id: place.naver_place_id,
-    naver_place_url: place.naver_place_url,
-    name: place.name,
-    road_address: place.road_address,
-    latitude: place.latitude ?? undefined,
-    longitude: place.longitude ?? undefined,
-    place_type: place.place_type,
-    zeropay_status: place.zeropay_status,
-    average_rating: roundAverage(Number(place.average_rating ?? 0)),
-    review_count: Number(place.review_count ?? 0),
-    added_by_name: place.added_by_name,
+    ...buildPlaceListSummary(place),
     my_review: myReview,
     reviews: mappedReviews,
   }
@@ -253,31 +257,21 @@ const loadReviewRows = async ({
 
 const listPlacesForUserWithClient = async ({
   client,
-  viewerUserId,
 }: {
   client: PoolClient
-  viewerUserId: string | null
 }) => {
   const places = await loadPlaceRows({ client })
-  const reviews = await loadReviewRows({
-    client,
-    placeIds: places.map((place) => place.id),
-  })
 
-  return places.map((place) =>
-    buildPlaceSummary({
-      place,
-      reviews,
-      viewerUserId,
-    }))
+  return places.map(buildPlaceListSummary)
 }
 
 export const listPlacesForUser = async (viewerUserId: string | null) =>
-  withDatabaseConnection(async (client) =>
-    listPlacesForUserWithClient({
+  withDatabaseConnection(async (client) => {
+    void viewerUserId
+    return listPlacesForUserWithClient({
       client,
-      viewerUserId,
-    }))
+    })
+  })
 
 const getPlaceDetailForUserWithClient = async ({
   client,
@@ -302,7 +296,7 @@ const getPlaceDetailForUserWithClient = async ({
     placeIds: [place.id],
   })
 
-  return buildPlaceSummary({
+  return buildPlaceDetail({
     place,
     reviews,
     viewerUserId,

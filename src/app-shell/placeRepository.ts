@@ -1,5 +1,13 @@
 import { MOCK_PLACES } from './mockPlaces'
-import type { PlaceSummary, PlaceType, ReviewSummary, ZeropayStatus } from './types'
+import {
+  hasPlaceDetail,
+  type PlaceListItem,
+  type PlaceListSummary,
+  type PlaceSummary,
+  type PlaceType,
+  type ReviewSummary,
+  type ZeropayStatus,
+} from './types'
 import type { PlaceLookupErrorCode, PlaceLookupSuccess } from '../shared/placeLookupTypes.js'
 
 export const CURRENT_USER_NAME = '테스트 사용자'
@@ -71,23 +79,23 @@ export type ReviewSubmissionResult =
   | {
       status: 'saved'
       place: PlaceSummary
-      places: PlaceSummary[]
+      places: PlaceListItem[]
     }
   | {
       status: 'existing_review'
       place: PlaceSummary
-      places: PlaceSummary[]
+      places: PlaceListItem[]
       message: '이미 리뷰를 남긴 장소예요'
     }
   | {
       status: 'error'
-      place: PlaceSummary | null
-      places: PlaceSummary[]
+      place: PlaceListItem | null
+      places: PlaceListItem[]
       message: string
     }
 
 type PlaceListResponse =
-  | { status: 'success'; places: PlaceSummary[] }
+  | { status: 'success'; places: PlaceListSummary[] }
   | { error?: { message?: string } }
 
 type PlaceDetailResponse =
@@ -414,13 +422,20 @@ export const validateReviewDraft = (draft: ReviewDraft) => {
 export const createInitialPlaces = () =>
   import.meta.env.MODE === 'test'
     ? MOCK_PLACES.map(clonePlace)
-    : [] as PlaceSummary[]
+    : [] as PlaceListItem[]
 
 const clonePlace = (place: PlaceSummary): PlaceSummary => ({
   ...place,
   my_review: place.my_review ? { ...place.my_review } : null,
   reviews: place.reviews.map((review) => ({ ...review })),
 })
+
+const clonePlaceListSummary = (place: PlaceListSummary): PlaceListSummary => ({
+  ...place,
+})
+
+const clonePlaceListItem = (place: PlaceListItem): PlaceListItem =>
+  hasPlaceDetail(place) ? clonePlace(place) : clonePlaceListSummary(place)
 
 const parseJson = async <T>(response: Response) => response.json() as Promise<T>
 
@@ -432,7 +447,7 @@ export const loadPlaceList = async () => {
     throw new Error(getErrorMessage(payload as ErrorResponse, '장소 목록을 불러오지 못했어요.'))
   }
 
-  return payload.places.map(clonePlace)
+  return payload.places.map(clonePlaceListSummary)
 }
 
 export const loadPlaceDetail = async (placeId: string) => {
@@ -578,7 +593,7 @@ export const submitReviewForPlace = async ({
   csrfToken: string | null
   draft: ReviewDraft
   placeId: string
-  places: PlaceSummary[]
+  places: PlaceListItem[]
 }): Promise<ReviewSubmissionResult> => {
   const targetPlace = places.find((place) => place.id === placeId) ?? null
 
@@ -618,7 +633,7 @@ export const submitReviewForPlace = async ({
     return {
       status: 'existing_review',
       place: nextPlace,
-      places: places.map((place) => (place.id === nextPlace.id ? nextPlace : place)),
+      places: places.map((place) => (place.id === nextPlace.id ? nextPlace : clonePlaceListItem(place))),
       message: payload.message,
     }
   }
@@ -628,7 +643,7 @@ export const submitReviewForPlace = async ({
     return {
       status: 'saved',
       place: nextPlace,
-      places: places.map((place) => (place.id === nextPlace.id ? nextPlace : place)),
+      places: places.map((place) => (place.id === nextPlace.id ? nextPlace : clonePlaceListItem(place))),
     }
   }
 

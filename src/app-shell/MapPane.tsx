@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { COMPANY_LOCATION, MAP_INITIAL_CENTER } from './mockPlaces'
-import type { PlaceSummary, PlaceType } from './types'
+import type { PlaceListItem, PlaceType } from './types'
 import {
   useKakaoScript,
   type KakaoMapInstance,
@@ -8,7 +8,7 @@ import {
 } from './useKakaoScript'
 
 type MapPaneProps = {
-  places: PlaceSummary[]
+  places: PlaceListItem[]
   selectedPlaceId: string | null
   mapLevel: number
   onMapLevelChange: (level: number) => void
@@ -23,7 +23,7 @@ const MAP_FAILURE_BODY = '네트워크 상태를 확인한 뒤 다시 시도해�
 const MAP_RETRY_LABEL = '다시 시도'
 const COMPANY_MARKER_ICON_SRC = '/assets/icons/icon-map-company-24.svg'
 
-type PlaceWithCoordinates = PlaceSummary & {
+type PlaceWithCoordinates = PlaceListItem & {
   latitude: number
   longitude: number
 }
@@ -38,10 +38,10 @@ type MapZoomPresentation = {
   markerSize: number
 }
 
-const hasCoordinates = (place: PlaceSummary): place is PlaceWithCoordinates =>
+const hasCoordinates = (place: PlaceListItem): place is PlaceWithCoordinates =>
   place.latitude !== undefined && place.longitude !== undefined
 
-const shouldHidePlaceFromMap = (place: PlaceSummary) =>
+const shouldHidePlaceFromMap = (place: PlaceListItem) =>
   place.name === '등록 테스트 장소' && place.road_address === '서울 마포구 등록로 1'
 
 const MAP_LABEL_MAX_WIDTH_PX = 160
@@ -236,7 +236,7 @@ const applyMarkerGlyphStyle = (element: HTMLElement, presentation: Pick<MapZoomP
 }
 
 const createMapMarkerElement = (
-  place: Pick<PlaceSummary, 'id' | 'name' | 'place_type'>,
+  place: Pick<PlaceListItem, 'id' | 'name' | 'place_type'>,
   presentation: Pick<MapZoomPresentation, 'hitTargetSize' | 'markerSize' | 'markerInnerSize'>,
   onMarkerSelect: (placeId: string) => void,
 ) => {
