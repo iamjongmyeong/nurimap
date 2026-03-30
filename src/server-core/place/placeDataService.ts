@@ -265,6 +265,27 @@ const listPlacesForUserWithClient = async ({
   return places.map(buildPlaceListSummary)
 }
 
+const listPlaceDetailsForUserWithClient = async ({
+  client,
+  viewerUserId,
+}: {
+  client: PoolClient
+  viewerUserId: string | null
+}) => {
+  const places = await loadPlaceRows({ client })
+  const reviews = await loadReviewRows({
+    client,
+    placeIds: places.map((place) => place.id),
+  })
+
+  return places.map((place) =>
+    buildPlaceDetail({
+      place,
+      reviews,
+      viewerUserId,
+    }))
+}
+
 export const listPlacesForUser = async (viewerUserId: string | null) =>
   withDatabaseConnection(async (client) => {
     void viewerUserId
@@ -535,7 +556,7 @@ export const persistPlaceRegistration = async ({
       placeId,
       viewerUserId: userId,
     })
-    const places = await listPlacesForUserWithClient({
+    const places = await listPlaceDetailsForUserWithClient({
       client,
       viewerUserId: userId,
     })
