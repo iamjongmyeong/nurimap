@@ -121,7 +121,7 @@ describe('Nurimap place detail', () => {
     expect(detail).toHaveTextContent('누리 식당')
     expect(screen.getByTestId('detail-address')).toHaveTextContent('서울 마포구 양화로19길 22-16 1층')
     expect(screen.getByTestId('detail-added-by')).toHaveTextContent('김누리님이 추가한 장소')
-    expect(screen.getByTestId('detail-meta-type')).toHaveTextContent('식당')
+    expect(screen.getByTestId('detail-meta-type')).toHaveTextContent('음식점')
     expect(screen.getByTestId('detail-zeropay-row')).toHaveTextContent('제로페이 가능')
     expect(screen.getByTestId('detail-meta-rating')).toHaveTextContent('4.7 (12)')
     expect(screen.getByTestId('detail-zeropay-indicator')).toBeInTheDocument()
@@ -134,6 +134,39 @@ describe('Nurimap place detail', () => {
     expect(screen.queryByTestId('detail-review-compose')).not.toBeInTheDocument()
     expect(screen.queryByTestId('detail-my-review')).not.toBeInTheDocument()
     expect(screen.queryByTestId('detail-naver-link')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('detail-review-cta')).not.toBeInTheDocument()
+  })
+
+  it('shows the 평가 남기기 CTA on desktop detail when my_review is null', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+
+    expect(screen.getByTestId('desktop-detail-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-review-cta')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '평가 남기기' })).toBeInTheDocument()
+  })
+
+  it('opens the add-rating child surface from desktop detail and returns on back', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+
+    expect(await screen.findByTestId('mobile-review-add-page')).toBeInTheDocument()
+    expect(screen.getByTestId('review-add-surface')).toHaveTextContent('평가')
+    expect(window.location.pathname).toBe('/places/place-cafe-1')
+
+    await user.click(screen.getByRole('button', { name: '뒤로 가기' }))
+
+    expect(screen.getByTestId('desktop-detail-panel')).toBeInTheDocument()
+    expect(screen.queryByTestId('mobile-review-add-page')).not.toBeInTheDocument()
+    expect(screen.getByTestId('detail-review-cta')).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/places/place-cafe-1')
   })
 
   it('shows reviews newest first in the detail list', async () => {

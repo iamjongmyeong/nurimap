@@ -11,6 +11,7 @@ import { createInitialReviewDraft, validateReviewDraft, type ReviewDraft } from 
 import {
   useAppShellStore,
   type BrowseNavigationState,
+  type DetailChildSurface,
   type NavigationState,
   type PlaceDetailLoadState,
   type PlaceListLoadState,
@@ -28,7 +29,7 @@ const hasCoordinates = (place: PlaceSummary): place is PlaceWithCoordinates =>
   place.latitude !== undefined && place.longitude !== undefined
 
 const PLACE_TYPE_LABEL: Record<PlaceType, string> = {
-  restaurant: '식당',
+  restaurant: '음식점',
   cafe: '카페',
 }
 
@@ -903,26 +904,52 @@ const DesktopBrowseSidebar = ({
 }
 
 const DesktopDetailSidebar = ({
+  detailChildSurface,
+  onAddRatingBack,
   onBrowseBack,
+  onOpenAddRating,
+  onSubmitReview,
   place,
   status,
 }: {
+  detailChildSurface: DetailChildSurface
+  onAddRatingBack: () => void
   onBrowseBack: () => void
+  onOpenAddRating: () => void
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => Promise<{ status: 'saved' | 'existing_review' | 'error'; message?: string }>
   place: PlaceSummary | undefined
   status: PlaceDetailLoadState
-}) => (
-  <section className="flex h-full flex-col" data-testid="desktop-detail-panel">
-    <DetailHeader ariaLabel="목록으로 돌아가기" onBack={onBrowseBack} title="장소 상세" />
-    <div className="flex-1 overflow-auto">
-      <DetailBody onRetry={useAppShellStore.getState().retryPlaceDetail} place={place} status={status} />
-    </div>
-  </section>
-)
+}) => {
+  if (detailChildSurface === 'add_rating') {
+    return (
+      <section className="flex h-full flex-col" data-testid="desktop-detail-panel">
+        <AddRatingScreen key={place?.id ?? 'missing-place'} onBack={onAddRatingBack} onSubmit={onSubmitReview} place={place} />
+      </section>
+    )
+  }
+
+  return (
+    <section className="flex h-full flex-col" data-testid="desktop-detail-panel">
+      <DetailOverviewScreen
+        backLabel="목록으로 돌아가기"
+        onBack={onBrowseBack}
+        onOpenAddRating={onOpenAddRating}
+        onRetry={useAppShellStore.getState().retryPlaceDetail}
+        place={place}
+        status={status}
+      />
+    </section>
+  )
+}
 
 const DesktopSidebar = ({
+  detailChildSurface,
+  onAddRatingBack,
   onClosePlaceAdd,
   onContinuePlaceAddToManual,
+  onOpenAddRating,
   onOpenPlaceAdd,
+  onSubmitReview,
   placeAddPrefill,
   placeAddStep,
   navigationState,
@@ -932,9 +959,13 @@ const DesktopSidebar = ({
   selectedPlace,
   selectedPlaceId,
 }: {
+  detailChildSurface: DetailChildSurface
+  onAddRatingBack: () => void
   onClosePlaceAdd: () => void
   onContinuePlaceAddToManual: (prefill?: PlaceAddPrefill) => void
+  onOpenAddRating: () => void
   onOpenPlaceAdd: () => void
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => Promise<{ status: 'saved' | 'existing_review' | 'error'; message?: string }>
   placeAddPrefill: PlaceAddPrefill | null
   placeAddStep: PlaceAddStep
   navigationState: NavigationState
@@ -960,7 +991,11 @@ const DesktopSidebar = ({
         />
       ) : navigationState === 'place_detail_open' ? (
         <DesktopDetailSidebar
+          detailChildSurface={detailChildSurface}
+          onAddRatingBack={onAddRatingBack}
           onBrowseBack={onReturnToMapBrowse}
+          onOpenAddRating={onOpenAddRating}
+          onSubmitReview={onSubmitReview}
           place={selectedPlace}
           status={placeDetailLoad}
         />
@@ -1146,9 +1181,13 @@ const MobileDetailPage = ({
 }
 
 const DesktopAppShell = ({
+  detailChildSurface,
+  onAddRatingBack,
   onClosePlaceAdd,
   onContinuePlaceAddToManual,
+  onOpenAddRating,
   onOpenPlaceAdd,
+  onSubmitReview,
   placeAddPrefill,
   placeAddStep,
   navigationState,
@@ -1157,9 +1196,13 @@ const DesktopAppShell = ({
   onReturnToMapBrowse,
   selectedPlace,
 }: {
+  detailChildSurface: DetailChildSurface
+  onAddRatingBack: () => void
   onClosePlaceAdd: () => void
   onContinuePlaceAddToManual: (prefill?: PlaceAddPrefill) => void
+  onOpenAddRating: () => void
   onOpenPlaceAdd: () => void
+  onSubmitReview: (placeId: string, draft: ReviewDraft) => Promise<{ status: 'saved' | 'existing_review' | 'error'; message?: string }>
   placeAddPrefill: PlaceAddPrefill | null
   placeAddStep: PlaceAddStep
   navigationState: NavigationState
@@ -1175,9 +1218,13 @@ const DesktopAppShell = ({
   return (
     <main className="hidden h-screen md:flex" data-testid="desktop-shell">
       <DesktopSidebar
+        detailChildSurface={detailChildSurface}
+        onAddRatingBack={onAddRatingBack}
         onClosePlaceAdd={onClosePlaceAdd}
         onContinuePlaceAddToManual={onContinuePlaceAddToManual}
+        onOpenAddRating={onOpenAddRating}
         onOpenPlaceAdd={onOpenPlaceAdd}
+        onSubmitReview={onSubmitReview}
         placeAddPrefill={placeAddPrefill}
         placeAddStep={placeAddStep}
         navigationState={navigationState}
@@ -1811,9 +1858,13 @@ export const NurimapAppShell = () => {
 
   return isDesktop ? (
     <DesktopAppShell
+      detailChildSurface={effectiveDetailChildSurface}
+      onAddRatingBack={handleCloseAddRating}
       onClosePlaceAdd={handleClosePlaceAdd}
       onContinuePlaceAddToManual={handleContinuePlaceAddToManual}
+      onOpenAddRating={handleOpenAddRating}
       onOpenPlaceAdd={handleOpenPlaceAdd}
+      onSubmitReview={handleSubmitReview}
       placeAddPrefill={effectivePlaceAddPrefill}
       placeAddStep={effectivePlaceAddStep}
       navigationState={effectiveNavigationState}

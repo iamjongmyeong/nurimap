@@ -48,7 +48,7 @@ const MAP_LABEL_MAX_WIDTH_PX = 160
 const markerPalette: Record<PlaceType, { fill: string; label: string }> = {
   restaurant: {
     fill: '#5862FB',
-    label: '식당',
+    label: '음식점',
   },
   cafe: {
     fill: '#5862FB',
