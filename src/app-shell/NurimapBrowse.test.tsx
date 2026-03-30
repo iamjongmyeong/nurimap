@@ -104,6 +104,21 @@ const cloneMockPlace = (placeId: string) => {
   }
 }
 
+const toPlaceListSummary = (place: (typeof MOCK_PLACES)[number]) => ({
+  id: place.id,
+  naver_place_id: place.naver_place_id,
+  naver_place_url: place.naver_place_url,
+  name: place.name,
+  road_address: place.road_address,
+  latitude: place.latitude,
+  longitude: place.longitude,
+  place_type: place.place_type,
+  zeropay_status: place.zeropay_status,
+  average_rating: place.average_rating,
+  review_count: place.review_count,
+  added_by_name: place.added_by_name,
+})
+
 const getPlaceIdFromDetailUrl = (url: string) => {
   const match = url.match(/^\/api\/places\/([^/]+)$/)
   return match ? decodeURIComponent(match[1]) : null
@@ -116,7 +131,7 @@ const createBrowseFetchMock = () =>
     if (url === '/api/places') {
       return new Response(JSON.stringify({
         status: 'success',
-        places: MOCK_PLACES,
+        places: MOCK_PLACES.map(toPlaceListSummary),
       }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
 
