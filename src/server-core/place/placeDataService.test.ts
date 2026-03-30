@@ -19,51 +19,63 @@ describe('placeDataService', () => {
     vi.clearAllMocks()
   })
 
-  it('hydrates list/detail place summaries with sorted reviews and my_review', async () => {
-    withDatabaseConnectionMock.mockImplementation(async (work: (client: { query: ReturnType<typeof vi.fn> }) => Promise<unknown>) =>
-      work({
-        query: vi.fn()
-          .mockResolvedValueOnce({
-            rows: [
-              {
-                id: 'place-1',
-                naver_place_id: '10001',
-                naver_place_url: 'https://map.naver.com/p/entry/place/10001',
-                name: '누리 식당',
-                road_address: '서울 마포구 양화로19길 22-16 1층',
-                latitude: 37.55,
-                longitude: 126.92,
-                place_type: 'restaurant',
-                zeropay_status: 'available',
-                average_rating: 4.7,
-                review_count: 2,
-                added_by_name: '김누리',
-              },
-            ],
-          })
-          .mockResolvedValueOnce({
-            rows: [
-              {
-                id: 'review-2',
-                place_id: 'place-1',
-                author_user_id: 'user-2',
-                author_name: '박지도',
-                content: '',
-                created_at: '2026-03-05T00:00:00.000Z',
-                rating_score: 4,
-              },
-              {
-                id: 'review-1',
-                place_id: 'place-1',
-                author_user_id: 'user-1',
-                author_name: '김누리',
-                content: '점심 모임으로 가기 좋은 식당이에요.',
-                created_at: '2026-03-07T00:00:00.000Z',
-                rating_score: 5,
-              },
-            ],
-          }),
-      }))
+  it('keeps list payload summary-only and detail payload review-complete', async () => {
+    const placeRows = [
+      {
+        id: 'place-1',
+        naver_place_id: '10001',
+        naver_place_url: 'https://map.naver.com/p/entry/place/10001',
+        name: '누리 식당',
+        road_address: '서울 마포구 양화로19길 22-16 1층',
+        latitude: 37.55,
+        longitude: 126.92,
+        place_type: 'restaurant',
+        zeropay_status: 'available',
+        average_rating: 4.7,
+        review_count: 2,
+        added_by_name: '김누리',
+      },
+    ]
+    const reviewRows = [
+      {
+        id: 'review-2',
+        place_id: 'place-1',
+        author_user_id: 'user-2',
+        author_name: '박지도',
+        content: '',
+        created_at: '2026-03-05T00:00:00.000Z',
+        rating_score: 4,
+      },
+      {
+        id: 'review-1',
+        place_id: 'place-1',
+        author_user_id: 'user-1',
+        author_name: '김누리',
+        content: '점심 모임으로 가기 좋은 식당이에요.',
+        created_at: '2026-03-07T00:00:00.000Z',
+        rating_score: 5,
+      },
+    ]
+    const listQueryMock = vi.fn().mockResolvedValueOnce({
+      rows: placeRows,
+    })
+    const detailQueryMock = vi.fn()
+      .mockResolvedValueOnce({
+        rows: placeRows,
+      })
+      .mockResolvedValueOnce({
+        rows: reviewRows,
+      })
+
+    withDatabaseConnectionMock
+      .mockImplementationOnce(async (work: (client: { query: ReturnType<typeof vi.fn> }) => Promise<unknown>) =>
+        work({
+          query: listQueryMock,
+        }))
+      .mockImplementationOnce(async (work: (client: { query: ReturnType<typeof vi.fn> }) => Promise<unknown>) =>
+        work({
+          query: detailQueryMock,
+        }))
 
     const list = await listPlacesForUser('user-1')
     const detail = await getPlaceDetailForUser({
@@ -71,8 +83,18 @@ describe('placeDataService', () => {
       viewerUserId: 'user-1',
     })
 
-    expect(list[0]?.my_review?.author_name).toBe('김누리')
-    expect(list[0]?.reviews[0]?.author_name).toBe('김누리')
+    expect(listQueryMock).toHaveBeenCalledTimes(1)
+    expect(detailQueryMock).toHaveBeenCalledTimes(2)
+    expect(list[0]).toEqual(expect.objectContaining({
+      id: 'place-1',
+      average_rating: 4.7,
+      review_count: 2,
+      added_by_name: '김누리',
+    }))
+    expect(list[0]).not.toHaveProperty('my_review')
+    expect(list[0]).not.toHaveProperty('reviews')
+    expect(detail?.my_review?.author_name).toBe('김누리')
+    expect(detail?.reviews[0]?.author_name).toBe('김누리')
     expect(detail?.review_count).toBe(2)
   })
 
