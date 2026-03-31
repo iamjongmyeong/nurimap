@@ -184,6 +184,22 @@ describe('Nurimap place detail', () => {
     expect(window.location.pathname).toBe('/places/place-cafe-1')
   })
 
+  it('updates the desktop detail add-rating when hovering a lower star', async () => {
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+
+    expect(await screen.findByTestId('review-add-rating-star-5')).toHaveClass('text-[#e53935]')
+
+    await user.hover(screen.getByTestId('review-add-rating-star-4'))
+
+    expect(screen.getByTestId('review-add-rating-star-4')).toHaveClass('text-[#e53935]')
+    expect(screen.getByTestId('review-add-rating-star-5')).toHaveClass('text-[#c7c5d3]')
+  })
+
   it('shows reviews newest first in the detail list', async () => {
     setViewport(1280)
     const user = userEvent.setup()
@@ -332,6 +348,27 @@ describe('Nurimap place detail', () => {
     expect(screen.getByTestId('mobile-detail-page')).toBeInTheDocument()
     expect(screen.queryByTestId('mobile-review-add-page')).not.toBeInTheDocument()
     expect(window.location.pathname).toBe('/places/place-cafe-1')
+  })
+
+  it('keeps mobile detail add-rating click-only even if hover is fired in tests', async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '목록 보기' }))
+    await user.click(screen.getByTestId('place-list-item-place-cafe-1'))
+    await user.click(screen.getByRole('button', { name: '평가 남기기' }))
+
+    expect(await screen.findByTestId('review-add-rating-star-5')).toHaveClass('text-[#e53935]')
+
+    await user.hover(screen.getByTestId('review-add-rating-star-4'))
+
+    expect(screen.getByTestId('review-add-rating-star-5')).toHaveClass('text-[#e53935]')
+
+    await user.click(screen.getByTestId('review-add-rating-star-4'))
+
+    expect(screen.getByTestId('review-add-rating-star-4')).toHaveClass('text-[#e53935]')
+    expect(screen.getByTestId('review-add-rating-star-5')).toHaveClass('text-[#c7c5d3]')
   })
 
   it('returns to detail and shows the new review immediately after a successful add-rating submission', async () => {

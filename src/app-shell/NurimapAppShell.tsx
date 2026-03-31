@@ -703,9 +703,11 @@ const DetailOverviewScreen = ({
 )
 
 const AddRatingStars = ({
+  isDesktop,
   rating,
   onChange,
 }: {
+  isDesktop: boolean
   rating: number
   onChange: (value: number) => void
 }) => (
@@ -715,11 +717,14 @@ const AddRatingStars = ({
       return (
         <button
           aria-label={`${value}점`}
-          className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center transition ${
+          className={`inline-flex h-6 w-6 cursor-pointer items-center justify-center ${
+            isDesktop ? 'transition-transform duration-150 hover:scale-110' : 'transition'
+          } ${
             active ? 'text-[#e53935]' : 'text-[#c7c5d3] hover:text-[#9d99ab]'
           }`}
           data-testid={`review-add-rating-star-${value}`}
           key={value}
+          onMouseEnter={isDesktop ? () => onChange(value) : undefined}
           onClick={() => onChange(value)}
           type="button"
         >
@@ -741,6 +746,7 @@ const AddRatingScreen = ({
   onSubmit: (placeId: string, draft: ReviewDraft) => Promise<{ status: 'saved' | 'existing_review' | 'error'; message?: string }>
   place: PlaceSummary | undefined
 }) => {
+  const { isDesktop } = useViewportMode()
   const [draft, setDraft] = useState(createInitialReviewDraft)
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -782,7 +788,11 @@ const AddRatingScreen = ({
                 <div>
                   <p className="font-['Pretendard'] text-[12px] font-medium leading-[18px] tracking-[-0.3px] text-[#1c1c1c]">평가</p>
                   <div className="mt-2">
-                    <AddRatingStars rating={draft.rating_score} onChange={(rating_score) => setDraft((current) => ({ ...current, rating_score }))} />
+                    <AddRatingStars
+                      isDesktop={isDesktop}
+                      rating={draft.rating_score}
+                      onChange={(rating_score) => setDraft((current) => ({ ...current, rating_score }))}
+                    />
                   </div>
                 </div>
 
