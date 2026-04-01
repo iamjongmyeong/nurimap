@@ -103,4 +103,49 @@ describe('POST /api/places/:placeId/reviews', () => {
       place: { id: 'place-1', name: '누리 식당' },
     })
   })
+
+  it('returns 401 when the review request is missing a session', async () => {
+    readSessionIdFromCookieHeaderMock.mockReturnValue(null)
+
+    const { response, state } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {},
+      query: { placeId: 'place-1' },
+      body: { ratingScore: 5, reviewContent: '새 리뷰' },
+    } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(401)
+    expect(state.body).toEqual({
+      error: {
+        code: 'unauthorized',
+        message: 'Unauthorized',
+      },
+    })
+    expect(submitPersistedPlaceReviewMock).not.toHaveBeenCalled()
+  })
+
+  it('returns 403 when the review request has an invalid csrf pair', async () => {
+    isValidCsrfTokenPairMock.mockReturnValue(false)
+
+    const { response, state } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {
+        cookie: '__Host-nurimap_session=session-123; nurimap_csrf=csrf-123',
+        'x-nurimap-csrf-token': 'bad-csrf-token',
+      },
+      query: { placeId: 'place-1' },
+      body: { ratingScore: 5, reviewContent: '새 리뷰' },
+    } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(403)
+    expect(state.body).toEqual({
+      error: {
+        code: 'csrf_invalid',
+        message: 'Invalid CSRF token.',
+      },
+    })
+    expect(submitPersistedPlaceReviewMock).not.toHaveBeenCalled()
+  })
 })

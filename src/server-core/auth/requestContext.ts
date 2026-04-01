@@ -46,6 +46,16 @@ type AuthenticatedRequestContext =
       statusCode: 401 | 403
     }
 
+type AnonymousOrAuthenticatedRequestContext =
+  | {
+      status: 'authenticated'
+      authSession: AuthenticatedSession
+      sessionId: string
+    }
+  | {
+      status: 'anonymous'
+    }
+
 export const getAuthenticatedRequestContext = async ({
   req,
   requireCsrf = false,
@@ -101,6 +111,32 @@ export const getAuthenticatedRequestContext = async ({
   return {
     status: 'authenticated',
     appSession,
+    authSession,
+    sessionId,
+  }
+}
+
+export const getAnonymousOrAuthenticatedRequestContext = async ({
+  req,
+}: {
+  req: VercelRequest
+}): Promise<AnonymousOrAuthenticatedRequestContext> => {
+  const sessionId = readSessionIdFromCookieHeader(req.headers.cookie)
+  if (!sessionId) {
+    return {
+      status: 'anonymous',
+    }
+  }
+
+  const authSession = await getAuthenticatedSession(sessionId)
+  if (authSession.status === 'missing') {
+    return {
+      status: 'anonymous',
+    }
+  }
+
+  return {
+    status: 'authenticated',
     authSession,
     sessionId,
   }

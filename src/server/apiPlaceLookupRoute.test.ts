@@ -146,6 +146,51 @@ describe('POST /api/place-lookups', () => {
     expect(state.statusCode).toBe(200)
   })
 
+  it('returns 401 when the place lookup request is missing a session', async () => {
+    readSessionIdFromCookieHeaderMock.mockReturnValue(null)
+
+    const { response, state } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {},
+      body: { rawUrl: 'https://map.naver.com/p/entry/place/123456789' },
+    } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(401)
+    expect(state.body).toEqual({
+      error: {
+        code: 'unauthorized',
+        message: 'Unauthorized',
+      },
+    })
+    expect(checkUserScopedRateLimitMock).not.toHaveBeenCalled()
+    expect(lookupPlaceFromRawUrlMock).not.toHaveBeenCalled()
+  })
+
+  it('returns 403 when the place lookup request has an invalid csrf pair', async () => {
+    isValidCsrfTokenPairMock.mockReturnValue(false)
+
+    const { response, state } = createResponse()
+    await handler({
+      method: 'POST',
+      headers: {
+        cookie: '__Host-nurimap_session=session-123; nurimap_csrf=csrf-123',
+        'x-nurimap-csrf-token': 'bad-csrf-token',
+      },
+      body: { rawUrl: 'https://map.naver.com/p/entry/place/123456789' },
+    } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(403)
+    expect(state.body).toEqual({
+      error: {
+        code: 'csrf_invalid',
+        message: 'Invalid CSRF token.',
+      },
+    })
+    expect(checkUserScopedRateLimitMock).not.toHaveBeenCalled()
+    expect(lookupPlaceFromRawUrlMock).not.toHaveBeenCalled()
+  })
+
   it('returns 400 for invalid url lookup failures', async () => {
     lookupPlaceFromRawUrlMock.mockResolvedValue({
       status: 'error',

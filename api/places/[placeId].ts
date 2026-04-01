@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import {
-  getAuthenticatedRequestContext,
+  getAnonymousOrAuthenticatedRequestContext,
   METHOD_NOT_ALLOWED_RESPONSE_BODY,
 } from '../../src/server-core/auth/requestContext.js'
 import { getPlaceDetailForUser } from '../../src/server-core/place/placeDataService.js'
@@ -9,10 +9,11 @@ import { initServerSentry } from '../../src/server-core/runtime/sentry.js'
 
 initServerSentry()
 
-const setNoStoreHeaders = (res: VercelResponse) => {
+const setReadHeaders = (res: VercelResponse) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
   res.setHeader('Pragma', 'no-cache')
   res.setHeader('Expires', '0')
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow')
 }
 
 const readPlaceId = (req: VercelRequest) =>
@@ -23,22 +24,21 @@ const readPlaceId = (req: VercelRequest) =>
       : ''
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setNoStoreHeaders(res)
+  setReadHeaders(res)
 
   if (req.method !== 'GET') {
     res.status(405).json(METHOD_NOT_ALLOWED_RESPONSE_BODY)
     return
   }
 
-  const requestContext = await getAuthenticatedRequestContext({ req })
-  if (requestContext.status === 'error') {
-    res.status(requestContext.statusCode).json(requestContext.body)
-    return
-  }
+  const requestContext = await getAnonymousOrAuthenticatedRequestContext({ req })
+  const viewerUserId = requestContext.status === 'authenticated'
+    ? requestContext.authSession.user.id
+    : null
 
   const place = await getPlaceDetailForUser({
     placeId: readPlaceId(req),
-    viewerUserId: requestContext.authSession.user.id,
+    viewerUserId,
   })
 
   if (!place) {

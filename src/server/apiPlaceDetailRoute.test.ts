@@ -72,6 +72,24 @@ describe('GET /api/places/:placeId', () => {
     })
     expect(state.statusCode).toBe(200)
     expect(state.headers?.['Cache-Control']).toEqual(expect.stringContaining('no-store'))
+    expect(state.headers?.['X-Robots-Tag']).toBe('noindex, nofollow')
     expect(state.body).toEqual({ status: 'success', place: { id: 'place-1', name: '누리 식당' } })
+  })
+
+  it('returns anonymous place detail payload when no session exists', async () => {
+    readSessionIdFromCookieHeaderMock.mockReturnValue(null)
+    getPlaceDetailForUserMock.mockResolvedValue({ id: 'place-1', name: '누리 식당', my_review: null })
+
+    const { response, state } = createResponse()
+    await handler({ method: 'GET', headers: {}, query: { placeId: 'place-1' } } as unknown as VercelRequest, response)
+
+    expect(getAuthenticatedSessionMock).not.toHaveBeenCalled()
+    expect(getPlaceDetailForUserMock).toHaveBeenCalledWith({
+      placeId: 'place-1',
+      viewerUserId: null,
+    })
+    expect(state.statusCode).toBe(200)
+    expect(state.headers?.['X-Robots-Tag']).toBe('noindex, nofollow')
+    expect(state.body).toEqual({ status: 'success', place: { id: 'place-1', name: '누리 식당', my_review: null } })
   })
 })

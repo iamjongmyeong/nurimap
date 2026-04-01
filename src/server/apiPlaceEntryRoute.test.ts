@@ -132,6 +132,30 @@ describe('canonical place submission routes', () => {
     expect(captureServerExceptionMock).not.toHaveBeenCalled()
   })
 
+  it('returns 401 when POST /api/place-submissions is missing a session', async () => {
+    readSessionIdFromCookieHeaderMock.mockReturnValue(null)
+
+    const { response, state } = createResponse()
+    await createHandler({
+      method: 'POST',
+      headers: {},
+      body: {
+        name: '등록 테스트 장소',
+        roadAddress: '서울 마포구 등록로 1',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(401)
+    expect(state.body).toEqual({
+      error: {
+        code: 'unauthorized',
+        message: 'Unauthorized',
+      },
+    })
+    expect(checkUserScopedRateLimitMock).not.toHaveBeenCalled()
+    expect(createPlaceSubmissionMock).not.toHaveBeenCalled()
+  })
+
   it('returns a JSON 500 error when canonical place submission preparation throws unexpectedly', async () => {
     preparePlaceEntryFromDraftMock.mockRejectedValue(new Error('vercel runtime import failed'))
 
@@ -287,5 +311,31 @@ describe('canonical place submission routes', () => {
       },
     })
     expect(captureServerExceptionMock).not.toHaveBeenCalled()
+  })
+
+  it('returns 403 when POST /api/place-submissions/:submissionId/confirmations has an invalid csrf pair', async () => {
+    isValidCsrfTokenPairMock.mockReturnValue(false)
+
+    const { response, state } = createResponse()
+    await confirmHandler({
+      method: 'POST',
+      headers: {
+        cookie: '__Host-nurimap_session=session-123; nurimap_csrf=csrf-123',
+        'x-nurimap-csrf-token': 'bad-csrf-token',
+      },
+      query: {
+        submissionId: 'submission-123',
+      },
+    } as unknown as VercelRequest, response)
+
+    expect(state.statusCode).toBe(403)
+    expect(state.body).toEqual({
+      error: {
+        code: 'csrf_invalid',
+        message: 'Invalid CSRF token.',
+      },
+    })
+    expect(confirmPlaceSubmissionMock).not.toHaveBeenCalled()
+    expect(checkUserScopedRateLimitMock).not.toHaveBeenCalled()
   })
 })
