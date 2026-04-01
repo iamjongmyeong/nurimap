@@ -11,6 +11,8 @@ export type AuthPhase =
 
 export type AuthContextValue = {
   accessToken: string | null
+  authSurfaceVisible: boolean
+  beginSignIn: () => void
   csrfHeaderName: string | null
   csrfToken: string | null
   email: string

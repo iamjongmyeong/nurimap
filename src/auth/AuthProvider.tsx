@@ -153,6 +153,12 @@ const AuthSurface = ({ children }: { children: ReactNode }) => (
   </main>
 )
 
+const AuthOverlay = ({ children }: { children: ReactNode }) => (
+  <div className="fixed inset-0 z-[80] overflow-y-auto bg-white">
+    {children}
+  </div>
+)
+
 const AuthBrand = () => (
   <div className="mx-auto inline-flex items-center justify-center gap-3">
     <img
@@ -482,6 +488,7 @@ const VerifyingScreen = () => (
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const testState = useTestAuthState()
   const [phase, setPhase] = useState<AuthPhase>('loading')
+  const [authSurfaceVisible, setAuthSurfaceVisible] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [failureReason, setFailureReason] = useState<string | null>(null)
   const [email, setEmail] = useState('')
@@ -685,6 +692,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     phaseRef.current = phase
   }, [phase])
 
+  const beginSignIn = useCallback(() => {
+    setAuthSurfaceVisible(true)
+  }, [])
+
   useEffect(() => {
     if (isTestMode) {
       return
@@ -741,6 +752,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       requireBypass?: boolean
     },
   ) => {
+    setAuthSurfaceVisible(true)
+
     if (!nextEmail.trim()) {
       setRequestedEmail(null)
       if (isTestMode) {
@@ -1043,6 +1056,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     hasAttemptedLocalAutoLoginRef.current = true
+    setAuthSurfaceVisible(false)
 
     if (isTestMode) {
       await signOutTestUser()
@@ -1079,6 +1093,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const resolvedAccessToken = isTestMode && effectiveTestState.phase === 'authenticated' ? 'test-access-token' : accessToken
 
   useEffect(() => {
+    if (resolvedPhase === 'authenticated') {
+      setAuthSurfaceVisible(false)
+      return
+    }
+
+    if (resolvedPhase === 'name_required') {
+      setAuthSurfaceVisible(true)
+    }
+  }, [resolvedPhase])
+
+  useEffect(() => {
     if (resolvedPhase !== 'authenticated' && resolvedPhase !== 'name_required') {
       clearBrowserSentryUser()
       return
@@ -1092,6 +1117,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const value: AuthContextValue = {
     accessToken: resolvedAccessToken,
+    authSurfaceVisible,
+    beginSignIn,
     csrfHeaderName: isTestMode ? 'x-nurimap-csrf-token' : csrfHeaderName,
     csrfToken: isTestMode ? 'test-csrf-token' : csrfToken,
     email: resolvedEmail,
@@ -1103,107 +1130,119 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signOut,
   }
 
-  if (resolvedPhase === 'loading' || resolvedPhase === 'verifying') {
-    return <VerifyingScreen />
-  }
+  const shouldRenderAuthSurface =
+    resolvedPhase === 'name_required'
+    || resolvedPhase === 'otp_required'
+    || resolvedPhase === 'auth_failure'
+    || (authSurfaceVisible
+      && (resolvedPhase === 'loading' || resolvedPhase === 'verifying' || resolvedPhase === 'auth_required'))
 
-  if (resolvedPhase === 'auth_required') {
-    return (
-      <AuthContext.Provider value={value}>
-        <EmailRequestShell
-          cooldownRemainingSeconds={resolvedCooldownRemainingSeconds}
-          email={resolvedEmail}
-          message={rawMessage}
-          onEmailChange={(nextEmail) => {
-            setEmail(nextEmail)
-            if (cooldownState && nextEmail.trim().toLowerCase() !== cooldownState.email) {
+  let authSurface: ReactNode = null
+
+  if (shouldRenderAuthSurface) {
+    if (resolvedPhase === 'loading' || resolvedPhase === 'verifying') {
+      authSurface = (
+        <AuthOverlay>
+          <VerifyingScreen />
+        </AuthOverlay>
+      )
+    } else if (resolvedPhase === 'auth_required') {
+      authSurface = (
+        <AuthOverlay>
+          <EmailRequestShell
+            cooldownRemainingSeconds={resolvedCooldownRemainingSeconds}
+            email={resolvedEmail}
+            message={rawMessage}
+            onEmailChange={(nextEmail) => {
+              setEmail(nextEmail)
+              if (cooldownState && nextEmail.trim().toLowerCase() !== cooldownState.email) {
+                setCooldownState(null)
+              }
+            }}
+            onSubmit={(nextEmail) => {
+              void requestOtp(nextEmail)
+            }}
+            submitting={submitting}
+          />
+        </AuthOverlay>
+      )
+    } else if (resolvedPhase === 'otp_required') {
+      authSurface = (
+        <AuthOverlay>
+          <OtpShell
+            code={otpCode}
+            email={requestedEmail ?? resolvedEmail}
+            message={rawMessage}
+            onCodeChange={setOtpCode}
+            onReset={() => {
+              setRequestedEmail(null)
+              setOtpCode('')
+              setHasResentOtp(false)
               setCooldownState(null)
-            }
-          }}
-          onSubmit={(nextEmail) => {
-            void requestOtp(nextEmail)
-          }}
-          submitting={submitting}
-        />
-      </AuthContext.Provider>
-    )
+              setMessage(null)
+              setFailureReason(null)
+              setEmail('')
+              if (isTestMode) {
+                setTestAuthState({ phase: 'auth_required', failureReason: null, message: null, user: null })
+              } else {
+                setPhase('auth_required')
+              }
+            }}
+            onSubmit={() => {
+              void submitOtp()
+            }}
+            submitting={submitting}
+          />
+        </AuthOverlay>
+      )
+    } else if (resolvedPhase === 'auth_failure') {
+      authSurface = (
+        <AuthOverlay>
+          <AuthFailureScreen
+            onReset={() => {
+              setRequestedEmail(null)
+              setOtpCode('')
+              setHasResentOtp(false)
+              setCooldownState(null)
+              setFailureReason(null)
+              setMessage(null)
+              setEmail('')
+              if (isTestMode) {
+                setTestAuthState({ phase: 'auth_required', failureReason: null, message: null, user: null })
+              } else {
+                setPhase('auth_required')
+              }
+            }}
+            onRetry={() => {
+              setRequestedEmail(null)
+              setOtpCode('')
+              setHasResentOtp(false)
+              setCooldownState(null)
+              setFailureReason(null)
+              setMessage(null)
+              if (isTestMode) {
+                setTestAuthState({ phase: 'auth_required', failureReason: null, message: null })
+              } else {
+                setPhase('auth_required')
+              }
+            }}
+            reason={resolvedFailureReason}
+          />
+        </AuthOverlay>
+      )
+    } else if (resolvedPhase === 'name_required') {
+      authSurface = (
+        <AuthOverlay>
+          <NameCaptureScreen onSubmit={saveName} submitting={submitting} />
+        </AuthOverlay>
+      )
+    }
   }
 
-  if (resolvedPhase === 'otp_required') {
-    return (
-      <AuthContext.Provider value={value}>
-        <OtpShell
-          code={otpCode}
-          email={requestedEmail ?? resolvedEmail}
-          message={rawMessage}
-          onCodeChange={setOtpCode}
-          onReset={() => {
-            setRequestedEmail(null)
-            setOtpCode('')
-            setHasResentOtp(false)
-            setCooldownState(null)
-            setMessage(null)
-            setFailureReason(null)
-            setEmail('')
-            if (isTestMode) {
-              setTestAuthState({ phase: 'auth_required', failureReason: null, message: null, user: null })
-            } else {
-              setPhase('auth_required')
-            }
-          }}
-          onSubmit={() => {
-            void submitOtp()
-          }}
-          submitting={submitting}
-        />
-      </AuthContext.Provider>
-    )
-  }
-
-  if (resolvedPhase === 'auth_failure') {
-    return (
-      <AuthContext.Provider value={value}>
-        <AuthFailureScreen
-          onReset={() => {
-            setRequestedEmail(null)
-            setOtpCode('')
-            setHasResentOtp(false)
-            setCooldownState(null)
-            setFailureReason(null)
-            setMessage(null)
-            setEmail('')
-            if (isTestMode) {
-              setTestAuthState({ phase: 'auth_required', failureReason: null, message: null, user: null })
-            } else {
-              setPhase('auth_required')
-            }
-          }}
-          onRetry={() => {
-            setRequestedEmail(null)
-            setOtpCode('')
-            setHasResentOtp(false)
-            setCooldownState(null)
-            setFailureReason(null)
-            setMessage(null)
-            if (isTestMode) {
-              setTestAuthState({ phase: 'auth_required', failureReason: null, message: null })
-            } else {
-              setPhase('auth_required')
-            }
-          }}
-          reason={resolvedFailureReason}
-        />
-      </AuthContext.Provider>
-    )
-  }
-
-  if (resolvedPhase === 'name_required') {
-    return (
-      <AuthContext.Provider value={value}>
-        <NameCaptureScreen onSubmit={saveName} submitting={submitting} />
-      </AuthContext.Provider>
-    )
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {authSurface}
+    </AuthContext.Provider>
+  )
 }
