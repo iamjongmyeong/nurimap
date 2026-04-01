@@ -12,30 +12,12 @@ node_modules/
 dist/
 coverage/
 
-# Codex repo config: ignore generated workspace files, keep shared config/prompts
-.codex/*
-!.codex/config.toml
-!.codex/prompts/
-!.codex/prompts/**
-!.codex/skills/
-.codex/skills/*
-!.codex/skills/frontend-design/
-!.codex/skills/frontend-design/**
-!.codex/skills/web-design-guidelines/
-!.codex/skills/web-design-guidelines/**
-
-# OMX runtime/generated artifacts
-.omx/state/
-.omx/context/
-.omx/logs/
-.omx/notepad.md
-.omx/project-memory.json
-.omx/metrics.json
-.omx/tmux-hook.json
+# AI Agent
+.codex/
+.omx/
 
 # Vercel local metadata
 .vercel
 
 # Supabase local scratch files
 supabase/snippets/
-.omx/
