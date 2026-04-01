@@ -978,6 +978,7 @@ const DesktopDetailSidebar = ({
 }
 
 const DesktopSidebar = ({
+  onAuthAction,
   detailChildSurface,
   onAddRatingBack,
   onClosePlaceAdd,
@@ -988,12 +989,14 @@ const DesktopSidebar = ({
   placeAddPrefill,
   placeAddStep,
   navigationState,
+  signedIn,
   onOpenPlaceDetail,
   onReturnToMapBrowse,
   places,
   selectedPlace,
   selectedPlaceId,
 }: {
+  onAuthAction: () => void
   detailChildSurface: DetailChildSurface
   onAddRatingBack: () => void
   onClosePlaceAdd: () => void
@@ -1004,6 +1007,7 @@ const DesktopSidebar = ({
   placeAddPrefill: PlaceAddPrefill | null
   placeAddStep: PlaceAddStep
   navigationState: NavigationState
+  signedIn: boolean
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
   places: PlaceListItem[]
@@ -1036,9 +1040,11 @@ const DesktopSidebar = ({
         />
       ) : (
         <DesktopBrowseSidebar
+          onAuthAction={onAuthAction}
           onOpenPlaceAdd={onOpenPlaceAdd}
           onOpenPlaceDetail={onOpenPlaceDetail}
           places={places}
+          signedIn={signedIn}
           selectedPlaceId={selectedPlaceId}
         />
       )}
@@ -1281,6 +1287,7 @@ const DesktopAppShell = ({
 }
 
 const MobileAppShell = ({
+  onAuthAction,
   onClosePlaceAdd,
   onContinuePlaceAddToManual,
   detailChildSurface,
@@ -1296,8 +1303,10 @@ const MobileAppShell = ({
   onOpenAddRating,
   onReturnToMapBrowse,
   onSubmitReview,
+  signedIn,
   selectedPlace,
 }: {
+  onAuthAction: () => void
   onClosePlaceAdd: () => void
   onContinuePlaceAddToManual: (prefill?: PlaceAddPrefill) => void
   detailChildSurface: 'detail' | 'add_rating'
@@ -1313,6 +1322,7 @@ const MobileAppShell = ({
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
   onSubmitReview: (placeId: string, draft: ReviewDraft) => Promise<{ status: 'saved' | 'existing_review' | 'error'; message?: string }>
+  signedIn: boolean
   selectedPlace: PlaceSummary | undefined
 }) => {
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
@@ -1350,8 +1360,10 @@ const MobileAppShell = ({
       />
       {navigationState === 'mobile_place_list_open' ? (
         <MobileListPage
+          onAuthAction={onAuthAction}
           onOpenPlaceDetail={onOpenPlaceDetail}
           places={mapPlaces}
+          signedIn={signedIn}
           selectedPlaceId={selectedPlaceId}
         />
       ) : null}
@@ -1415,13 +1427,21 @@ export const NurimapAppShell = () => {
   const places = useAppShellStore((state) => state.places)
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
   const setSelectedPlaceId = useAppShellStore((state) => state.setSelectedPlaceId)
+  const setPlaces = useAppShellStore((state) => state.setPlaces)
   const loadPlaceDetailFromApi = useAppShellStore((state) => state.loadPlaceDetail)
   const loadPlaces = useAppShellStore((state) => state.loadPlaces)
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
   const placeDetailLoad = useAppShellStore((state) => state.placeDetailLoad)
   const submitPlaceReview = useAppShellStore((state) => state.submitPlaceReview)
   const { retry: retryMapRuntime, status: mapRuntimeStatus } = useKakaoScript()
-  const { csrfHeaderName, csrfToken } = useAuth()
+  const {
+    authSurfaceVisible,
+    beginSignIn,
+    csrfHeaderName,
+    csrfToken,
+    phase,
+    signOut,
+  } = useAuth()
   const mapPlaces = places.filter(hasCoordinates)
   const routePlaceId = getPlaceIdFromPathname(pathname)
   const routePlaceAdd = isPlaceAddPathname(pathname)
@@ -1449,8 +1469,12 @@ export const NurimapAppShell = () => {
   const effectiveDetailChildSurface = routePlaceId ? detailChildSurface : 'detail'
   const [placeAddStep, setPlaceAddStep] = useState<PlaceAddStep>(() => readPlaceAddStepFromHistoryState(window.history.state))
   const [placeAddPrefill, setPlaceAddPrefill] = useState<PlaceAddPrefill | null>(() => readPlaceAddPrefillFromHistoryState(window.history.state))
+  const [pendingWriteIntent, setPendingWriteIntent] = useState<PendingWriteIntent | null>(null)
   const effectivePlaceAddStep = routePlaceAdd ? placeAddStep : 'url_entry'
   const effectivePlaceAddPrefill = routePlaceAdd ? placeAddPrefill : null
+  const isSignedIn = phase === 'authenticated' || phase === 'name_required'
+  const hasWriteAccess = phase === 'authenticated'
+  const viewerScopeRef = useRef<'anonymous' | 'signed-in' | null>(null)
 
   useEffect(() => {
     if (placeListLoad !== 'idle') {
@@ -1459,6 +1483,24 @@ export const NurimapAppShell = () => {
 
     void loadPlaces()
   }, [loadPlaces, placeListLoad])
+
+  useEffect(() => {
+    const nextViewerScope = isSignedIn ? 'signed-in' : 'anonymous'
+    if (viewerScopeRef.current === null) {
+      viewerScopeRef.current = nextViewerScope
+      if (nextViewerScope === 'anonymous') {
+        setPlaces(places.map(toPlaceListSummary))
+      }
+      return
+    }
+
+    if (viewerScopeRef.current === nextViewerScope) {
+      return
+    }
+
+    viewerScopeRef.current = nextViewerScope
+    setPlaces(places.map(toPlaceListSummary))
+  }, [isSignedIn, places, setPlaces])
 
   useEffect(() => {
     const nextSurface = routePlaceId
