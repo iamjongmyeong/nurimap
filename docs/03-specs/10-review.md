@@ -1,9 +1,10 @@
 # Spec: Review
 
 ## Summary
-리뷰 작성과 별점 평가 규칙, detail 하단 CTA/add-rating 진입 규칙, 작성 후 상세 복귀 동작을 정의한다.
+anonymous-visible CTA와 authenticated write contract를 포함한 리뷰 작성 규칙을 정의한다.
 
 ## Scope
+- anonymous `평가 남기기` gating
 - 리뷰 작성
 - 리뷰 작성 단계의 별점 평가
 - detail 하단 `평가 남기기` CTA 가시성 규칙
@@ -14,10 +15,13 @@
 - 리뷰 저장 비동기 상태
 
 ## Functional Requirements
-- 로그인 사용자만 리뷰를 작성할 수 있다.
-- 한 사용자는 같은 place에 review 하나만 작성할 수 있다.
+- anonymous 사용자는 detail에서 리뷰와 작성자 정보를 볼 수 있어야 한다.
+- anonymous 또는 authenticated 사용자가 같은 place에 아직 review를 작성하지 않았으면 detail 하단에서 `평가 남기기` CTA를 볼 수 있다.
+- anonymous 사용자가 CTA를 누르면 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 먼저 보여준다.
+- anonymous 사용자가 confirm을 취소하면 같은 detail 맥락에 머문다.
+- anonymous 사용자가 confirm을 수락하면 기존 OTP + 이름 입력 흐름으로 이동하고, 완료 후 같은 place detail의 add-rating surface로 복귀한다.
+- 로그인 사용자는 같은 place에 review 하나만 작성할 수 있다.
 - 일반 리뷰 작성 경로는 detail 하단 `평가 남기기` CTA를 통해 진입한다.
-- 현재 사용자가 같은 place에 아직 review를 작성하지 않았을 때만 CTA를 노출한다.
 - 현재 사용자가 이미 같은 place에 review를 작성했다면 새 review 작성 CTA나 새 작성 entry를 노출하지 않는다.
 - add-rating은 detail-owned child surface로 열리고, durable/shareable route는 계속 `/places/:placeId`를 유지한다.
 - add-rating에서 back/cancel 시 사용자는 같은 place detail 맥락으로 복귀한다.
@@ -40,13 +44,15 @@
 ## Canonical Runtime / API Contract
 - 일반 리뷰 작성의 canonical endpoint는 `POST /api/places/:placeId/reviews`다. place identity는 request body가 아니라 URI로 전달한다.
 - 이 요청은 authenticated app session + CSRF cookie/header pair를 요구한다.
+- anonymous read-open 정책은 review create route에 적용되지 않는다.
 - 일반 리뷰 route는 현재 사용자의 첫 review 생성만 담당한다. 이미 같은 place에 review가 있으면 `409 { status: 'existing_review', place, message }` conflict를 반환하고 둘째 review를 만들지 않는다.
 - 기존 review overwrite는 일반 review route의 별도 RPC flag가 아니라 `place-submissions/:submissionId/confirmations` 흐름 안에서만 허용한다.
 - legacy `POST /api/place-review` compatibility wrapper는 제거되었다. 일반 리뷰 작성은 canonical nested review route만 사용한다.
 
 ## Acceptance Criteria
-- review가 없는 로그인 사용자는 detail CTA를 통해 리뷰와 별점 평가를 함께 작성할 수 있다.
-- `my_review === null`일 때만 `평가 남기기` CTA가 보인다.
+- anonymous 사용자는 detail의 리뷰/작성자 정보를 볼 수 있다.
+- review가 없는 사용자는 detail CTA를 본다.
+- anonymous CTA click은 native confirm을 먼저 보여주고, confirm 수락 후 로그인/이름 입력이 끝나면 같은 place add-rating으로 복귀한다.
 - 한 사용자는 같은 place에 review 1건만 가진다.
 - add-rating은 detail-owned child surface로 열리고 back/cancel 시 detail로 복귀한다.
 - 리뷰 작성 시 입력된 별점은 평균 별점과 별점 수에 반영된다.
@@ -60,30 +66,32 @@
 - 리뷰 저장 실패 시 입력한 리뷰와 별점이 유지된다.
 
 ## TDD Implementation Order
-1. review가 없는 로그인 사용자 CTA visible 테스트를 작성한다.
-2. 이미 review가 있는 사용자 CTA hidden 테스트를 작성한다.
-3. add-rating child surface 진입/복귀 테스트를 작성한다.
-4. 사용자당 place별 review 1건 규칙 테스트를 작성한다.
-5. 리뷰 작성 단계 별점 입력 테스트를 작성한다.
-6. 별점 범위 검증 테스트를 작성한다.
-7. 비로그인 차단 테스트를 작성한다.
-8. 평균 별점 반영 테스트를 작성한다.
-9. 저장 성공 후 detail 즉시 반영 테스트를 작성한다.
-10. place 등록 초기 review 연동 테스트를 작성한다.
-11. 작성자/작성일 표시 테스트를 작성한다.
-12. 리뷰 저장 중 진행 상태 테스트를 작성한다.
-13. 리뷰 저장 중 버튼 비활성화 테스트를 작성한다.
-14. 리뷰 저장 실패 시 입력 유지 테스트를 작성한다.
-15. 구현한다.
-16. 전체 테스트를 통과시킨다.
+1. anonymous CTA gating 테스트를 작성한다.
+2. review가 없는 사용자 CTA visible 테스트를 작성한다.
+3. 이미 review가 있는 사용자 CTA hidden 테스트를 작성한다.
+4. add-rating child surface 진입/복귀 테스트를 작성한다.
+5. 사용자당 place별 review 1건 규칙 테스트를 작성한다.
+6. 리뷰 작성 단계 별점 입력 테스트를 작성한다.
+7. 별점 범위 검증 테스트를 작성한다.
+8. 비로그인 write 차단 테스트를 작성한다.
+9. 평균 별점 반영 테스트를 작성한다.
+10. 저장 성공 후 detail 즉시 반영 테스트를 작성한다.
+11. place 등록 초기 review 연동 테스트를 작성한다.
+12. 작성자/작성일 표시 테스트를 작성한다.
+13. 리뷰 저장 중 진행 상태 테스트를 작성한다.
+14. 리뷰 저장 중 버튼 비활성화 테스트를 작성한다.
+15. 리뷰 저장 실패 시 입력 유지 테스트를 작성한다.
+16. 구현한다.
+17. 전체 테스트를 통과시킨다.
 
 ## Required Test Cases
+- anonymous CTA visible + native confirm gating
 - review가 없는 로그인 사용자 CTA visible + 리뷰/별점 작성 성공
 - 이미 review가 있는 사용자의 CTA hidden
 - add-rating child surface 진입/복귀
 - 사용자당 place별 review 1건 유지
 - 별점 1~5 외 값 실패
-- 비로그인 사용자 실패
+- 비로그인 사용자 write 실패
 - 리뷰 저장 후 평균 별점/별점 수 갱신
 - 저장 성공 후 detail 즉시 반영
 - place 등록 초기 review 연동
@@ -96,6 +104,9 @@
 - 리뷰 저장 실패 시 입력 유지
 
 ## Manual QA Checklist
+- anonymous 사용자는 detail에서 리뷰와 작성자 정보를 본다.
+- anonymous 사용자가 `평가 남기기`를 누르면 native confirm이 먼저 뜨고, 취소하면 같은 detail에 남는다.
+- confirm을 수락해 로그인/이름 입력을 마치면 같은 place add-rating으로 이어진다.
 - review가 없는 로그인 사용자는 detail에서 `평가 남기기` CTA를 본다.
 - add-rating에서 별점 버튼과 선택 후기 입력을 함께 입력할 수 있다.
 - 같은 place에 이미 review가 있는 사용자는 새 리뷰 작성 CTA를 보지 않는다.

@@ -10,7 +10,7 @@
 
 ## Actors
 - User
-  - `@nurimedia.co.kr` 이메일을 가진 사내 구성원
+  - browse/detail을 둘러보는 anonymous visitor 또는 `@nurimedia.co.kr` 이메일로 로그인한 사내 구성원
 - Browser App
   - React 웹 애플리케이션
 - Server Runtime
@@ -35,10 +35,10 @@ flowchart LR
 ## Canonical Entry Contract
 | Surface | Canonical path / state | Notes |
 |---|---|---|
-| Auth request surface | `/` + auth phase | 로그인 전 진입점이다. |
-| Browse surface | `/` | desktop은 지도 + 목록 기본 surface다. mobile은 origin-less `/` 진입 시 목록-first browse surface다. |
-| Place detail surface | `/places/:placeId` | durable/shareable detail source of truth다. desktop은 sidebar detail, mobile은 full-screen detail을 유지한다. |
-| Place add surface | `/add-place` | mobile은 standalone full-screen page, desktop은 sidebar place-add surface로 렌더링한다. 등록 성공 후에는 결과 place의 `/places/:placeId`로 이동한다. |
+| Auth request surface | `/` + auth phase | anonymous browse 위에서 시작되거나 write intent에서 진입하는 auth surface다. |
+| Browse surface | `/` | anonymous/authenticated 모두의 canonical browse surface다. desktop은 지도 + 목록 기본 surface고, mobile은 origin-less `/` 진입 시 목록-first browse surface다. |
+| Place detail surface | `/places/:placeId` | anonymous/authenticated 모두가 진입 가능한 durable/shareable detail source of truth다. desktop은 sidebar detail, mobile은 full-screen detail을 유지한다. |
+| Place add surface | `/add-place` | mobile은 standalone full-screen page, desktop은 sidebar place-add surface로 렌더링한다. anonymous direct entry는 auth-required confirm 뒤에만 usable 상태로 이어지고, 등록 성공 후에는 결과 place의 `/places/:placeId`로 이동한다. |
 | Mobile place list surface | internal `mobile_place_list_open` state | 모바일 전용 목록 surface다. origin-less `/` 진입의 기본 active surface다. |
 
 ## Canonical Server Route Contract
@@ -49,8 +49,8 @@ flowchart LR
 | Auth session read | `GET /api/auth/session` | backend-issued app session | bootstrap read source of truth다. |
 | Auth session delete | `DELETE /api/auth/session` | backend-issued app session + CSRF pair | canonical logout/session termination contract다. |
 | Auth profile update | `PATCH /api/auth/profile` | backend-issued app session + CSRF pair | 이름 온보딩과 current-user profile update를 수행한다. |
-| Place list | `GET /api/places` | backend-issued app session | protected collection read다. |
-| Place detail | `GET /api/places/:placeId` | backend-issued app session | protected item read다. |
+| Place list | `GET /api/places` | anonymous-or-authenticated read | canonical public browse collection read다. write protection과 분리된 read seam을 사용한다. |
+| Place detail | `GET /api/places/:placeId` | anonymous-or-authenticated read | canonical public detail read다. anonymous viewer는 `my_review: null`만 보장된다. |
 | Place lookup | `POST /api/place-lookups` | backend-issued app session + CSRF pair | direct-entry / URL normalization 결과를 만든다. |
 | Place submission create | `POST /api/place-submissions` | backend-issued app session + CSRF pair | duplicate 시 `confirm_required + submissionId`를 반환하고 즉시 mutate하지 않는다. |
 | Place submission confirm | `POST /api/place-submissions/:submissionId/confirmations` | backend-issued app session + CSRF pair | confirmed merge/update를 materialize하고 review uniqueness를 유지한다. |
@@ -88,7 +88,7 @@ flowchart LR
 | Phase | Meaning | Notes |
 |---|---|---|
 | `loading` | bootstrap 중 | transient phase다. 장시간 유지되면 안 된다. |
-| `auth_required` | 로그인 전 상태 | 이메일 입력 및 OTP 요청 surface를 표시한다. |
+| `auth_required` | 로그인 전 상태 | 이메일 입력 및 OTP 요청 surface를 표시한다. browse/detail read는 계속 렌더링할 수 있으며 write intent만 여기로 연결된다. |
 | `otp_required` | OTP 입력 대기 상태 | 같은 auth surface 안에서 재전송과 코드 입력을 수행한다. |
 | `verifying` | OTP 검증 중 | transient phase다. refresh나 예외 상황에서도 terminal state로 수렴해야 한다. |
 | `auth_failure` | 인증 실패 화면 | terminal auth phase다. |
@@ -200,11 +200,11 @@ flowchart LR
 - test/JSDOM용 deterministic fallback renderer가 있어도 runtime user-facing loading/error UI와 역할을 섞지 않는다.
 
 ## Auth And Session Runtime Touchpoints
-- 로그인 요청은 `auth_required` surface에서 시작한다.
+- 로그인 요청은 explicit `로그인` control 또는 anonymous write-intent confirm 이후 `auth_required` surface에서 시작한다.
 - OTP 요청 성공 후에는 같은 auth surface 안에서 `otp_required` 상태로 전환된다.
 - 일반 OTP 검증은 `POST /api/auth/verify-otp`를 통해 backend가 수행한다.
-- auth bootstrap은 refresh, hard refresh, logout 후 재로그인에서도 `auth_required`, `otp_required`, `auth_failure`, `name_required`, `authenticated` 중 하나의 terminal state로 수렴해야 한다.
+- auth bootstrap은 refresh, hard refresh, logout 후 재로그인에서도 `auth_required`, `otp_required`, `auth_failure`, `name_required`, `authenticated` 중 하나의 terminal state로 수렴해야 한다. `auth_required`는 missing-session browse blocker가 아니라 anonymous browse-capable 상태다.
 - `verifying`는 transient phase이며, OTP verify failure가 무한 대기로 남아서는 안 된다.
-- 로그인 성공 시 backend-issued app session cookie를 같은 브라우저 프로필에서 복원하고, 앱 시작 시 `GET /api/auth/session` 또는 보호된 API 확인으로 유효성을 재검증한다.
-- logout은 `DELETE /api/auth/session`, 이름/프로필 저장은 `PATCH /api/auth/profile` authenticated session + CSRF contract를 사용한다.
+- 로그인 성공 시 backend-issued app session cookie를 같은 브라우저 프로필에서 복원하고, 앱 시작 시 `GET /api/auth/session`으로 유효성을 재검증한다. missing session 응답은 browse/detail read를 막지 않는다.
+- logout은 `DELETE /api/auth/session`, 이름/프로필 저장은 `PATCH /api/auth/profile` authenticated session + CSRF contract를 사용한다. logout 뒤에는 blocking auth surface가 아니라 현재 browse/detail 맥락의 anonymous state로 남는다.
 - 세션 절대 만료와 token refresh 정책의 상세 보안 규칙은 [Security And Ops](./security-and-ops.md)를 따른다.

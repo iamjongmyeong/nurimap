@@ -13,6 +13,7 @@
 - 이름 저장 비동기 상태
 - 세션 생성 및 복원
 - OTP 재전송 정책
+- anonymous browse 상태에서 시작되는 write-intent login handoff
 
 ## Functional Requirements
 - 허용 도메인은 `@nurimedia.co.kr` 하나다.
@@ -56,8 +57,12 @@
 - 로그인 성공 시 같은 브라우저에서 최대 90일 세션을 유지한다.
 - bypass 이메일 목록 자체는 환경변수로만 관리하고 tracked source에는 직접 적지 않는다.
 - exact allowlist 이메일 목록도 환경변수로만 관리하고 tracked source에는 직접 적지 않는다.
-- 비로그인 사용자는 보호된 화면과 API에 접근할 수 없다.
-- 로그인 성공 후 사용자 이름이 비어 있으면 이름 입력 화면으로 보낸다.
+- `auth_required`는 로그인 전 상태를 뜻하지만 browse/detail read 자체를 막지 않는다.
+- 비로그인 사용자는 browse/detail read는 계속 볼 수 있지만 보호된 write surface와 write API에는 직접 진입할 수 없다.
+- 비로그인 `장소 추가`, `평가 남기기`, direct `/add-place` 진입은 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 먼저 보여준다.
+- confirm을 수락하면 기존 OTP 로그인 흐름으로 진입한다.
+- 로그인 성공 후 사용자 이름이 비어 있으면 이름 입력 화면으로 보낸 뒤 원래 시도한 write intent로 복귀시킨다.
+- 로그아웃 후에는 browse/detail이 anonymous 상태로 유지되고, write 진입만 다시 로그인 안내를 거친다.
 - 이름 입력은 단일 input field 하나로 받는다.
 - 이름 input은 비울 수 없다.
 - 이름은 1글자 이상 입력되면 유효하다.
@@ -80,7 +85,7 @@
 - canonical 일반 OTP verify endpoint는 `POST /api/auth/verify-otp`다.
 - verify request body는 `{ email: string, token: string }`를 사용한다.
 - verify 성공 시 backend는 app session cookie를 설정하고 `{ status: 'success', nextPhase: 'authenticated' | 'name_required' }`를 반환한다.
-- auth bootstrap source of truth는 `GET /api/auth/session`이다.
+- auth bootstrap source of truth는 `GET /api/auth/session`이다. `missing` 응답은 anonymous browse/detail을 막지 않고 write-only gating에만 사용한다.
 - canonical logout/session termination endpoint는 `DELETE /api/auth/session`이다. 이 요청은 같은 backend-issued app session을 종료하고 `DELETE` mutation이므로 CSRF cookie/header pair를 요구한다.
 - canonical current-user profile mutation endpoint는 `PATCH /api/auth/profile`이다. 이름 온보딩과 이후 profile 수정은 같은 authenticated session + CSRF contract를 재사용한다.
 - `POST /api/auth/request-otp`와 `POST /api/auth/verify-otp`는 intentional workflow endpoint로 유지한다. auth를 억지로 fake resource mutation으로 재모델링하지 않는다.
@@ -109,6 +114,7 @@
 - OTP 확인 중에는 처리 상태가 보이고 결과 확정 전 앱 메인 화면으로 이동하지 않는다.
 - OTP 확인 중 새로고침하거나 네트워크가 hang되어도 무한히 `verifying`에 머물지 않는다.
 - 로그인 성공 시 세션이 생성되고 재접속 시 복구된다.
+- anonymous browse/detail은 세션이 없어도 유지되고, write intent만 로그인 전환을 요구한다.
 - 환경변수로 지정된 bypass 이메일은 OTP 입력 없이도 로그인된다.
 - non-local runtime에서도 exact allowlist 이메일은 bypass가 아니라 일반 OTP 경로로 인증할 수 있다.
 - 로그인 성공 후 이름이 비어 있으면 이름 입력 화면으로 이동한다.
@@ -123,7 +129,8 @@
 - `POST /api/auth/request-otp` 응답 계약과 bypass 응답 계약이 문서와 구현에서 일치한다.
 - 일반 OTP verify는 `POST /api/auth/verify-otp`를 통해 backend가 수행한다.
 - verify 성공 시 app session cookie가 설정되고, 앱은 `GET /api/auth/session`을 기준으로 인증 상태를 복원한다.
-- logout은 `DELETE /api/auth/session`으로 동작하고 same-browser session clear contract를 유지한다.
+- anonymous write attempt는 native confirm -> OTP -> optional name capture 뒤에 원래 add-place/add-rating intent를 복원한다.
+- logout은 `DELETE /api/auth/session`으로 동작하고 same-browser session clear contract를 유지한다. logout 뒤에는 anonymous browse/detail로 돌아간다.
 - 이름 저장/profile update는 `PATCH /api/auth/profile` authenticated session + CSRF contract로 동작한다.
 - `request-otp`는 유일한 canonical OTP request route다. legacy `request-link` compatibility wrapper는 제거되었다.
 - server-side resend/cooldown state는 `app_metadata.nurimap_auth`에 남고 OTP-era 필드로 정리된다.
@@ -154,7 +161,7 @@
 23. 이름 저장 실패 시 입력 유지 테스트를 작성한다.
 24. 이름 저장 후 앱 진입 테스트를 작성한다.
 25. 세션 복원 테스트를 작성한다.
-26. 보호 라우트 / 보호 API 차단 테스트를 작성한다.
+26. anonymous browse/detail 허용 + 보호 write API gating 테스트를 작성한다.
 27. 구현한다.
 28. 전체 테스트를 통과시킨다.
 
@@ -176,7 +183,7 @@
 - refresh / hard refresh 이후 terminal auth state 전환
 - bypass 이메일 즉시 로그인 성공
 - non-local runtime에서 exact allowlist 이메일은 bypass가 아니라 일반 OTP 경로를 사용
-- 보호 화면/API 차단
+- anonymous browse/detail 허용 + 보호 write API 차단
 - `DELETE /api/auth/session`이 app session + csrf cookie를 함께 정리함
 - `PATCH /api/auth/profile`이 authenticated session + CSRF contract 아래에서 현재 사용자 이름을 저장함
 - 이름 없는 사용자 이름 입력 화면 이동
@@ -211,7 +218,7 @@
 - 이름 저장 중 버튼이 비활성화된다.
 - 이름 저장 실패 시 입력한 이름이 유지된다.
 - 1글자 이상 입력하면 저장되고 앱으로 진입한다.
-- 로그아웃 후 보호 화면 접근이 막힌다.
+- 로그아웃 후 browse/detail은 유지되고 write 진입은 다시 로그인 안내를 거친다.
 
 ## QA Evidence
 - 테스트 실행 결과

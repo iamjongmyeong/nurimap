@@ -4,22 +4,23 @@
 route/state ownership과 integration pipeline은 [System Runtime](./system-runtime.md), 도메인 엔터티와 무결성은 [Domain Model](./domain-model.md)에서 다룬다.
 
 ## Security Goals
-- 서비스는 사내 구성원만 사용한다.
-- 인증되지 않은 사용자는 앱과 API를 사용할 수 없다.
+- 로그인 가능한 쓰기 기능은 사내 구성원만 사용한다.
+- 인증되지 않은 사용자는 browse/detail read를 제외한 변경성 앱 기능과 보호 API를 사용할 수 없다.
 - 이메일 입력과 OTP 요청 흐름은 abuse 방지 정책을 가진다.
 - 검색 엔진과 외부 크롤러 노출을 최소화한다.
 
 ## Protected Surface Policy
-- 전체 앱은 로그인 뒤에만 접근 가능하다.
+- browse/detail read surface(`/`, `/places/:placeId`, place list/detail API)는 anonymous access를 허용한다.
 - `place` 등록과 리뷰 작성 같은 변경성 액션은 모두 인증된 사용자만 수행한다.
-- 브라우저와 API는 같은 인증 기준을 적용한다.
+- 브라우저와 API는 같은 read-open / write-auth 기준을 적용한다.
 
 ## Authentication Policy
 
 ### Login Gate
-- 비로그인 사용자는 로그인 화면 외의 화면을 볼 수 없다.
-- API도 동일하게 인증을 강제한다.
-- OTP 검증이 완료되기 전까지는 app shell을 열지 않는다.
+- `auth_required`는 로그인 전 상태를 뜻하지만 browse/detail read 자체를 막지 않는다.
+- 비로그인 사용자는 browse/detail을 볼 수 있지만, write intent를 실행하려면 로그인 안내를 거쳐야 한다.
+- anonymous `장소 추가`, `평가 남기기`, direct `/add-place` 진입은 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 먼저 보여준다.
+- OTP 검증과 이름 입력이 완료되기 전까지는 보호된 write surface와 write API를 열지 않는다.
 
 ### Email Domain Restriction
 - 허용 이메일 도메인은 `@nurimedia.co.kr` 하나다.
@@ -43,8 +44,8 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - backend가 user-facing OTP를 중개하더라도 `signInWithOtp` / `verifyOtp` 같은 일반 auth method는 publishable/anon auth client를 사용하고, `auth.admin.*`만 service-role/admin client를 사용한다.
 
 기본 보호 수치:
-- 동일 이메일은 active cooldown cycle 안에서 최대 5회까지 대기 시간 없이 재요청할 수 있다.
-- 동일 이메일의 6번째 요청부터는 5분 cooldown을 적용한다.
+- 동일 이메일은 active cooldown cycle 안에서 최대 3회까지 대기 시간 없이 재요청할 수 있다.
+- 동일 이메일의 4번째 요청부터는 5분 cooldown을 적용한다.
 
 제한 초과 처리:
 - cooldown에 걸린 재요청은 즉시 거절하고 남은 대기 시간을 안내한다.
@@ -109,7 +110,7 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 - 앱 HTML에 `noindex, nofollow` 정책을 적용한다.
 - `robots.txt`는 모든 크롤링을 차단한다.
 - 서버 응답에도 가능하면 `X-Robots-Tag: noindex, nofollow`를 추가한다.
-- 로그인 게이트가 1차 보호선, 검색 차단 설정이 2차 보호선 역할을 한다.
+- anonymous browse를 허용하더라도 search blocking과 write-auth boundary를 함께 유지해 외부 노출과 변경성 접근을 분리한다.
 
 ## Map/API Abuse Prevention
 - 지도 이동 이벤트는 debounce/throttle로 제어한다.
