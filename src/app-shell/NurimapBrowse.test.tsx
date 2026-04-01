@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { MOCK_PLACES } from './mockPlaces'
 import { resetAppShellStore, useAppShellStore } from './appShellStore'
+import { resetTestAuthState, setTestAuthState } from '../auth/testAuthState'
 
 vi.mock('agentation', () => ({
   Agentation: () => null,
@@ -174,6 +175,7 @@ const setViewport = (width: number) => {
 describe('Nurimap browse', () => {
   beforeEach(() => {
     resetAppShellStore()
+    resetTestAuthState()
     delete window.kakao
     vi.unstubAllEnvs()
     window.history.replaceState({}, '', '/')
@@ -183,6 +185,7 @@ describe('Nurimap browse', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs()
+    resetTestAuthState()
     document.querySelector('script[data-kakao-map-sdk="true"]')?.remove()
     globalThis.fetch = originalFetch
   })
@@ -198,7 +201,7 @@ describe('Nurimap browse', () => {
     expect(screen.queryByTestId('map-focus-place')).not.toBeInTheDocument()
   })
 
-  it('keeps the minimal desktop browse top bar and bottom logout action', () => {
+  it('keeps the minimal desktop browse top bar and bottom auth action', () => {
     setViewport(1280)
     render(<App />)
 
@@ -559,13 +562,14 @@ describe('Nurimap browse', () => {
   })
 
   it('opens the refreshed mobile list-first root and full-screen detail flow', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     setViewport(390)
     const user = userEvent.setup()
     render(<App />)
 
     expect(screen.getByTestId('mobile-list-header')).toContainElement(screen.getByAltText('Nurimedia 로고'))
     expect(screen.getByTestId('mobile-list-page')).toHaveTextContent('누리맵')
-    expect(screen.getByTestId('mobile-list-logout-button')).toHaveAccessibleName('로그아웃')
+    expect(screen.getByTestId('mobile-list-login-button')).toHaveAccessibleName('로그인')
     expect(screen.queryByText('오늘 둘러볼 장소')).not.toBeInTheDocument()
     expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
 

@@ -36,10 +36,22 @@ async function openDesktopDirectEntryForm(page) {
   await page.getByLabel('이름').waitFor({ state: 'visible', timeout: 15000 });
 }
 
-async function ensureAuthRequestScreen(page) {
-  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+async function readVisiblePlaceList(page) {
+  return await page.evaluate(async () => {
+    const response = await fetch('/api/places');
+    const payload = await response.json();
+    return Array.isArray(payload?.places) ? payload.places : [];
+  });
+}
+
+async function ensureAuthRequestScreen(page, { navigate = false } = {}) {
+  if (navigate) {
+    await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  }
+
   const requestButton = page.getByRole('button', { name: '인증 코드 전송' });
   const resetEmailButton = page.getByRole('button', { name: '이메일 다시 입력' });
+  const loginButton = page.getByRole('button', { name: '로그인' });
   const logoutButton = page.getByRole('button', { name: '로그아웃' });
 
   for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -49,6 +61,12 @@ async function ensureAuthRequestScreen(page) {
 
     if (await resetEmailButton.isVisible().catch(() => false)) {
       await resetEmailButton.click();
+      await requestButton.waitFor({ state: 'visible', timeout: 15000 });
+      return;
+    }
+
+    if (await loginButton.isVisible().catch(() => false)) {
+      await loginButton.click();
       await requestButton.waitFor({ state: 'visible', timeout: 15000 });
       return;
     }
@@ -63,6 +81,30 @@ async function ensureAuthRequestScreen(page) {
   }
 
   throw new Error('Could not reach the auth request screen from the local runtime');
+}
+
+async function signInAndSaveName(page) {
+  await ensureAuthRequestScreen(page);
+  await page.getByLabel('이메일').fill(email);
+  await page.getByRole('button', { name: '인증 코드 전송' }).click();
+  await page.getByText('로그인 코드를 보냈어요.').waitFor({ state: 'visible', timeout: 15000 });
+
+  const otpCode = await fetchOtpCode();
+  result.notes.push('OTP email observed in local Mailpit API');
+
+  await page.getByLabel('인증 코드').fill(otpCode);
+  await page.getByRole('button', { name: '인증' }).click();
+
+  const nameInput = page.getByLabel('이름');
+  const saveButton = page.getByRole('button', { name: '저장' });
+  if (await saveButton.isVisible().catch(() => false)) {
+    await nameInput.fill(profileName);
+    await saveButton.click();
+  } else {
+    await saveButton.waitFor({ state: 'visible', timeout: 15000 });
+    await nameInput.fill(profileName);
+    await saveButton.click();
+  }
 }
 
 async function fetchOtpCode() {
@@ -145,8 +187,10 @@ const dialogs = [];
 const apiResponses = [];
 
 page.on('dialog', async (dialog) => {
-  dialogs.push({ type: dialog.type(), message: dialog.message() });
-  await dialog.accept();
+  if (dialog.type() === 'alert') {
+    dialogs.push({ type: dialog.type(), message: dialog.message(), action: 'accept' });
+    await dialog.accept();
+  }
 });
 
 page.on('response', async (response) => {
@@ -179,32 +223,49 @@ const result = {
 };
 
 try {
-  await ensureAuthRequestScreen(page);
-  await page.getByLabel('이메일').fill(email);
-  await page.getByRole('button', { name: '인증 코드 전송' }).click();
-  await page.getByText('로그인 코드를 보냈어요.').waitFor({ state: 'visible', timeout: 15000 });
+  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await page.locator('[data-testid="desktop-browse-topbar"]').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByTestId('map-canvas').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByRole('button', { name: '로그인' }).waitFor({ state: 'visible', timeout: 15000 });
+  result.notes.push('Anonymous desktop browse surface reached');
 
-  const otpCode = await fetchOtpCode();
-  result.notes.push('OTP email observed in local Mailpit API');
-
-  await page.getByLabel('인증 코드').fill(otpCode);
-  await page.getByRole('button', { name: '인증' }).click();
-
-  const nameInput = page.getByLabel('이름');
-  const saveButton = page.getByRole('button', { name: '저장' });
-  if (await saveButton.isVisible().catch(() => false)) {
-    await nameInput.fill(profileName);
-    await saveButton.click();
-  } else {
-    await saveButton.waitFor({ state: 'visible', timeout: 15000 });
-    await nameInput.fill(profileName);
-    await saveButton.click();
+  const visiblePlaces = await readVisiblePlaceList(page);
+  const readablePlace = visiblePlaces[0];
+  if (!readablePlace?.id) {
+    throw new Error('No readable place was returned from /api/places');
   }
 
-  await page.locator('[data-testid="desktop-add-button"]').waitFor({ state: 'visible', timeout: 15000 });
-  result.notes.push('Authenticated shell reached');
+  await page.getByTestId(`place-list-item-${readablePlace.id}`).waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByTestId(`place-list-item-${readablePlace.id}`).click();
+  await page.getByTestId('desktop-detail-panel').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByText(readablePlace.name).waitFor({ state: 'visible', timeout: 15000 });
+  result.notes.push('Anonymous desktop detail read confirmed');
 
-  await openDesktopDirectEntryForm(page);
+  await page.getByRole('button', { name: '목록으로 돌아가기' }).click();
+  await page.locator('[data-testid="desktop-browse-topbar"]').waitFor({ state: 'visible', timeout: 15000 });
+
+  page.once('dialog', async (dialog) => {
+    dialogs.push({ type: dialog.type(), message: dialog.message(), action: 'dismiss' });
+    await dialog.dismiss();
+  });
+  await page.locator('[data-testid="desktop-add-button"]').click();
+  await page.locator('[data-testid="desktop-browse-topbar"]').waitFor({ state: 'visible', timeout: 15000 });
+  if (await page.getByTestId('place-add-url-entry-screen').isVisible().catch(() => false)) {
+    throw new Error('Anonymous add-place cancel unexpectedly opened the place-add surface');
+  }
+  result.notes.push('Anonymous add-place confirm cancel preserved desktop browse context');
+
+  page.once('dialog', async (dialog) => {
+    dialogs.push({ type: dialog.type(), message: dialog.message(), action: 'accept' });
+    await dialog.accept();
+  });
+  await page.locator('[data-testid="desktop-add-button"]').click();
+  await signInAndSaveName(page);
+  await page.getByTestId('place-add-url-entry-screen').waitFor({ state: 'visible', timeout: 15000 });
+  result.notes.push('Anonymous add-place intent resumed after auth');
+
+  await page.getByTestId('place-add-direct-entry-button').click();
+  await page.getByLabel('이름').waitFor({ state: 'visible', timeout: 15000 });
   result.notes.push('Place add URL-entry screen observed before direct entry');
   await page.getByLabel('이름').fill(placeName);
   await page.getByLabel('주소').fill(placeAddress);
@@ -221,12 +282,17 @@ try {
 
   await page.getByRole('button', { name: '목록으로 돌아가기' }).click();
   await page.getByRole('button', { name: '로그아웃' }).waitFor({ state: 'visible', timeout: 15000 });
+  page.once('dialog', async (dialog) => {
+    dialogs.push({ type: dialog.type(), message: dialog.message(), action: 'accept' });
+    await dialog.accept();
+  });
   await page.getByRole('button', { name: '로그아웃' }).click();
-  await page.getByRole('button', { name: '인증 코드 전송' }).waitFor({ state: 'visible', timeout: 15000 });
-  result.notes.push('Logout returned to auth screen');
+  await page.getByRole('button', { name: '로그인' }).waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('[data-testid="desktop-browse-topbar"]').waitFor({ state: 'visible', timeout: 15000 });
+  result.notes.push('Logout returned to anonymous browse surface');
 
   result.passed = true;
-  result.finalState = 'logged_out_after_place_detail';
+  result.finalState = 'anonymous_browse_after_logout';
 } catch (error) {
   result.error = error instanceof Error ? error.message : String(error);
   try {

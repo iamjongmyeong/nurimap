@@ -59,7 +59,8 @@
 - exact allowlist 이메일 목록도 환경변수로만 관리하고 tracked source에는 직접 적지 않는다.
 - `auth_required`는 로그인 전 상태를 뜻하지만 browse/detail read 자체를 막지 않는다.
 - 비로그인 사용자는 browse/detail read는 계속 볼 수 있지만 보호된 write surface와 write API에는 직접 진입할 수 없다.
-- 비로그인 `장소 추가`, `평가 남기기`, direct `/add-place` 진입은 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 먼저 보여준다.
+- 비로그인 `장소 추가`와 direct `/add-place` 진입은 browser-native confirm `누가 추가했는지 알 수 있도록 로그인해주세요.`를 먼저 보여준다.
+- 비로그인 `평가 남기기`는 browser-native confirm `누가 등록했는지 알 수 있도록 로그인해주세요.`를 먼저 보여준다.
 - confirm을 수락하면 기존 OTP 로그인 흐름으로 진입한다.
 - 로그인 성공 후 사용자 이름이 비어 있으면 이름 입력 화면으로 보낸 뒤 원래 시도한 write intent로 복귀시킨다.
 - 로그아웃 후에는 browse/detail이 anonymous 상태로 유지되고, write 진입만 다시 로그인 안내를 거친다.

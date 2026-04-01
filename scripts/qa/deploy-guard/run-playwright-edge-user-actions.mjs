@@ -121,12 +121,17 @@ async function attachCollectors(page, email, dialogs, apiResponses) {
   });
 }
 
-async function ensureAuthRequestScreen(page, dialogs, { mobile = false } = {}) {
-  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+async function ensureAuthRequestScreen(page, dialogs, { mobile = false, navigate = true } = {}) {
+  if (navigate) {
+    await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  }
   const requestButton = page.getByRole('button', { name: '인증 코드 전송' });
   const resetEmailButton = page.getByRole('button', { name: '이메일 다시 입력' });
   const mobileListLogoutButton = page.getByTestId('mobile-list-logout-button');
+  const mobileListLoginButton = page.getByTestId('mobile-list-login-button');
+  const desktopLoginButton = page.getByRole('button', { name: '로그인' });
   const logoutButton = mobile ? mobileListLogoutButton : page.getByRole('button', { name: '로그아웃' });
+  const loginButton = mobile ? mobileListLoginButton : desktopLoginButton;
 
   for (let attempt = 0; attempt < 30; attempt += 1) {
     if (await requestButton.isVisible().catch(() => false)) {
@@ -139,7 +144,13 @@ async function ensureAuthRequestScreen(page, dialogs, { mobile = false } = {}) {
       return;
     }
 
-    if (mobile && !(await mobileListLogoutButton.isVisible().catch(() => false))) {
+    if (await loginButton.isVisible().catch(() => false)) {
+      await loginButton.click();
+      await requestButton.waitFor({ state: 'visible', timeout: 15000 });
+      return;
+    }
+
+    if (mobile && navigate && !(await mobileListLogoutButton.isVisible().catch(() => false))) {
       const mobileTabList = page.getByTestId('mobile-tab-list');
       if (await mobileTabList.isVisible().catch(() => false)) {
         await mobileTabList.click();
@@ -162,8 +173,11 @@ async function ensureAuthRequestScreen(page, dialogs, { mobile = false } = {}) {
   throw new Error('Could not reach the auth request screen from the local runtime');
 }
 
-async function loginAndSaveName(page, email, profileName) {
-  await ensureAuthRequestScreen(page, [], { mobile: page.viewportSize()?.width ? page.viewportSize().width < 768 : false });
+async function loginAndSaveName(page, email, profileName, { dialogs = [], navigate = true } = {}) {
+  await ensureAuthRequestScreen(page, dialogs, {
+    mobile: page.viewportSize()?.width ? page.viewportSize().width < 768 : false,
+    navigate,
+  });
   await page.getByLabel('이메일').fill(email);
   await page.getByRole('button', { name: '인증 코드 전송' }).click();
   await page.getByText('로그인 코드를 보냈어요.').waitFor({ state: 'visible', timeout: 15000 });
@@ -173,6 +187,14 @@ async function loginAndSaveName(page, email, profileName) {
   await page.getByRole('button', { name: '저장' }).waitFor({ state: 'visible', timeout: 15000 });
   await page.getByLabel('이름').fill(profileName);
   await page.getByRole('button', { name: '저장' }).click();
+}
+
+async function readPlaceList(page) {
+  return await page.evaluate(async () => {
+    const response = await fetch('/api/places');
+    const payload = await response.json();
+    return Array.isArray(payload?.places) ? payload.places : [];
+  });
 }
 
 async function openDesktopUrlEntryForm(page) {
@@ -215,6 +237,62 @@ await runScenario('invalid_domain_error', async () => {
   const retained = await page.getByLabel('이메일').inputValue();
   await context.close();
   return { dialogs, apiResponses, retainedEmail: retained };
+});
+
+await runScenario('guest_mobile_root_list_map_and_detail_read', async () => {
+  const dialogs = [];
+  const apiResponses = [];
+  const context = await createContext(browser, { width: 390, height: 844 });
+  const page = await context.newPage();
+  await attachCollectors(page, 'guest-mobile-read@example.com', dialogs, apiResponses);
+
+  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await page.getByTestId('mobile-list-page').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByTestId('mobile-list-login-button').waitFor({ state: 'visible', timeout: 15000 });
+
+  const places = await readPlaceList(page);
+  const targetPlace = places[0];
+  if (!targetPlace?.id) throw new Error('No guest-readable place found');
+
+  const listTabActiveAtRoot = await page.getByTestId('mobile-tab-list').getAttribute('data-active');
+  const mapTabActiveAtRoot = await page.getByTestId('mobile-tab-map').getAttribute('data-active');
+
+  await page.getByTestId(`place-list-item-${targetPlace.id}`).waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByTestId(`place-list-item-${targetPlace.id}`).click();
+  await page.getByTestId('mobile-detail-page').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByText(targetPlace.name).waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByRole('button', { name: '평가 남기기' }).waitFor({ state: 'visible', timeout: 15000 });
+
+  await page.getByRole('button', { name: '뒤로 가기' }).click();
+  await page.getByTestId('mobile-list-page').waitFor({ state: 'visible', timeout: 15000 });
+
+  await page.getByTestId('mobile-tab-map').click();
+  await page.getByTestId('map-canvas').waitFor({ state: 'visible', timeout: 15000 });
+
+  const listTabActiveOnMap = await page.getByTestId('mobile-tab-list').getAttribute('data-active');
+  const mapTabActiveOnMap = await page.getByTestId('mobile-tab-map').getAttribute('data-active');
+
+  page.once('dialog', async (dialog) => {
+    dialogs.push({ type: dialog.type(), message: dialog.message(), action: 'dismiss' });
+    await dialog.dismiss();
+  });
+  await page.getByTestId('mobile-tab-add').click();
+  await page.getByTestId('map-canvas').waitFor({ state: 'visible', timeout: 15000 });
+  const stayedOnMapAfterAddCancel = await page.getByTestId('map-canvas').isVisible();
+  const addScreenVisibleAfterCancel = await page.getByTestId('place-add-url-entry-screen').isVisible().catch(() => false);
+
+  await context.close();
+  return {
+    dialogs,
+    apiResponses,
+    targetPlace: { id: targetPlace.id, name: targetPlace.name },
+    listTabActiveAtRoot,
+    mapTabActiveAtRoot,
+    listTabActiveOnMap,
+    mapTabActiveOnMap,
+    stayedOnMapAfterAddCancel,
+    addScreenVisibleAfterCancel,
+  };
 });
 
 await runScenario('session_restore_direct_detail_and_review_cta_hide', async () => {
@@ -267,6 +345,66 @@ await runScenario('session_restore_direct_detail_and_review_cta_hide', async () 
     targetPlace: { id: targetPlace.id, name: targetPlace.name, addedBy: targetPlace.added_by_name },
     ctaCountAfterReview: ctaCount,
     reviewContent,
+  };
+});
+
+await runScenario('guest_mobile_review_gate_cancel_and_resume', async () => {
+  const unique = Date.now().toString().slice(-6);
+  const email = `playwright-review-gate-${unique}@nurimedia.co.kr`;
+  const profileName = '비로그인리뷰';
+  const reviewContent = `리뷰 게이트 복귀 ${unique}`;
+  const dialogs = [];
+  const apiResponses = [];
+  const context = await createContext(browser, { width: 390, height: 844 });
+  const page = await context.newPage();
+  await attachCollectors(page, email, dialogs, apiResponses);
+
+  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await page.getByTestId('mobile-list-page').waitFor({ state: 'visible', timeout: 15000 });
+
+  const places = await readPlaceList(page);
+  const targetPlace = places[0];
+  if (!targetPlace?.id) throw new Error('No review target place found');
+
+  await page.getByTestId(`place-list-item-${targetPlace.id}`).waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByTestId(`place-list-item-${targetPlace.id}`).click();
+  await page.getByTestId('mobile-detail-page').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByRole('button', { name: '평가 남기기' }).waitFor({ state: 'visible', timeout: 15000 });
+
+  page.once('dialog', async (dialog) => {
+    dialogs.push({ type: dialog.type(), message: dialog.message(), action: 'dismiss' });
+    await dialog.dismiss();
+  });
+  await page.getByRole('button', { name: '평가 남기기' }).click();
+  await page.getByTestId('mobile-detail-page').waitFor({ state: 'visible', timeout: 15000 });
+  const stayedOnDetailAfterCancel = await page.getByTestId('mobile-detail-page').isVisible();
+  const authVisibleAfterCancel = await page.getByRole('button', { name: '인증 코드 전송' }).isVisible().catch(() => false);
+
+  page.once('dialog', async (dialog) => {
+    dialogs.push({ type: dialog.type(), message: dialog.message(), action: 'accept' });
+    await dialog.accept();
+  });
+  await page.getByRole('button', { name: '평가 남기기' }).click();
+
+  await loginAndSaveName(page, email, profileName, { dialogs, navigate: false });
+  await page.getByTestId('mobile-review-add-page').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByTestId('review-add-rating-star-5').click();
+  await page.getByTestId('review-add-content-input').fill(reviewContent);
+  await page.getByTestId('review-add-submit-button').click();
+
+  await page.getByTestId('mobile-detail-page').waitFor({ state: 'visible', timeout: 15000 });
+  await page.getByText(reviewContent).waitFor({ state: 'visible', timeout: 15000 });
+  const ctaCountAfterReview = await page.getByRole('button', { name: '평가 남기기' }).count();
+
+  await context.close();
+  return {
+    dialogs,
+    apiResponses,
+    targetPlace: { id: targetPlace.id, name: targetPlace.name },
+    stayedOnDetailAfterCancel,
+    authVisibleAfterCancel,
+    reviewContent,
+    ctaCountAfterReview,
   };
 });
 

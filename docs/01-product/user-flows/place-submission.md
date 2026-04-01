@@ -11,7 +11,7 @@
 
 ## Place Submission Flow
 1. anonymous 또는 로그인 사용자가 `장소 추가`를 누르거나 direct `/add-place`로 진입한다.
-2. anonymous 사용자는 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 먼저 본다.
+2. anonymous 사용자는 browser-native confirm `누가 추가했는지 알 수 있도록 로그인해주세요.`를 먼저 본다.
 3. anonymous 사용자가 confirm을 취소하면 현재 browse/detail 맥락에 그대로 머문다.
 4. anonymous 사용자가 confirm을 수락하면 OTP 로그인과 필요 시 이름 입력을 완료한 뒤 원래 add-place intent로 복귀한다.
 5. 시스템은 데스크톱에서는 기존 목록 영역 안의 sidebar surface를, 모바일에서는 canonical `/add-place` full-screen page를 연다.

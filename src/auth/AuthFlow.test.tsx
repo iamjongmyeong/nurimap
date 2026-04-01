@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useEffect } from 'react'
 import App from '../App'
 import { AuthProvider } from './AuthProvider'
+import { useAuth } from './authContext'
 import {
   AUTH_BOOTSTRAP_TIMEOUT_MS,
   AUTH_REQUEST_TIMEOUT_MS,
@@ -29,6 +31,23 @@ const setViewport = (width: number) => {
   })
 }
 
+const BeginSignInOnMount = () => {
+  const { beginSignIn } = useAuth()
+
+  useEffect(() => {
+    beginSignIn()
+  }, [beginSignIn])
+
+  return <div data-testid="protected-child" />
+}
+
+const renderStartedAuthFlow = () =>
+  render(
+    <AuthProvider>
+      <BeginSignInOnMount />
+    </AuthProvider>,
+  )
+
 describe('AuthProvider email auth flow', () => {
   beforeEach(() => {
     resetTestAuthState()
@@ -47,21 +66,26 @@ describe('AuthProvider email auth flow', () => {
     window.history.replaceState({}, '', '/')
   })
 
-  it('blocks protected screens when unauthenticated', () => {
+  it('keeps browse visible and opens the login overlay only after an explicit sign-in action', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     setViewport(1280)
+    const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.getByText('누리맵')).toBeInTheDocument()
+    expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '로그인' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '인증 코드 전송' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
     expect(screen.getByText('누리미디어에서 사용 중인 이메일을 입력해주세요.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('example@nurimedia.co.kr')).toBeInTheDocument()
-    expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
   })
 
   it('keeps the email label accessible while visually hiding it', () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    render(<App />)
+    renderStartedAuthFlow()
 
     expect(screen.getByLabelText('이메일')).toHaveAttribute('placeholder', 'example@nurimedia.co.kr')
     expect(screen.getByText('이메일')).toHaveClass('sr-only')
@@ -69,7 +93,7 @@ describe('AuthProvider email auth flow', () => {
 
   it('renders the login email input and request button at the figma height', () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    render(<App />)
+    renderStartedAuthFlow()
 
     expect(screen.getByLabelText('이메일')).toHaveClass('h-12', 'py-3')
     expect(screen.getByRole('button', { name: '인증 코드 전송' })).toHaveClass('h-12', 'py-3', 'font-semibold')
@@ -78,7 +102,7 @@ describe('AuthProvider email auth flow', () => {
   it('keeps the request button disabled until the email format is valid', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
-    render(<App />)
+    renderStartedAuthFlow()
 
     await act(async () => {
       await Promise.resolve()
@@ -101,7 +125,7 @@ describe('AuthProvider email auth flow', () => {
   it('shows an inline error and keeps the email input for an invalid domain', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
-    render(<App />)
+    renderStartedAuthFlow()
 
     await act(async () => {
       await Promise.resolve()
@@ -142,7 +166,11 @@ describe('AuthProvider email auth flow', () => {
         ),
       )
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(
+      <AuthProvider>
+        <BeginSignInOnMount />
+      </AuthProvider>,
+    )
 
     await act(async () => {
       await Promise.resolve()
@@ -162,7 +190,7 @@ describe('AuthProvider email auth flow', () => {
   it('shows the otp-required state in the same auth shell with the requested email', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
-    render(<App />)
+    renderStartedAuthFlow()
 
     await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
     await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
@@ -208,7 +236,7 @@ describe('AuthProvider email auth flow', () => {
   it('immediately enters the onboarding flow for a bypass test account', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
-    render(<App />)
+    renderStartedAuthFlow()
 
     await user.type(screen.getByLabelText('이메일'), 'bypass.user@example.com')
     await user.click(screen.getByTestId('auth-request-button'))
@@ -219,7 +247,7 @@ describe('AuthProvider email auth flow', () => {
   it('verifies OTP and moves to onboarding in test mode', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
-    render(<App />)
+    renderStartedAuthFlow()
 
     await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
     await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
@@ -233,7 +261,7 @@ describe('AuthProvider email auth flow', () => {
   it('shows unified failure copy and error styling inside the otp input state', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
-    render(<App />)
+    renderStartedAuthFlow()
 
     await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
     await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
@@ -249,7 +277,7 @@ describe('AuthProvider email auth flow', () => {
   it('shows the same unified failure copy for expired code', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     const user = userEvent.setup()
-    render(<App />)
+    renderStartedAuthFlow()
 
     await user.type(screen.getByLabelText('이메일'), 'tester@nurimedia.co.kr')
     await user.click(screen.getByRole('button', { name: '인증 코드 전송' }))
@@ -310,7 +338,7 @@ describe('AuthProvider email auth flow', () => {
 
     render(
       <AuthProvider>
-        <div data-testid="protected-child" />
+        <BeginSignInOnMount />
       </AuthProvider>,
     )
 
@@ -322,13 +350,15 @@ describe('AuthProvider email auth flow', () => {
       cache: 'no-store',
       credentials: 'same-origin',
     }))
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/auth/request-otp',
-      expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/auth/request-otp',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    })
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual(expect.objectContaining({
       email: 'bypass.named@example.com',
       intent: 'send',
@@ -367,7 +397,7 @@ describe('AuthProvider email auth flow', () => {
 
     render(
       <AuthProvider>
-        <div data-testid="protected-child" />
+        <BeginSignInOnMount />
       </AuthProvider>,
     )
 
@@ -388,7 +418,7 @@ describe('AuthProvider email auth flow', () => {
 
     render(
       <AuthProvider>
-        <div data-testid="protected-child" />
+        <BeginSignInOnMount />
       </AuthProvider>,
     )
 
@@ -445,7 +475,7 @@ describe('AuthProvider email auth flow', () => {
 
     render(
       <AuthProvider>
-        <div data-testid="protected-child" />
+        <BeginSignInOnMount />
       </AuthProvider>,
     )
 
@@ -486,8 +516,11 @@ describe('AuthProvider email auth flow', () => {
       )
       .mockImplementationOnce(() => new Promise<Response>(() => {}))
     vi.stubGlobal('fetch', fetchMock)
-
-    render(<App />)
+    render(
+      <AuthProvider>
+        <BeginSignInOnMount />
+      </AuthProvider>,
+    )
 
     await act(async () => {
       await Promise.resolve()
@@ -523,7 +556,7 @@ describe('AuthProvider email auth flow', () => {
       failureReason: GENERIC_AUTH_FAILURE_MESSAGE,
     })
     const user = userEvent.setup()
-    render(<App />)
+    renderStartedAuthFlow()
 
     expect(screen.getByTestId('auth-failure-screen')).toBeInTheDocument()
     expect(screen.getByTestId('auth-failure-body')).toHaveTextContent(GENERIC_AUTH_FAILURE_MESSAGE)
@@ -563,11 +596,10 @@ describe('AuthProvider email auth flow', () => {
       message: null,
       failureReason: null,
     })
-    const user = userEvent.setup()
     render(<App />)
 
     const input = screen.getByLabelText('이름')
-    await user.type(input, 'abcdefghijk')
+    fireEvent.change(input, { target: { value: 'abcdefghijk' } })
     expect(input).toHaveValue('abcdefghij')
 
     fireEvent.change(input, { target: { value: '가나다라마바사아자차카타' } })
@@ -583,12 +615,19 @@ describe('AuthProvider email auth flow', () => {
 
   it('blocks protected screens again after logout', async () => {
     setViewport(1280)
+    setTestAuthState({
+      phase: 'authenticated',
+      user: { email: 'tester@nurimedia.co.kr', name: '테스트 사용자' },
+      message: null,
+      failureReason: null,
+    })
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+    await user.click(await screen.findByRole('button', { name: '로그아웃' }))
 
-    expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
-    expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '로그인' })).toBeInTheDocument()
+    expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '인증 코드 전송' })).not.toBeInTheDocument()
   })
 })

@@ -23,15 +23,16 @@
 8. 데스크톱에서는 목록 영역 안의 내용이 상세 화면으로 전환된다.
 9. 모바일에서는 상세 화면이 전체 화면으로 열린다.
 10. 현재 사용자에게 `my_review === null`이면 detail 하단의 `평가 남기기` CTA를 본다. anonymous click은 먼저 로그인 confirm을 거친다.
-11. anonymous 사용자가 `평가 남기기` 또는 `장소 추가`를 시도하면 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 본다.
-12. confirm을 취소하면 사용자는 현재 browse/detail 맥락에 그대로 머문다.
-13. confirm을 수락하면 사용자는 기존 OTP + 이름 입력 흐름으로 이동하고, 완료 후 원래 add-place 또는 add-rating intent로 복귀한다.
-14. authenticated 사용자가 mobile 하단 탭 바의 `추가` 탭을 누르면 `/add-place` full-screen 등록 화면으로 이동하고, desktop `장소 추가` CTA는 기존 sidebar place-add surface를 연다.
-15. 등록 화면을 닫으면 사용자는 직전의 목록 탐색 맥락으로 돌아가며, direct entry/refresh처럼 이전 맥락이 없으면 `/`로 복귀한다.
-16. 상세에서 평균 별점, 별점 수, 장소 구분, 제로페이 가능 여부, 장소를 추가한 사람 이름, 리뷰를 본다.
-17. 리뷰와 평가는 가장 최근 항목부터 위에서 아래 순서로 본다.
-18. 데스크톱에서는 닫기 액션으로, 모바일에서는 뒤로 가기 액션 또는 브라우저 기본 뒤로 가기로 탐색 화면으로 돌아간다.
-19. authenticated 사용자가 로그아웃하면 browse/detail은 anonymous 상태로 유지되고 auth control만 `로그인` 상태로 바뀐다.
+11. anonymous 사용자가 `장소 추가`를 시도하면 browser-native confirm `누가 추가했는지 알 수 있도록 로그인해주세요.`를 본다.
+12. anonymous 사용자가 `평가 남기기`를 시도하면 browser-native confirm `누가 등록했는지 알 수 있도록 로그인해주세요.`를 본다.
+13. confirm을 취소하면 사용자는 현재 browse/detail 맥락에 그대로 머문다.
+14. confirm을 수락하면 사용자는 기존 OTP + 이름 입력 흐름으로 이동하고, 완료 후 원래 add-place 또는 add-rating intent로 복귀한다.
+15. authenticated 사용자가 mobile 하단 탭 바의 `추가` 탭을 누르면 `/add-place` full-screen 등록 화면으로 이동하고, desktop `장소 추가` CTA는 기존 sidebar place-add surface를 연다.
+16. 등록 화면을 닫으면 사용자는 직전의 목록 탐색 맥락으로 돌아가며, direct entry/refresh처럼 이전 맥락이 없으면 `/`로 복귀한다.
+17. 상세에서 평균 별점, 별점 수, 장소 구분, 제로페이 가능 여부, 장소를 추가한 사람 이름, 리뷰를 본다.
+18. 리뷰와 평가는 가장 최근 항목부터 위에서 아래 순서로 본다.
+19. 데스크톱에서는 닫기 액션으로, 모바일에서는 뒤로 가기 액션 또는 브라우저 기본 뒤로 가기로 탐색 화면으로 돌아간다.
+20. authenticated 사용자가 로그아웃하면 browse/detail은 anonymous 상태로 유지되고 auth control만 `로그인` 상태로 바뀐다.
 
 ## Rules
 - anonymous 사용자도 browse/detail read를 볼 수 있어야 한다.

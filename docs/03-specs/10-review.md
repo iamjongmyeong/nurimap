@@ -17,7 +17,7 @@ anonymous-visible CTA와 authenticated write contract를 포함한 리뷰 작성
 ## Functional Requirements
 - anonymous 사용자는 detail에서 리뷰와 작성자 정보를 볼 수 있어야 한다.
 - anonymous 또는 authenticated 사용자가 같은 place에 아직 review를 작성하지 않았으면 detail 하단에서 `평가 남기기` CTA를 볼 수 있다.
-- anonymous 사용자가 CTA를 누르면 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 먼저 보여준다.
+- anonymous 사용자가 CTA를 누르면 browser-native confirm `누가 등록했는지 알 수 있도록 로그인해주세요.`를 먼저 보여준다.
 - anonymous 사용자가 confirm을 취소하면 같은 detail 맥락에 머문다.
 - anonymous 사용자가 confirm을 수락하면 기존 OTP + 이름 입력 흐름으로 이동하고, 완료 후 같은 place detail의 add-rating surface로 복귀한다.
 - 로그인 사용자는 같은 place에 review 하나만 작성할 수 있다.

@@ -47,7 +47,7 @@
 - anonymous read-open 범위는 browse/detail read와 read API에 한정한다.
 - write API와 mutable workflow는 authenticated session + CSRF boundary를 유지한다.
 - auth phase semantics를 바꾸지 않는다. anonymous 사용자를 `authenticated`로 취급하지 않는다.
-- write gating prompt는 browser-native confirm을 사용하고 메시지는 `누가 등록했는지 알 수 있게 로그인해주세요.`로 고정한다.
+- write gating prompt는 browser-native confirm을 사용하고, `장소 추가`/direct `/add-place`는 `누가 추가했는지 알 수 있도록 로그인해주세요.`, `평가 남기기`는 `누가 등록했는지 알 수 있도록 로그인해주세요.`를 사용한다.
 - desktop auth control은 text `로그인`/`로그아웃`, mobile auth control은 icon-button `로그인`/`로그아웃` contract를 따른다.
 - mobile anonymous 로그인 icon은 `public/assets/icons/icon-auth-login.svg`를 사용한다.
 - search blocking(`robots.txt`, `noindex`, `X-Robots-Tag`)은 유지한다.

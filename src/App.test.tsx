@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import App from './App'
 import { resetAppShellStore } from './app-shell/appShellStore'
 import { MOCK_PLACES } from './app-shell/mockPlaces'
+import { resetTestAuthState, setTestAuthState } from './auth/testAuthState'
 
 vi.mock('agentation', () => ({
   Agentation: ({ endpoint }: { endpoint?: string }) => (
@@ -105,14 +106,18 @@ const setViewport = (width: number, height = 844) => {
 
 describe('Nurimap app shell', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     vi.unstubAllEnvs()
     resetAppShellStore()
+    resetTestAuthState()
     window.history.replaceState({}, '', '/')
     globalThis.fetch = createAppShellFetchMock() as typeof fetch
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.unstubAllEnvs()
+    resetTestAuthState()
     globalThis.fetch = originalFetch
   })
 
@@ -170,6 +175,7 @@ describe('Nurimap app shell', () => {
   })
 
   it('renders the mobile bottom tab bar over the full-screen list page on first entry', () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     setViewport(390)
     render(<App />)
 
@@ -192,9 +198,10 @@ describe('Nurimap app shell', () => {
       paddingBottom: 'calc(56px + var(--nurimap-safe-area-bottom, 0px))',
     })
     expect(screen.getByTestId('mobile-list-scroll-region')).toHaveClass('overflow-y-auto', 'overscroll-contain')
-    expect(screen.getByTestId('mobile-list-logout-button')).toHaveAccessibleName('로그아웃')
-    expect(screen.getByTestId('mobile-list-logout-button')).toHaveClass('h-6', 'w-6')
-    expect(screen.getByTestId('mobile-list-logout-button').className).not.toContain('border')
+    expect(screen.getByTestId('mobile-list-login-button')).toHaveAccessibleName('로그인')
+    expect(screen.getByTestId('mobile-list-login-button')).toHaveClass('h-6', 'w-6')
+    expect(screen.getByTestId('mobile-list-login-button')).toHaveClass('text-[#C9C9C9]')
+    expect(screen.getByTestId('mobile-list-login-button').className).not.toContain('border')
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toBeInTheDocument()
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveClass('fixed')
     expect(screen.getByTestId('mobile-bottom-tab-bar')).toHaveStyle({
@@ -234,6 +241,8 @@ describe('Nurimap app shell', () => {
     render(<App />)
 
     expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-list-logout-button')).toHaveClass('text-[#C9C9C9]')
+    expect(screen.getByTestId('mobile-list-logout-button').querySelector('img')).toHaveAttribute('src', '/assets/icons/icon-auth-logout.svg')
     expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
     expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'false')
     expect(screen.getByTestId('mobile-tab-map-icon')).toHaveAttribute('src', '/assets/icons/icon-bottom-tab-map-gray.svg')
@@ -388,7 +397,7 @@ describe('Nurimap app shell', () => {
     })
   })
 
-  it('opens the desktop sidebar place-add surface on direct /add-place entry', () => {
+  it('opens the desktop sidebar place-add surface on direct /add-place entry when authenticated', () => {
     setViewport(1280)
     window.history.replaceState({}, '', ADD_PLACE_ROUTE)
     render(<App />)
@@ -396,7 +405,7 @@ describe('Nurimap app shell', () => {
     expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
   })
 
-  it('opens the mobile place-add page on direct /add-place entry and falls back to the list-first root on browser back', async () => {
+  it('opens the mobile place-add page on direct /add-place entry when authenticated and falls back to the list-first root on browser back', async () => {
     setViewport(390)
     window.history.replaceState({}, '', ADD_PLACE_ROUTE)
     render(<App />)
@@ -413,6 +422,53 @@ describe('Nurimap app shell', () => {
       expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
       expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
       expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'false')
+    })
+  })
+
+  it('returns to desktop browse when anonymous direct /add-place entry is cancelled', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    window.history.replaceState({}, '', ADD_PLACE_ROUTE)
+    render(<App />)
+
+    await waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalledWith('누가 추가했는지 알 수 있도록 로그인해주세요.')
+    })
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/')
+    })
+
+    expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '로그인' })).toBeInTheDocument()
+    expect(screen.queryByTestId('desktop-place-add-panel')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '인증 코드 전송' })).not.toBeInTheDocument()
+  })
+
+  it('restores direct /add-place entry after anonymous desktop auth succeeds', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    window.history.replaceState({}, '', ADD_PLACE_ROUTE)
+    render(<App />)
+
+    await waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalledWith('누가 추가했는지 알 수 있도록 로그인해주세요.')
+    })
+
+    expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
+
+    setTestAuthState({
+      phase: 'authenticated',
+      user: { email: 'tester@nurimedia.co.kr', name: '테스트 사용자' },
+      message: null,
+      failureReason: null,
+    })
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe(ADD_PLACE_ROUTE)
+      expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
     })
   })
 

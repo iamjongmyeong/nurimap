@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { MapPane } from './MapPane'
 import { useAuth } from '../auth/authContext'
 import {
@@ -61,6 +61,7 @@ const PLACE_ADDRESS_ICON_SRC = '/assets/icons/icon-place-address-muted.svg'
 const PLACE_ADDED_BY_ICON_SRC = '/assets/icons/icon-place-added-by-muted.svg'
 const DETAIL_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
 const LOGIN_ICON_SRC = '/assets/icons/icon-auth-login.svg'
+const LOGOUT_ICON_SRC = '/assets/icons/icon-auth-logout.svg'
 const MOBILE_BOTTOM_TAB_MAP_ICON = {
   active: '/assets/icons/icon-bottom-tab-map-black.svg',
   inactive: '/assets/icons/icon-bottom-tab-map-gray.svg',
@@ -74,7 +75,8 @@ const MOBILE_BOTTOM_TAB_PLUS_ICON = {
   inactive: '/assets/icons/icon-bottom-tab-plus-gray.svg',
 }
 const LOGOUT_CONFIRM_MESSAGE = '로그아웃하시겠어요?'
-const LOGIN_REQUIRED_CONFIRM_MESSAGE = '누가 등록했는지 알 수 있게 로그인해주세요.'
+const PLACE_ADD_LOGIN_REQUIRED_CONFIRM_MESSAGE = '누가 추가했는지 알 수 있도록 로그인해주세요.'
+const ADD_RATING_LOGIN_REQUIRED_CONFIRM_MESSAGE = '누가 등록했는지 알 수 있도록 로그인해주세요.'
 const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const DETAIL_ROUTE_PREFIX = '/places/'
 const PLACE_ADD_ROUTE = '/add-place'
@@ -213,15 +215,7 @@ const BackIcon = ({ className = 'h-6 w-6' }: { className?: string }) => (
 )
 
 const LogoutIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
-  <svg aria-hidden="true" className={className} fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M14 7L19 12L14 17M19 12H10M10 4H7C5.89543 4 5 4.89543 5 6V18C5 19.1046 5.89543 20 7 20H10"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.8"
-    />
-  </svg>
+  <img alt="" aria-hidden="true" className={className} src={LOGOUT_ICON_SRC} />
 )
 
 const LoginIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
@@ -1153,7 +1147,7 @@ const MobileListPage = ({
             <DesktopBrowseBrand />
             <button
               aria-label={signedIn ? '로그아웃' : '로그인'}
-              className={`inline-flex h-6 w-6 items-center justify-center rounded-[10px] bg-white text-[#7a7a7a] transition ${
+              className={`inline-flex h-6 w-6 items-center justify-center rounded-[10px] bg-white text-[#C9C9C9] transition ${
                 signedIn ? 'hover:text-[#e52e30]' : 'hover:text-[#5862fb]'
               }`}
               data-testid={signedIn ? 'mobile-list-logout-button' : 'mobile-list-login-button'}
@@ -1221,6 +1215,7 @@ const MobileDetailPage = ({
 
 const DesktopAppShell = ({
   detailChildSurface,
+  onAuthAction,
   onAddRatingBack,
   onClosePlaceAdd,
   onContinuePlaceAddToManual,
@@ -1233,9 +1228,11 @@ const DesktopAppShell = ({
   mapPlaces,
   onOpenPlaceDetail,
   onReturnToMapBrowse,
+  signedIn,
   selectedPlace,
 }: {
   detailChildSurface: DetailChildSurface
+  onAuthAction: () => void
   onAddRatingBack: () => void
   onClosePlaceAdd: () => void
   onContinuePlaceAddToManual: (prefill?: PlaceAddPrefill) => void
@@ -1248,6 +1245,7 @@ const DesktopAppShell = ({
   mapPlaces: PlaceListItem[]
   onOpenPlaceDetail: (placeId: string) => void
   onReturnToMapBrowse: () => void
+  signedIn: boolean
   selectedPlace: PlaceSummary | undefined
 }) => {
   const selectedPlaceId = useAppShellStore((state) => state.selectedPlaceId)
@@ -1257,6 +1255,7 @@ const DesktopAppShell = ({
   return (
     <main className="hidden h-screen md:flex" data-testid="desktop-shell">
       <DesktopSidebar
+        onAuthAction={onAuthAction}
         detailChildSurface={detailChildSurface}
         onAddRatingBack={onAddRatingBack}
         onClosePlaceAdd={onClosePlaceAdd}
@@ -1270,6 +1269,7 @@ const DesktopAppShell = ({
         onOpenPlaceDetail={onOpenPlaceDetail}
         onReturnToMapBrowse={onReturnToMapBrowse}
         places={mapPlaces}
+        signedIn={signedIn}
         selectedPlace={selectedPlace}
         selectedPlaceId={selectedPlaceId}
       />
@@ -1459,6 +1459,8 @@ export const NurimapAppShell = () => {
       : navigationState === 'mobile_place_list_open'
         ? 'mobile_place_list_open'
         : 'map_browse'
+  const isSignedIn = phase === 'authenticated' || phase === 'name_required'
+  const hasWriteAccess = phase === 'authenticated'
   const effectiveNavigationState = routePlaceId
     ? 'place_detail_open'
     : routePlaceAdd
@@ -1471,12 +1473,11 @@ export const NurimapAppShell = () => {
   const effectiveDetailChildSurface = routePlaceId && hasWriteAccess ? detailChildSurface : 'detail'
   const [placeAddStep, setPlaceAddStep] = useState<PlaceAddStep>(() => readPlaceAddStepFromHistoryState(window.history.state))
   const [placeAddPrefill, setPlaceAddPrefill] = useState<PlaceAddPrefill | null>(() => readPlaceAddPrefillFromHistoryState(window.history.state))
-  const [pendingWriteIntent, setPendingWriteIntent] = useState<PendingWriteIntent | null>(null)
+  const pendingWriteIntentRef = useRef<PendingWriteIntent | null>(null)
   const effectivePlaceAddStep = routePlaceAdd ? placeAddStep : 'url_entry'
   const effectivePlaceAddPrefill = routePlaceAdd ? placeAddPrefill : null
-  const isSignedIn = phase === 'authenticated' || phase === 'name_required'
-  const hasWriteAccess = phase === 'authenticated'
   const viewerScopeRef = useRef<'anonymous' | 'signed-in' | null>(null)
+  const handledAnonymousPlaceAddRouteRef = useRef(false)
 
   useEffect(() => {
     if (placeListLoad !== 'idle') {
@@ -1701,7 +1702,7 @@ export const NurimapAppShell = () => {
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
-  const handleAuthAction = () => {
+  const handleAuthAction = useCallback(() => {
     if (!isSignedIn) {
       beginSignIn()
       return
@@ -1712,14 +1713,14 @@ export const NurimapAppShell = () => {
     }
 
     void signOut()
-  }
+  }, [beginSignIn, isSignedIn, signOut])
 
-  const ensureWriteAccess = (intent: PendingWriteIntent) => {
+  const ensureWriteAccess = useCallback((intent: PendingWriteIntent): 'allowed' | 'auth_started' | 'cancelled' => {
     if (hasWriteAccess) {
-      return true
+      return 'allowed'
     }
 
-    setPendingWriteIntent(intent)
+    pendingWriteIntentRef.current = intent
 
     const authFlowAlreadyOpen =
       authSurfaceVisible
@@ -1728,14 +1729,18 @@ export const NurimapAppShell = () => {
       || phase === 'verifying'
       || phase === 'name_required'
 
-    if (!authFlowAlreadyOpen && !window.confirm(LOGIN_REQUIRED_CONFIRM_MESSAGE)) {
-      setPendingWriteIntent(null)
-      return false
+    if (!authFlowAlreadyOpen && !window.confirm(
+      intent.kind === 'add_place'
+        ? PLACE_ADD_LOGIN_REQUIRED_CONFIRM_MESSAGE
+        : ADD_RATING_LOGIN_REQUIRED_CONFIRM_MESSAGE
+    )) {
+      pendingWriteIntentRef.current = null
+      return 'cancelled'
     }
 
     beginSignIn()
-    return false
-  }
+    return 'auth_started'
+  }, [authSurfaceVisible, beginSignIn, hasWriteAccess, phase])
 
   const navigatePlaceAddStep = ({
     prefill = null,
@@ -1776,7 +1781,7 @@ export const NurimapAppShell = () => {
     navigateToPath(PLACE_ADD_ROUTE, replace, nextState)
   }
 
-  const openPlaceAddSurface = () => {
+  const openPlaceAddSurface = useCallback(() => {
     const currentState = readHistoryStateRecord(window.history.state)
     const placeAddOriginNavigationState = window.location.pathname === '/'
       ? effectiveBrowseNavigationState
@@ -1791,9 +1796,9 @@ export const NurimapAppShell = () => {
       [PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD]: placeAddOriginNavigationState,
       placeAddStep: 'url_entry',
     })
-  }
+  }, [effectiveBrowseNavigationState, isDesktop])
 
-  const openAddRatingSurface = (placeId: string) => {
+  const openAddRatingSurface = useCallback((placeId: string) => {
     const targetPath = getDetailRoutePath(placeId)
     const currentState = window.history.state && typeof window.history.state === 'object'
       ? window.history.state as Record<string, unknown>
@@ -1805,7 +1810,59 @@ export const NurimapAppShell = () => {
 
     window.history.pushState({ ...currentState, detailChildSurface: 'add_rating' }, '', targetPath)
     openDetailAddRating()
-  }
+  }, [openDetailAddRating])
+
+  useEffect(() => {
+    if (!routePlaceAdd) {
+      handledAnonymousPlaceAddRouteRef.current = false
+      return
+    }
+
+    if (hasWriteAccess) {
+      handledAnonymousPlaceAddRouteRef.current = false
+      return
+    }
+
+    if (handledAnonymousPlaceAddRouteRef.current) {
+      return
+    }
+
+    handledAnonymousPlaceAddRouteRef.current = true
+
+    const timer = window.setTimeout(() => {
+      const result = ensureWriteAccess({ kind: 'add_place' })
+      if (result !== 'cancelled') {
+        return
+      }
+
+      navigateToPath('/', true, buildBrowseHistoryState({
+        browseNavigationState: effectiveBrowseNavigationState,
+        currentState: readHistoryStateRecord(window.history.state),
+        isDesktop,
+        mobileHistorySessionKey,
+      }))
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [effectiveBrowseNavigationState, ensureWriteAccess, hasWriteAccess, isDesktop, mobileHistorySessionKey, routePlaceAdd])
+
+  useEffect(() => {
+    if (!hasWriteAccess || !pendingWriteIntentRef.current) {
+      return
+    }
+
+    const nextIntent = pendingWriteIntentRef.current
+    pendingWriteIntentRef.current = null
+
+    if (nextIntent.kind === 'add_place') {
+      openPlaceAddSurface()
+      return
+    }
+
+    openAddRatingSurface(nextIntent.placeId)
+  }, [hasWriteAccess, openAddRatingSurface, openPlaceAddSurface])
 
   const handleOpenPlaceDetail = (placeId: string) => {
     const targetPlace = places.find((place) => place.id === placeId)
@@ -1848,7 +1905,7 @@ export const NurimapAppShell = () => {
   }
 
   const handleOpenPlaceAdd = () => {
-    if (!ensureWriteAccess({ kind: 'add_place' })) {
+    if (ensureWriteAccess({ kind: 'add_place' }) !== 'allowed') {
       return
     }
 
@@ -1897,7 +1954,7 @@ export const NurimapAppShell = () => {
       return
     }
 
-    if (!ensureWriteAccess({ kind: 'add_rating', placeId: targetPlaceId })) {
+    if (ensureWriteAccess({ kind: 'add_rating', placeId: targetPlaceId }) !== 'allowed') {
       return
     }
 
@@ -1994,6 +2051,7 @@ export const NurimapAppShell = () => {
   return isDesktop ? (
     <DesktopAppShell
       detailChildSurface={effectiveDetailChildSurface}
+      onAuthAction={handleAuthAction}
       onAddRatingBack={handleCloseAddRating}
       onClosePlaceAdd={handleClosePlaceAdd}
       onContinuePlaceAddToManual={handleContinuePlaceAddToManual}
@@ -2006,10 +2064,12 @@ export const NurimapAppShell = () => {
       mapPlaces={mapPlaces}
       onOpenPlaceDetail={handleOpenPlaceDetail}
       onReturnToMapBrowse={handleReturnToMapBrowse}
+      signedIn={isSignedIn}
       selectedPlace={selectedPlaceDetail}
     />
   ) : (
     <MobileAppShell
+      onAuthAction={handleAuthAction}
       onClosePlaceAdd={handleClosePlaceAdd}
       onContinuePlaceAddToManual={handleContinuePlaceAddToManual}
       detailChildSurface={effectiveDetailChildSurface}
@@ -2025,6 +2085,7 @@ export const NurimapAppShell = () => {
       onOpenPlaceDetail={handleOpenPlaceDetail}
       onReturnToMapBrowse={handleReturnToMapBrowse}
       onSubmitReview={handleSubmitReview}
+      signedIn={isSignedIn}
       selectedPlace={selectedPlaceDetail}
     />
   )

@@ -12,21 +12,22 @@
 ## Authentication Flow
 1. 사용자가 웹사이트에 접속한다.
 2. 사용자는 로그인하지 않아도 browse/detail을 둘러볼 수 있고, explicit `로그인` control을 누르거나 anonymous write 시도에서 auth flow를 시작할 수 있다.
-3. anonymous 사용자가 `장소 추가` 또는 `평가 남기기`를 시도하면 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 본다.
-4. 사용자가 confirm을 취소하면 현재 browse/detail 맥락에 그대로 머문다.
-5. 사용자가 confirm을 수락하거나 explicit `로그인` control을 누르면 로그인 화면에서 회사 이메일을 입력한다.
-6. 시스템이 허용 도메인인지 확인하고, 필요 시 운영자가 설정한 exact allowlist 이메일 예외를 함께 확인한다.
-7. 허용 도메인이 아니거나 OTP를 요청할 수 없는 상태면 로그인 화면에 그대로 머물며 실패 이유를 확인한다.
-8. 요청이 가능하면 이메일로 OTP가 발송되고, 사용자는 같은 auth 흐름 안에서 OTP 입력 상태를 본다.
-9. 사용자가 이메일로 받은 6자리 OTP를 입력한다.
-10. OTP가 유효하면 시스템은 사용자 이름 존재 여부를 확인한다.
-11. OTP가 잘못되었거나 만료되었거나 더 새 OTP 발급으로 무효화되었으면 사용자는 같은 auth 흐름 안에서 다시 시도하거나 새 OTP를 요청한다.
-12. 예상하지 못한 인증 오류가 발생하면 사용자는 인증 실패 화면을 본다.
-13. 이름이 비어 있으면 이름 입력 화면으로 이동한다.
-14. 이름 입력이 완료되면 explicit login이었다면 현재 browse/detail로, anonymous write intent였다면 원래 add-place/add-rating 시도로 복귀한다.
-15. 같은 브라우저 재방문 시 저장 세션이 유효하면 로그인 화면을 건너뛴다.
-16. 로그아웃하면 사용자는 blocking login 화면이 아니라 anonymous browse/detail 상태로 돌아간다.
-17. OTP 검증 중 예외가 생겨도 사용자는 무한 대기 상태에 머물지 않고, 다시 시도 가능한 상태로 돌아갈 수 있어야 한다.
+3. anonymous 사용자가 `장소 추가`를 시도하면 browser-native confirm `누가 추가했는지 알 수 있도록 로그인해주세요.`를 본다.
+4. anonymous 사용자가 `평가 남기기`를 시도하면 browser-native confirm `누가 등록했는지 알 수 있도록 로그인해주세요.`를 본다.
+5. 사용자가 confirm을 취소하면 현재 browse/detail 맥락에 그대로 머문다.
+6. 사용자가 confirm을 수락하거나 explicit `로그인` control을 누르면 로그인 화면에서 회사 이메일을 입력한다.
+7. 시스템이 허용 도메인인지 확인하고, 필요 시 운영자가 설정한 exact allowlist 이메일 예외를 함께 확인한다.
+8. 허용 도메인이 아니거나 OTP를 요청할 수 없는 상태면 로그인 화면에 그대로 머물며 실패 이유를 확인한다.
+9. 요청이 가능하면 이메일로 OTP가 발송되고, 사용자는 같은 auth 흐름 안에서 OTP 입력 상태를 본다.
+10. 사용자가 이메일로 받은 6자리 OTP를 입력한다.
+11. OTP가 유효하면 시스템은 사용자 이름 존재 여부를 확인한다.
+12. OTP가 잘못되었거나 만료되었거나 더 새 OTP 발급으로 무효화되었으면 사용자는 같은 auth 흐름 안에서 다시 시도하거나 새 OTP를 요청한다.
+13. 예상하지 못한 인증 오류가 발생하면 사용자는 인증 실패 화면을 본다.
+14. 이름이 비어 있으면 이름 입력 화면으로 이동한다.
+15. 이름 입력이 완료되면 explicit login이었다면 현재 browse/detail로, anonymous write intent였다면 원래 add-place/add-rating 시도로 복귀한다.
+16. 같은 브라우저 재방문 시 저장 세션이 유효하면 로그인 화면을 건너뛴다.
+17. 로그아웃하면 사용자는 blocking login 화면이 아니라 anonymous browse/detail 상태로 돌아간다.
+18. OTP 검증 중 예외가 생겨도 사용자는 무한 대기 상태에 머물지 않고, 다시 시도 가능한 상태로 돌아갈 수 있어야 한다.
 
 ## Rules
 - 인증의 canonical 성공 경로는 이메일 OTP 입력이다.

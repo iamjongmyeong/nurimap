@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import {
-  getAnonymousOrAuthenticatedRequestContext,
   METHOD_NOT_ALLOWED_RESPONSE_BODY,
 } from '../../src/server-core/auth/requestContext.js'
+import { getAnonymousOrAuthenticatedReadRequestContext } from '../../src/server-core/auth/readRequestContext.js'
 import { listPlacesForUser } from '../../src/server-core/place/placeDataService.js'
 import { initServerSentry } from '../../src/server-core/runtime/sentry.js'
 
@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const requestContext = await getAnonymousOrAuthenticatedRequestContext({ req })
+  const requestContext = await getAnonymousOrAuthenticatedReadRequestContext({ req })
   const viewerUserId = requestContext.status === 'authenticated'
     ? requestContext.authSession.user.id
     : null

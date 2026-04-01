@@ -19,7 +19,8 @@ route/state ownership과 integration pipeline은 [System Runtime](./system-runti
 ### Login Gate
 - `auth_required`는 로그인 전 상태를 뜻하지만 browse/detail read 자체를 막지 않는다.
 - 비로그인 사용자는 browse/detail을 볼 수 있지만, write intent를 실행하려면 로그인 안내를 거쳐야 한다.
-- anonymous `장소 추가`, `평가 남기기`, direct `/add-place` 진입은 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 먼저 보여준다.
+- anonymous `장소 추가`와 direct `/add-place` 진입은 browser-native confirm `누가 추가했는지 알 수 있도록 로그인해주세요.`를 먼저 보여준다.
+- anonymous `평가 남기기`는 browser-native confirm `누가 등록했는지 알 수 있도록 로그인해주세요.`를 먼저 보여준다.
 - OTP 검증과 이름 입력이 완료되기 전까지는 보호된 write surface와 write API를 열지 않는다.
 
 ### Email Domain Restriction

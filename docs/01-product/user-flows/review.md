@@ -11,7 +11,7 @@
 ## Review Flow
 1. anonymous 또는 로그인 사용자가 장소 상세 화면을 연다.
 2. 현재 사용자가 아직 같은 place에 review를 작성하지 않았으면 detail 하단에서 `평가 남기기` CTA를 본다.
-3. anonymous 사용자가 CTA를 누르면 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 본다.
+3. anonymous 사용자가 CTA를 누르면 browser-native confirm `누가 등록했는지 알 수 있도록 로그인해주세요.`를 본다.
 4. anonymous 사용자가 confirm을 취소하면 같은 detail 맥락에 남는다.
 5. anonymous 사용자가 confirm을 수락하면 OTP 로그인과 필요 시 이름 입력을 완료한 뒤 같은 place detail의 add-rating surface로 복귀한다.
 6. 로그인 사용자가 CTA를 누르면 같은 place detail 맥락 안의 add-rating surface로 이동한다.

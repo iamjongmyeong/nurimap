@@ -30,7 +30,7 @@ anonymous/authenticated 사용자가 공통 browse surface에서 place 목록을
 - 모바일 목록 페이지의 상단 고정 header는 로고 + `누리맵` 브랜드를 왼쪽에, anonymous면 `public/assets/icons/icon-auth-login.svg` 로그인 icon button을, authenticated면 로그아웃 icon button을 오른쪽에 표시한다.
 - 모바일 목록 페이지의 목록 row UI는 desktop browse row와 같은 구조를 재사용한다.
 - 모바일과 desktop 모두 `장소 추가` affordance는 anonymous 상태에서도 계속 보인다.
-- anonymous 사용자가 `장소 추가`를 누르거나 direct `/add-place` entry로 write에 진입하려 하면 browser-native confirm `누가 등록했는지 알 수 있게 로그인해주세요.`를 먼저 보여준다.
+- anonymous 사용자가 `장소 추가`를 누르거나 direct `/add-place` entry로 write에 진입하려 하면 browser-native confirm `누가 추가했는지 알 수 있도록 로그인해주세요.`를 먼저 보여준다.
 - anonymous 사용자가 confirm을 취소하면 현재 browse 맥락에 그대로 머문다.
 - anonymous 사용자가 confirm을 수락하면 기존 OTP + 이름 입력 흐름으로 이동하고, 완료 후 원래 add-place intent로 복귀한다.
 - 모바일에서 authenticated 사용자가 `장소 추가`를 누르면 canonical `/add-place` route로 이동해 full-screen 등록 화면을 연다.
