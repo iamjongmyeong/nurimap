@@ -60,6 +60,7 @@ const LIST_STAR_ICON_SRC = '/assets/icons/icon-rating-star-red-16.svg'
 const PLACE_ADDRESS_ICON_SRC = '/assets/icons/icon-place-address-muted.svg'
 const PLACE_ADDED_BY_ICON_SRC = '/assets/icons/icon-place-added-by-muted.svg'
 const DETAIL_BACK_ICON_SRC = '/assets/icons/icon-navigation-back-24.svg'
+const LOGIN_ICON_SRC = '/assets/icons/icon-auth-login.svg'
 const MOBILE_BOTTOM_TAB_MAP_ICON = {
   active: '/assets/icons/icon-bottom-tab-map-black.svg',
   inactive: '/assets/icons/icon-bottom-tab-map-gray.svg',
@@ -73,6 +74,7 @@ const MOBILE_BOTTOM_TAB_PLUS_ICON = {
   inactive: '/assets/icons/icon-bottom-tab-plus-gray.svg',
 }
 const LOGOUT_CONFIRM_MESSAGE = '로그아웃하시겠어요?'
+const LOGIN_REQUIRED_CONFIRM_MESSAGE = '누가 등록했는지 알 수 있게 로그인해주세요.'
 const ZEROPAY_TOOLTIP_DELAY_MS = 400
 const DETAIL_ROUTE_PREFIX = '/places/'
 const PLACE_ADD_ROUTE = '/add-place'
@@ -222,6 +224,10 @@ const LogoutIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
   </svg>
 )
 
+const LoginIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
+  <img alt="" aria-hidden="true" className={className} src={LOGIN_ICON_SRC} />
+)
+
 const LocationIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
   <img alt="" aria-hidden="true" className={className} src={PLACE_ADDRESS_ICON_SRC} />
 )
@@ -358,6 +364,25 @@ const getPlaceIdFromPathname = (pathname: string) => {
     return null
   }
 }
+
+type PendingWriteIntent =
+  | { kind: 'add_place' }
+  | { kind: 'add_rating'; placeId: string }
+
+const toPlaceListSummary = (place: PlaceListItem): PlaceListItem => ({
+  id: place.id,
+  naver_place_id: place.naver_place_id,
+  naver_place_url: place.naver_place_url,
+  name: place.name,
+  road_address: place.road_address,
+  latitude: place.latitude,
+  longitude: place.longitude,
+  place_type: place.place_type,
+  zeropay_status: place.zeropay_status,
+  average_rating: place.average_rating,
+  review_count: place.review_count,
+  added_by_name: place.added_by_name,
+})
 
 const DesktopBrowseBrand = () => (
   <div className="flex items-center gap-3">
@@ -868,24 +893,21 @@ const DesktopBrowseTopBar = ({ onOpenPlaceAdd }: { onOpenPlaceAdd: () => void })
 )
 
 const DesktopBrowseSidebar = ({
+  onAuthAction,
   onOpenPlaceAdd,
   onOpenPlaceDetail,
   places,
+  signedIn,
   selectedPlaceId,
 }: {
+  onAuthAction: () => void
   onOpenPlaceAdd: () => void
   onOpenPlaceDetail: (placeId: string) => void
   places: PlaceListItem[]
+  signedIn: boolean
   selectedPlaceId: string | null
 }) => {
-  const { signOut } = useAuth()
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
-  const handleSignOut = () => {
-    if (!window.confirm(LOGOUT_CONFIRM_MESSAGE)) {
-      return
-    }
-    void signOut()
-  }
 
   return (
     <>
@@ -902,11 +924,14 @@ const DesktopBrowseSidebar = ({
 
       <div className="relative -mb-6 flex h-9 shrink-0 items-center overflow-hidden bg-white" data-testid="desktop-browse-footer">
         <button
-          className="inline-flex cursor-pointer items-center text-xs font-medium text-[#7a7a7a] transition-colors hover:text-[#e52e30]"
-          onClick={handleSignOut}
+          className={`inline-flex cursor-pointer items-center text-xs font-medium text-[#7a7a7a] transition-colors ${
+            signedIn ? 'hover:text-[#e52e30]' : 'hover:text-[#5862fb]'
+          }`}
+          data-testid="desktop-auth-button"
+          onClick={onAuthAction}
           type="button"
         >
-          로그아웃
+          {signedIn ? '로그아웃' : '로그인'}
         </button>
       </div>
     </>
@@ -1100,23 +1125,19 @@ const MobileBottomTabBar = ({
 }
 
 const MobileListPage = ({
+  onAuthAction,
   onOpenPlaceDetail,
   places,
+  signedIn,
   selectedPlaceId,
 }: {
+  onAuthAction: () => void
   onOpenPlaceDetail: (placeId: string) => void
   places: PlaceListItem[]
+  signedIn: boolean
   selectedPlaceId: string | null
 }) => {
-  const { signOut } = useAuth()
   const placeListLoad = useAppShellStore((state) => state.placeListLoad)
-  const handleSignOut = () => {
-    if (!window.confirm(LOGOUT_CONFIRM_MESSAGE)) {
-      return
-    }
-
-    void signOut()
-  }
 
   return (
     <section className={`${MOBILE_SURFACE_CLASS} z-20 pb-14`} data-testid="mobile-list-page" style={MOBILE_BOTTOM_BAR_SPACER_STYLE}>
@@ -1125,14 +1146,16 @@ const MobileListPage = ({
           <div className="flex items-center justify-between gap-3">
             <DesktopBrowseBrand />
             <button
-              aria-label="로그아웃"
-              className="inline-flex h-6 w-6 items-center justify-center rounded-[10px] bg-white text-[#7a7a7a] transition hover:text-[#e52e30]"
-              data-testid="mobile-list-logout-button"
-              onClick={handleSignOut}
+              aria-label={signedIn ? '로그아웃' : '로그인'}
+              className={`inline-flex h-6 w-6 items-center justify-center rounded-[10px] bg-white text-[#7a7a7a] transition ${
+                signedIn ? 'hover:text-[#e52e30]' : 'hover:text-[#5862fb]'
+              }`}
+              data-testid={signedIn ? 'mobile-list-logout-button' : 'mobile-list-login-button'}
+              onClick={onAuthAction}
               type="button"
             >
-              <LogoutIcon className="h-4 w-4" />
-              <span className="sr-only">로그아웃</span>
+              {signedIn ? <LogoutIcon className="h-4 w-4" /> : <LoginIcon className="h-4 w-4" />}
+              <span className="sr-only">{signedIn ? '로그아웃' : '로그인'}</span>
             </button>
           </div>
         </div>
