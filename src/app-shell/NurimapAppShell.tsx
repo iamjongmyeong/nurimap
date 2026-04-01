@@ -1462,11 +1462,13 @@ export const NurimapAppShell = () => {
   const effectiveNavigationState = routePlaceId
     ? 'place_detail_open'
     : routePlaceAdd
-      ? 'place_add_open'
+      ? hasWriteAccess
+        ? 'place_add_open'
+        : effectiveBrowseNavigationState
       : isBrowseNavigationState(navigationState)
         ? effectiveBrowseNavigationState
         : navigationState
-  const effectiveDetailChildSurface = routePlaceId ? detailChildSurface : 'detail'
+  const effectiveDetailChildSurface = routePlaceId && hasWriteAccess ? detailChildSurface : 'detail'
   const [placeAddStep, setPlaceAddStep] = useState<PlaceAddStep>(() => readPlaceAddStepFromHistoryState(window.history.state))
   const [placeAddPrefill, setPlaceAddPrefill] = useState<PlaceAddPrefill | null>(() => readPlaceAddPrefillFromHistoryState(window.history.state))
   const [pendingWriteIntent, setPendingWriteIntent] = useState<PendingWriteIntent | null>(null)
@@ -1699,6 +1701,42 @@ export const NurimapAppShell = () => {
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
+  const handleAuthAction = () => {
+    if (!isSignedIn) {
+      beginSignIn()
+      return
+    }
+
+    if (!window.confirm(LOGOUT_CONFIRM_MESSAGE)) {
+      return
+    }
+
+    void signOut()
+  }
+
+  const ensureWriteAccess = (intent: PendingWriteIntent) => {
+    if (hasWriteAccess) {
+      return true
+    }
+
+    setPendingWriteIntent(intent)
+
+    const authFlowAlreadyOpen =
+      authSurfaceVisible
+      || phase === 'otp_required'
+      || phase === 'auth_failure'
+      || phase === 'verifying'
+      || phase === 'name_required'
+
+    if (!authFlowAlreadyOpen && !window.confirm(LOGIN_REQUIRED_CONFIRM_MESSAGE)) {
+      setPendingWriteIntent(null)
+      return false
+    }
+
+    beginSignIn()
+    return false
+  }
+
   const navigatePlaceAddStep = ({
     prefill = null,
     replace = false,
@@ -1736,6 +1774,37 @@ export const NurimapAppShell = () => {
     }
 
     navigateToPath(PLACE_ADD_ROUTE, replace, nextState)
+  }
+
+  const openPlaceAddSurface = () => {
+    const currentState = readHistoryStateRecord(window.history.state)
+    const placeAddOriginNavigationState = window.location.pathname === '/'
+      ? effectiveBrowseNavigationState
+      : isDesktop
+        ? 'map_browse'
+        : readBrowseNavigationStateFromHistoryState(currentState, 'mobile_place_list_open')
+
+    navigateToPath(PLACE_ADD_ROUTE, false, {
+      ...currentState,
+      navigationState: 'place_add_open',
+      placeAddOriginPath: window.location.pathname,
+      [PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD]: placeAddOriginNavigationState,
+      placeAddStep: 'url_entry',
+    })
+  }
+
+  const openAddRatingSurface = (placeId: string) => {
+    const targetPath = getDetailRoutePath(placeId)
+    const currentState = window.history.state && typeof window.history.state === 'object'
+      ? window.history.state as Record<string, unknown>
+      : {}
+
+    if (window.location.pathname !== targetPath) {
+      window.history.replaceState({ ...currentState, detailChildSurface: 'detail' }, '', targetPath)
+    }
+
+    window.history.pushState({ ...currentState, detailChildSurface: 'add_rating' }, '', targetPath)
+    openDetailAddRating()
   }
 
   const handleOpenPlaceDetail = (placeId: string) => {
@@ -1779,19 +1848,11 @@ export const NurimapAppShell = () => {
   }
 
   const handleOpenPlaceAdd = () => {
-    const currentState = readHistoryStateRecord(window.history.state)
-    const placeAddOriginNavigationState = window.location.pathname === '/'
-      ? effectiveBrowseNavigationState
-      : isDesktop
-        ? 'map_browse'
-        : readBrowseNavigationStateFromHistoryState(currentState, 'mobile_place_list_open')
-    navigateToPath(PLACE_ADD_ROUTE, false, {
-      ...currentState,
-      navigationState: 'place_add_open',
-      placeAddOriginPath: window.location.pathname,
-      [PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD]: placeAddOriginNavigationState,
-      placeAddStep: 'url_entry',
-    })
+    if (!ensureWriteAccess({ kind: 'add_place' })) {
+      return
+    }
+
+    openPlaceAddSurface()
   }
 
   const handleOpenMobilePlaceList = () => {
@@ -1836,17 +1897,11 @@ export const NurimapAppShell = () => {
       return
     }
 
-    const targetPath = getDetailRoutePath(targetPlaceId)
-    const currentState = window.history.state && typeof window.history.state === 'object'
-      ? window.history.state as Record<string, unknown>
-      : {}
-
-    if (window.location.pathname !== targetPath) {
-      window.history.replaceState({ ...currentState, detailChildSurface: 'detail' }, '', targetPath)
+    if (!ensureWriteAccess({ kind: 'add_rating', placeId: targetPlaceId })) {
+      return
     }
 
-    window.history.pushState({ ...currentState, detailChildSurface: 'add_rating' }, '', targetPath)
-    openDetailAddRating()
+    openAddRatingSurface(targetPlaceId)
   }
 
   const handleCloseAddRating = () => {
