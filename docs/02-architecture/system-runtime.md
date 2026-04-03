@@ -35,7 +35,7 @@ flowchart LR
 ## Canonical Entry Contract
 | Surface | Canonical path / state | Notes |
 |---|---|---|
-| Auth request surface | `/` + auth phase | anonymous browse 위에서 시작되거나 write intent에서 진입하는 auth surface다. |
+| Auth request surface | `/login` | explicit 로그인 또는 confirmed write intent에서 진입하는 canonical auth surface다. |
 | Browse surface | `/` | anonymous/authenticated 모두의 canonical browse surface다. desktop은 지도 + 목록 기본 surface고, mobile은 origin-less `/` 진입 시 목록-first browse surface다. |
 | Place detail surface | `/places/:placeId` | anonymous/authenticated 모두가 진입 가능한 durable/shareable detail source of truth다. desktop은 sidebar detail, mobile은 full-screen detail을 유지한다. |
 | Place add surface | `/add-place` | mobile은 standalone full-screen page, desktop은 sidebar place-add surface로 렌더링한다. anonymous direct entry는 auth-required confirm 뒤에만 usable 상태로 이어지고, 등록 성공 후에는 결과 place의 `/places/:placeId`로 이동한다. |
@@ -64,6 +64,7 @@ flowchart LR
 ## Route And State Ownership
 - durable/shareable state는 route가 관리한다.
   - `/`
+  - `/login`
   - `/add-place`
   - `/places/:placeId`
 - transient/view-local state는 local store가 관리한다.
@@ -200,11 +201,14 @@ flowchart LR
 - test/JSDOM용 deterministic fallback renderer가 있어도 runtime user-facing loading/error UI와 역할을 섞지 않는다.
 
 ## Auth And Session Runtime Touchpoints
-- 로그인 요청은 explicit `로그인` control 또는 anonymous write-intent confirm 이후 `auth_required` surface에서 시작한다.
+- 로그인 요청은 explicit `로그인` control 또는 anonymous write-intent confirm 이후 `/login` route에서 시작한다.
 - OTP 요청 성공 후에는 같은 auth surface 안에서 `otp_required` 상태로 전환된다.
 - 일반 OTP 검증은 `POST /api/auth/verify-otp`를 통해 backend가 수행한다.
 - auth bootstrap은 refresh, hard refresh, logout 후 재로그인에서도 `auth_required`, `otp_required`, `auth_failure`, `name_required`, `authenticated` 중 하나의 terminal state로 수렴해야 한다. `auth_required`는 missing-session browse blocker가 아니라 anonymous browse-capable 상태다.
 - `verifying`는 transient phase이며, OTP verify failure가 무한 대기로 남아서는 안 된다.
 - 로그인 성공 시 backend-issued app session cookie를 같은 브라우저 프로필에서 복원하고, 앱 시작 시 `GET /api/auth/session`으로 유효성을 재검증한다. missing session 응답은 browse/detail read를 막지 않는다.
+- direct `/login` 진입은 pending write intent가 없으면 로그인 성공 뒤 `/`로 이동한다.
+- explicit 로그인 control에서 `/login`으로 진입한 경우에는 로그인 성공 뒤 직전 browse/detail 맥락으로 복귀한다.
+- write intent에서 `/login`으로 진입한 경우에는 로그인 및 필요 시 이름 입력 뒤 원래 add-place/add-rating intent로 복귀한다.
 - logout은 `DELETE /api/auth/session`, 이름/프로필 저장은 `PATCH /api/auth/profile` authenticated session + CSRF contract를 사용한다. logout 뒤에는 blocking auth surface가 아니라 현재 browse/detail 맥락의 anonymous state로 남는다.
 - 세션 절대 만료와 token refresh 정책의 상세 보안 규칙은 [Security And Ops](./security-and-ops.md)를 따른다.

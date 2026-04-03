@@ -110,6 +110,25 @@ describe('release hardening', () => {
     )
   })
 
+  it('adds the /login rewrite without removing existing auth rewrites', () => {
+    const vercelConfig = JSON.parse(readFileSync(path.resolve(process.cwd(), 'vercel.json'), 'utf8')) as {
+      rewrites?: Array<{ source: string; destination: string }>
+    }
+
+    expect(vercelConfig.rewrites).toEqual(
+      expect.arrayContaining([
+        {
+          source: '/auth/verify',
+          destination: '/',
+        },
+        {
+          source: '/login',
+          destination: '/',
+        },
+      ]),
+    )
+  })
+
   it('does not reference sensitive server env vars from client code', () => {
     const clientFiles = collectClientFiles(path.resolve(process.cwd(), 'src'))
     const forbiddenEnvNames = [

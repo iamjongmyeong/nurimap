@@ -1,7 +1,58 @@
-import { type ComponentType, useEffect, useState } from 'react'
+import { type ComponentType, useEffect, useLayoutEffect, useSyncExternalStore, useState } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { NurimapAppShell } from './app-shell/NurimapAppShell'
 import { AuthProvider } from './auth/AuthProvider'
+import { useAuth } from './auth/authContext'
+import { isLoginRoutePathname, readLoginRouteHistoryState } from './auth/loginRouteState'
+
+const subscribeToLocation = (callback: () => void) => {
+  window.addEventListener('popstate', callback)
+  return () => {
+    window.removeEventListener('popstate', callback)
+  }
+}
+
+const getLocationPathname = () => window.location.pathname
+
+const navigateToPath = (path: string, replace = false, historyState: Record<string, unknown> = {}) => {
+  if (window.location.pathname === path) {
+    window.history.replaceState(historyState, '', path)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    return
+  }
+
+  if (replace) {
+    window.history.replaceState(historyState, '', path)
+  } else {
+    window.history.pushState(historyState, '', path)
+  }
+
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+const LoginRouteController = ({ pathname }: { pathname: string }) => {
+  const { phase } = useAuth()
+
+  useLayoutEffect(() => {
+    if (!isLoginRoutePathname(pathname) || phase !== 'authenticated') {
+      return
+    }
+
+    const loginRouteState = readLoginRouteHistoryState(window.history.state)
+    if (loginRouteState?.loginPostAuthPath) {
+      navigateToPath(
+        loginRouteState.loginPostAuthPath,
+        true,
+        loginRouteState.loginPostAuthState ?? {},
+      )
+      return
+    }
+
+    navigateToPath('/', true, {})
+  }, [pathname, phase])
+
+  return null
+}
 
 function AgentationGate() {
   const shouldEnableAgentation = import.meta.env.DEV && import.meta.env.VITE_ENABLE_AGENTATION === 'true'
@@ -66,10 +117,14 @@ function AgentationGate() {
 }
 
 function App() {
+  const pathname = useSyncExternalStore(subscribeToLocation, getLocationPathname, getLocationPathname)
+  const authRouteActive = isLoginRoutePathname(pathname)
+
   return (
     <>
-      <AuthProvider>
-        <NurimapAppShell />
+      <AuthProvider authRouteActive={authRouteActive}>
+        <LoginRouteController pathname={pathname} />
+        {authRouteActive ? null : <NurimapAppShell />}
       </AuthProvider>
       <AgentationGate />
       <Analytics />

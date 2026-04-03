@@ -3,6 +3,10 @@ import userEvent from '@testing-library/user-event'
 import App from './App'
 import { resetAppShellStore } from './app-shell/appShellStore'
 import { MOCK_PLACES } from './app-shell/mockPlaces'
+import {
+  LOGIN_RETURN_BROWSE_NAVIGATION_STATE_FIELD,
+  readLoginReturnBrowseNavigationStateFromHistoryState,
+} from './auth/loginRouteState'
 import { resetTestAuthState, setTestAuthState } from './auth/testAuthState'
 
 vi.mock('agentation', () => ({
@@ -15,6 +19,7 @@ vi.mock('agentation', () => ({
 
 const originalFetch = globalThis.fetch
 const ADD_PLACE_ROUTE = '/add-place'
+const LOGIN_ROUTE = '/login'
 
 const cloneMockPlace = (placeId: string) => {
   const matched = MOCK_PLACES.find((place) => place.id === placeId)
@@ -425,38 +430,147 @@ describe('Nurimap app shell', () => {
     })
   })
 
-  it('returns to desktop browse when anonymous direct /add-place entry is cancelled', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  it('routes anonymous direct /add-place entry to /login without relying on confirm', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm')
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     setViewport(1280)
     window.history.replaceState({}, '', ADD_PLACE_ROUTE)
     render(<App />)
 
     await waitFor(() => {
-      expect(confirmSpy).toHaveBeenCalledWith('누가 추가했는지 알 수 있도록 로그인해주세요.')
+      expect(window.location.pathname).toBe(LOGIN_ROUTE)
+    })
+
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
+    expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
+  })
+
+  it('renders the dedicated /login page without the browse shell', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    window.history.replaceState({}, '', LOGIN_ROUTE)
+    render(<App />)
+
+    expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
+    expect(window.location.pathname).toBe(LOGIN_ROUTE)
+    expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('mobile-list-page')).not.toBeInTheDocument()
+  })
+
+  it('reads the browse return state from the top-level post-auth history state', () => {
+    expect(readLoginReturnBrowseNavigationStateFromHistoryState({
+      [LOGIN_RETURN_BROWSE_NAVIGATION_STATE_FIELD]: 'mobile_place_list_open',
+    })).toBe('mobile_place_list_open')
+  })
+
+  it('routes desktop explicit login through /login', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe(LOGIN_ROUTE)
+    })
+    expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
+    expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument()
+  })
+
+  it('returns mobile explicit login to the prior root browse tab after auth succeeds', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+    expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
+
+    await user.click(screen.getByTestId('mobile-list-login-button'))
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe(LOGIN_ROUTE)
+    })
+    expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
+
+    act(() => {
+      setTestAuthState({
+        phase: 'authenticated',
+        user: { email: 'tester@nurimedia.co.kr', name: '테스트 사용자' },
+        message: null,
+        failureReason: null,
+      })
     })
 
     await waitFor(() => {
       expect(window.location.pathname).toBe('/')
+      expect(screen.getByTestId('mobile-list-page')).toBeInTheDocument()
+      expect(screen.getByTestId('mobile-tab-list')).toHaveAttribute('data-active', 'true')
+      expect(screen.getByTestId('mobile-tab-map')).toHaveAttribute('data-active', 'false')
     })
+  })
+
+  it('returns explicit browse login to the prior browse context after auth succeeds', async () => {
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    const user = userEvent.setup()
+    render(<App />)
 
     expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '로그인' })).toBeInTheDocument()
-    expect(screen.queryByTestId('desktop-place-add-panel')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '인증 코드 전송' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe(LOGIN_ROUTE)
+    })
+
+    act(() => {
+      setTestAuthState({
+        phase: 'authenticated',
+        user: { email: 'tester@nurimedia.co.kr', name: '테스트 사용자' },
+        message: null,
+        failureReason: null,
+      })
+    })
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/')
+      expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+    })
+  })
+
+  it('redirects already-authenticated direct /login entry back to /', async () => {
+    act(() => {
+      setTestAuthState({
+        phase: 'authenticated',
+        user: { email: 'tester@nurimedia.co.kr', name: '테스트 사용자' },
+        message: null,
+        failureReason: null,
+      })
+    })
+    setViewport(1280)
+    window.history.replaceState({}, '', LOGIN_ROUTE)
+    render(<App />)
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/')
+      expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+    })
   })
 
   it('restores direct /add-place entry after anonymous desktop auth succeeds', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const confirmSpy = vi.spyOn(window, 'confirm')
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
     setViewport(1280)
     window.history.replaceState({}, '', ADD_PLACE_ROUTE)
     render(<App />)
 
     await waitFor(() => {
-      expect(confirmSpy).toHaveBeenCalledWith('누가 추가했는지 알 수 있도록 로그인해주세요.')
+      expect(window.location.pathname).toBe(LOGIN_ROUTE)
     })
-
+    expect(confirmSpy).not.toHaveBeenCalled()
     expect(await screen.findByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()
 
     setTestAuthState({
@@ -469,6 +583,43 @@ describe('Nurimap app shell', () => {
     await waitFor(() => {
       expect(window.location.pathname).toBe(ADD_PLACE_ROUTE)
       expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
+    })
+  })
+
+  it('returns anonymous direct /add-place auth handoff back to / when browser back closes the restored route', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm')
+    setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
+    setViewport(1280)
+    window.history.replaceState({}, '', ADD_PLACE_ROUTE)
+    render(<App />)
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe(LOGIN_ROUTE)
+    })
+    expect(confirmSpy).not.toHaveBeenCalled()
+
+    act(() => {
+      setTestAuthState({
+        phase: 'authenticated',
+        user: { email: 'tester@nurimedia.co.kr', name: '테스트 사용자' },
+        message: null,
+        failureReason: null,
+      })
+    })
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe(ADD_PLACE_ROUTE)
+      expect(screen.getByTestId('desktop-sidebar')).toContainElement(screen.getByTestId('desktop-place-add-panel'))
+    })
+
+    act(() => {
+      window.history.back()
+    })
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/')
+      expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
+      expect(screen.queryByTestId('desktop-place-add-panel')).not.toBeInTheDocument()
     })
   })
 

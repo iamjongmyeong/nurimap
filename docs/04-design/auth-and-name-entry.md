@@ -10,11 +10,12 @@
 
 ## Visual Source Of Truth
 - 현재 작업에 제공된 screenshot / Figma / annotated handoff가 auth surface의 시각 기준이다.
-- handoff가 없으면 기존 live auth shell hierarchy를 보존하고 새로운 chrome을 추정 추가하지 않는다.
+- handoff가 없으면 `/login` dedicated page 안에서 기존 live auth shell hierarchy를 보존하고 새로운 chrome을 추정 추가하지 않는다.
 - 이 문서는 세부 시각 토큰, 타이포그래피 세부값, 자산 경로, exact copy를 고정하지 않는다.
 
 ## Surface Contract
 - `auth_required`, `otp_required`, `auth_failure`, `verifying`, `name_required`는 같은 auth surface 계열로 읽혀야 한다.
+- explicit 로그인과 confirmed write intent의 canonical auth 진입은 `/login` route다.
 - OTP 요청 성공 후에는 별도 페이지로 벗어나지 않고 같은 auth surface 안에서 OTP 입력 상태로 전환된다.
 - OTP 입력 상태는 사용자가 요청한 이메일 맥락과 재시도 affordance를 같은 surface 안에서 이어받아야 한다.
 - recoverable OTP 오류는 가능한 한 OTP 입력 surface 안에서 해결되어야 한다.
@@ -29,7 +30,7 @@
 ## Hidden Invariants
 - `verifying`는 transient state이며 refresh, hard refresh, 예외 상황에서도 terminal auth state로 수렴해야 한다.
 - backend-issued session이 유효하면 세션 복원을 우선한다.
-- 인증 전에는 app shell의 탐색 surface를 노출하지 않는다.
+- `/login` route 안에서는 app shell의 탐색 surface를 노출하지 않는다. browse/detail route의 anonymous read-open contract는 별도 source of truth를 따른다.
 - 이름 입력은 browse 진입 전 마지막 gate로 유지한다.
 
 ## Failure / Context Rule

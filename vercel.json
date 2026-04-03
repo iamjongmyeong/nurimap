@@ -36,6 +36,10 @@
       "destination": "/"
     },
     {
+      "source": "/login",
+      "destination": "/"
+    },
+    {
       "source": "/places/:match*",
       "destination": "/"
     }

@@ -485,7 +485,13 @@ const VerifyingScreen = () => (
   </AuthSurface>
 )
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({
+  authRouteActive = false,
+  children,
+}: {
+  authRouteActive?: boolean
+  children: ReactNode
+}) => {
   const testState = useTestAuthState()
   const [phase, setPhase] = useState<AuthPhase>('loading')
   const [authSurfaceVisible, setAuthSurfaceVisible] = useState(false)
@@ -1134,6 +1140,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     resolvedPhase === 'name_required'
     || resolvedPhase === 'otp_required'
     || resolvedPhase === 'auth_failure'
+    || (authRouteActive
+      && (resolvedPhase === 'loading' || resolvedPhase === 'verifying' || resolvedPhase === 'auth_required'))
     || (authSurfaceVisible
       && (resolvedPhase === 'loading' || resolvedPhase === 'verifying' || resolvedPhase === 'auth_required'))
 

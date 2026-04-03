@@ -66,17 +66,9 @@ describe('AuthProvider email auth flow', () => {
     window.history.replaceState({}, '', '/')
   })
 
-  it('keeps browse visible and opens the login overlay only after an explicit sign-in action', async () => {
+  it('renders the auth request surface when beginSignIn is triggered directly', async () => {
     setTestAuthState({ phase: 'auth_required', user: null, message: null, failureReason: null })
-    setViewport(1280)
-    const user = userEvent.setup()
-    render(<App />)
-
-    expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '로그인' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '인증 코드 전송' })).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '로그인' }))
+    renderStartedAuthFlow()
 
     expect(screen.getByText('누리미디어에서 사용 중인 이메일을 입력해주세요.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '인증 코드 전송' })).toBeInTheDocument()

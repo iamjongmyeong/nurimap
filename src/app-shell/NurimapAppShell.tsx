@@ -2,6 +2,12 @@ import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, 
 import { MapPane } from './MapPane'
 import { useAuth } from '../auth/authContext'
 import {
+  LOGIN_RETURN_BROWSE_NAVIGATION_STATE_FIELD,
+  LOGIN_ROUTE,
+  buildLoginRouteHistoryState,
+  readLoginReturnBrowseNavigationStateFromHistoryState,
+} from '../auth/loginRouteState'
+import {
   DesktopPlaceAddPanel,
   MobilePlaceAddPage,
   type PlaceAddPrefill,
@@ -314,6 +320,7 @@ const buildBrowseHistoryState = ({
   delete nextState.placeAddOriginPath
   delete nextState[MOBILE_DETAIL_ORIGIN_FIELD]
   delete nextState[MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD]
+  delete nextState[LOGIN_RETURN_BROWSE_NAVIGATION_STATE_FIELD]
 
   return nextState
 }
@@ -1436,7 +1443,6 @@ export const NurimapAppShell = () => {
   const { retry: retryMapRuntime, status: mapRuntimeStatus } = useKakaoScript()
   const {
     authSurfaceVisible,
-    beginSignIn,
     csrfHeaderName,
     csrfToken,
     phase,
@@ -1449,12 +1455,17 @@ export const NurimapAppShell = () => {
   const routeSelectedPlace = routePlaceId
     ? places.find((place) => place.id === routePlaceId)
     : undefined
+  const loginReturnBrowseNavigationState = pathname === '/'
+    ? readLoginReturnBrowseNavigationStateFromHistoryState(currentHistoryState)
+    : null
   const selectedPlace = routePlaceId
     ? routeSelectedPlace
     : places.find((place) => place.id === selectedPlaceId)
   const selectedPlaceDetail = hasPlaceDetail(selectedPlace) ? selectedPlace : undefined
   const effectiveBrowseNavigationState: BrowseNavigationState =
-    !isDesktop && pathname === '/' && !routePlaceId && !routePlaceAdd
+    loginReturnBrowseNavigationState
+      ? loginReturnBrowseNavigationState
+      : !isDesktop && pathname === '/' && !routePlaceId && !routePlaceAdd
       ? resolveMobileRootBrowseNavigationState(currentHistoryState, mobileHistorySessionKey)
       : navigationState === 'mobile_place_list_open'
         ? 'mobile_place_list_open'
@@ -1473,7 +1484,6 @@ export const NurimapAppShell = () => {
   const effectiveDetailChildSurface = routePlaceId && hasWriteAccess ? detailChildSurface : 'detail'
   const [placeAddStep, setPlaceAddStep] = useState<PlaceAddStep>(() => readPlaceAddStepFromHistoryState(window.history.state))
   const [placeAddPrefill, setPlaceAddPrefill] = useState<PlaceAddPrefill | null>(() => readPlaceAddPrefillFromHistoryState(window.history.state))
-  const pendingWriteIntentRef = useRef<PendingWriteIntent | null>(null)
   const effectivePlaceAddStep = routePlaceAdd ? placeAddStep : 'url_entry'
   const effectivePlaceAddPrefill = routePlaceAdd ? placeAddPrefill : null
   const viewerScopeRef = useRef<'anonymous' | 'signed-in' | null>(null)
@@ -1520,6 +1530,10 @@ export const NurimapAppShell = () => {
       return
     }
 
+    if (!hasWriteAccess) {
+      return
+    }
+
     const currentState = readHistoryStateRecord(window.history.state)
     if (typeof currentState.placeAddOriginPath === 'string') {
       return
@@ -1545,7 +1559,7 @@ export const NurimapAppShell = () => {
       [PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD]: isDesktop ? 'map_browse' : 'mobile_place_list_open',
       placeAddStep: 'url_entry',
     }, '', PLACE_ADD_ROUTE)
-  }, [isDesktop, mobileHistorySessionKey, routePlaceAdd])
+  }, [hasWriteAccess, isDesktop, mobileHistorySessionKey, routePlaceAdd])
 
   useEffect(() => {
     if (pathname !== '/' || routePlaceId || routePlaceAdd) {
@@ -1568,6 +1582,7 @@ export const NurimapAppShell = () => {
       currentState.navigationState === nextState.navigationState &&
       currentState.detailChildSurface === nextState.detailChildSurface &&
       currentState.placeAddOriginPath === nextState.placeAddOriginPath &&
+      currentState[LOGIN_RETURN_BROWSE_NAVIGATION_STATE_FIELD] === nextState[LOGIN_RETURN_BROWSE_NAVIGATION_STATE_FIELD] &&
       currentState[MOBILE_HISTORY_SESSION_KEY_FIELD] === nextState[MOBILE_HISTORY_SESSION_KEY_FIELD] &&
       currentState[MOBILE_DETAIL_ORIGIN_FIELD] === nextState[MOBILE_DETAIL_ORIGIN_FIELD] &&
       currentState[MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD] === nextState[MOBILE_DETAIL_ORIGIN_SESSION_KEY_FIELD]
@@ -1686,7 +1701,7 @@ export const NurimapAppShell = () => {
     }
   }, [loadPlaceDetailFromApi, placeDetailLoad, routePlaceId, routeSelectedPlace, selectedPlaceId, setSelectedPlaceId])
 
-  const navigateToPath = (path: string, replace = false, historyState: Record<string, unknown> = {}) => {
+  const navigateToPath = useCallback((path: string, replace = false, historyState: Record<string, unknown> = {}) => {
     if (window.location.pathname === path) {
       window.history.replaceState(historyState, '', path)
       window.dispatchEvent(new PopStateEvent('popstate'))
@@ -1700,11 +1715,77 @@ export const NurimapAppShell = () => {
     }
 
     window.dispatchEvent(new PopStateEvent('popstate'))
-  }
+  }, [])
+
+  const navigateToLoginRoute = useCallback(({
+    entryKind,
+    postAuthPath,
+    postAuthState,
+    replace = false,
+  }: {
+    entryKind: 'direct' | 'explicit' | 'write_intent'
+    postAuthPath?: string
+    postAuthState?: Record<string, unknown>
+    replace?: boolean
+  }) => {
+    navigateToPath(
+      LOGIN_ROUTE,
+      replace,
+      buildLoginRouteHistoryState({
+        entryKind,
+        postAuthPath,
+        postAuthState,
+      }),
+    )
+  }, [navigateToPath])
+
+  const buildPostAuthPlaceAddDestination = useCallback(() => {
+    const currentState = readHistoryStateRecord(window.history.state)
+    const placeAddOriginNavigationState = window.location.pathname === '/'
+      ? effectiveBrowseNavigationState
+      : isDesktop
+        ? 'map_browse'
+        : readBrowseNavigationStateFromHistoryState(currentState, 'mobile_place_list_open')
+    const placeAddOriginPath =
+      typeof currentState.placeAddOriginPath === 'string'
+        ? currentState.placeAddOriginPath
+        : window.location.pathname === PLACE_ADD_ROUTE
+          ? '/'
+          : window.location.pathname
+
+    return {
+      path: PLACE_ADD_ROUTE,
+      state: {
+        ...currentState,
+        navigationState: 'place_add_open',
+        placeAddOriginPath,
+        [PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD]: placeAddOriginNavigationState,
+        placeAddStep: 'url_entry',
+      } satisfies Record<string, unknown>,
+    }
+  }, [effectiveBrowseNavigationState, isDesktop])
+
+  const buildPostAuthAddRatingDestination = useCallback((placeId: string) => ({
+    path: getDetailRoutePath(placeId),
+    state: {
+      ...readHistoryStateRecord(window.history.state),
+      detailChildSurface: 'add_rating',
+    } satisfies Record<string, unknown>,
+  }), [])
 
   const handleAuthAction = useCallback(() => {
     if (!isSignedIn) {
-      beginSignIn()
+      const currentState = readHistoryStateRecord(window.history.state)
+      navigateToLoginRoute({
+        entryKind: 'explicit',
+        postAuthPath: window.location.pathname,
+        postAuthState: {
+          ...currentState,
+          ...(window.location.pathname === '/'
+            ? { [LOGIN_RETURN_BROWSE_NAVIGATION_STATE_FIELD]: effectiveBrowseNavigationState }
+            : {}),
+        },
+      })
       return
     }
 
@@ -1713,14 +1794,17 @@ export const NurimapAppShell = () => {
     }
 
     void signOut()
-  }, [beginSignIn, isSignedIn, signOut])
+  }, [effectiveBrowseNavigationState, isSignedIn, navigateToLoginRoute, signOut])
 
-  const ensureWriteAccess = useCallback((intent: PendingWriteIntent): 'allowed' | 'auth_started' | 'cancelled' => {
+  const ensureWriteAccess = useCallback((
+    intent: PendingWriteIntent,
+    options?: { skipPrompt?: boolean },
+  ): 'allowed' | 'auth_started' | 'cancelled' => {
     if (hasWriteAccess) {
       return 'allowed'
     }
 
-    pendingWriteIntentRef.current = intent
+    const skipPrompt = options?.skipPrompt ?? false
 
     const authFlowAlreadyOpen =
       authSurfaceVisible
@@ -1729,18 +1813,33 @@ export const NurimapAppShell = () => {
       || phase === 'verifying'
       || phase === 'name_required'
 
-    if (!authFlowAlreadyOpen && !window.confirm(
+    if (!skipPrompt && !authFlowAlreadyOpen && !window.confirm(
       intent.kind === 'add_place'
         ? PLACE_ADD_LOGIN_REQUIRED_CONFIRM_MESSAGE
         : ADD_RATING_LOGIN_REQUIRED_CONFIRM_MESSAGE
     )) {
-      pendingWriteIntentRef.current = null
       return 'cancelled'
     }
 
-    beginSignIn()
+    if (intent.kind === 'add_place') {
+      const destination = buildPostAuthPlaceAddDestination()
+      navigateToLoginRoute({
+        entryKind: 'write_intent',
+        postAuthPath: destination.path,
+        postAuthState: destination.state,
+        replace: window.location.pathname === PLACE_ADD_ROUTE,
+      })
+      return 'auth_started'
+    }
+
+    const destination = buildPostAuthAddRatingDestination(intent.placeId)
+    navigateToLoginRoute({
+      entryKind: 'write_intent',
+      postAuthPath: destination.path,
+      postAuthState: destination.state,
+    })
     return 'auth_started'
-  }, [authSurfaceVisible, beginSignIn, hasWriteAccess, phase])
+  }, [authSurfaceVisible, buildPostAuthAddRatingDestination, buildPostAuthPlaceAddDestination, hasWriteAccess, navigateToLoginRoute, phase])
 
   const navigatePlaceAddStep = ({
     prefill = null,
@@ -1782,21 +1881,9 @@ export const NurimapAppShell = () => {
   }
 
   const openPlaceAddSurface = useCallback(() => {
-    const currentState = readHistoryStateRecord(window.history.state)
-    const placeAddOriginNavigationState = window.location.pathname === '/'
-      ? effectiveBrowseNavigationState
-      : isDesktop
-        ? 'map_browse'
-        : readBrowseNavigationStateFromHistoryState(currentState, 'mobile_place_list_open')
-
-    navigateToPath(PLACE_ADD_ROUTE, false, {
-      ...currentState,
-      navigationState: 'place_add_open',
-      placeAddOriginPath: window.location.pathname,
-      [PLACE_ADD_ORIGIN_NAVIGATION_STATE_FIELD]: placeAddOriginNavigationState,
-      placeAddStep: 'url_entry',
-    })
-  }, [effectiveBrowseNavigationState, isDesktop])
+    const destination = buildPostAuthPlaceAddDestination()
+    navigateToPath(destination.path, false, destination.state)
+  }, [buildPostAuthPlaceAddDestination, navigateToPath])
 
   const openAddRatingSurface = useCallback((placeId: string) => {
     const targetPath = getDetailRoutePath(placeId)
@@ -1829,40 +1916,8 @@ export const NurimapAppShell = () => {
 
     handledAnonymousPlaceAddRouteRef.current = true
 
-    const timer = window.setTimeout(() => {
-      const result = ensureWriteAccess({ kind: 'add_place' })
-      if (result !== 'cancelled') {
-        return
-      }
-
-      navigateToPath('/', true, buildBrowseHistoryState({
-        browseNavigationState: effectiveBrowseNavigationState,
-        currentState: readHistoryStateRecord(window.history.state),
-        isDesktop,
-        mobileHistorySessionKey,
-      }))
-    }, 0)
-
-    return () => {
-      window.clearTimeout(timer)
-    }
-  }, [effectiveBrowseNavigationState, ensureWriteAccess, hasWriteAccess, isDesktop, mobileHistorySessionKey, routePlaceAdd])
-
-  useEffect(() => {
-    if (!hasWriteAccess || !pendingWriteIntentRef.current) {
-      return
-    }
-
-    const nextIntent = pendingWriteIntentRef.current
-    pendingWriteIntentRef.current = null
-
-    if (nextIntent.kind === 'add_place') {
-      openPlaceAddSurface()
-      return
-    }
-
-    openAddRatingSurface(nextIntent.placeId)
-  }, [hasWriteAccess, openAddRatingSurface, openPlaceAddSurface])
+    ensureWriteAccess({ kind: 'add_place' }, { skipPrompt: true })
+  }, [effectiveBrowseNavigationState, ensureWriteAccess, hasWriteAccess, isDesktop, mobileHistorySessionKey, navigateToPath, routePlaceAdd])
 
   const handleOpenPlaceDetail = (placeId: string) => {
     const targetPlace = places.find((place) => place.id === placeId)

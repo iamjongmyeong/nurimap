@@ -31,6 +31,7 @@
 - cooldown이 끝나면 해당 이메일의 resend burst count는 reset된다.
 - cooldown에 걸린 요청은 로그인 화면 request context로 수렴하고, 남은 대기 시간을 `0분 00초` 형식으로 보여주며 입력 이메일을 유지한다.
 - OTP 요청 성공 후에는 페이지 이동 없이 현재 auth 흐름 안에서 OTP 입력 상태를 표시한다.
+- canonical general login entry route는 `/login`이다.
 - OTP 입력 상태에는 사용자가 입력한 이메일 주소와 인증 CTA가 함께 보여야 한다.
 - OTP 입력 상태에서 사용자는 새 이메일을 다시 입력하는 흐름으로 돌아갈 수 있어야 한다.
 - 잘못된 코드 입력은 OTP 입력 상태 안에서 처리하고, 사용자는 같은 이메일 컨텍스트로 다시 시도할 수 있어야 한다.
@@ -61,8 +62,11 @@
 - 비로그인 사용자는 browse/detail read는 계속 볼 수 있지만 보호된 write surface와 write API에는 직접 진입할 수 없다.
 - 비로그인 `장소 추가`와 direct `/add-place` 진입은 browser-native confirm `누가 추가했는지 알 수 있도록 로그인해주세요.`를 먼저 보여준다.
 - 비로그인 `평가 남기기`는 browser-native confirm `누가 등록했는지 알 수 있도록 로그인해주세요.`를 먼저 보여준다.
-- confirm을 수락하면 기존 OTP 로그인 흐름으로 진입한다.
+- confirm을 수락하면 `/login`의 기존 OTP 로그인 흐름으로 진입한다.
+- explicit `로그인` control도 `/login`으로 진입한다.
 - 로그인 성공 후 사용자 이름이 비어 있으면 이름 입력 화면으로 보낸 뒤 원래 시도한 write intent로 복귀시킨다.
+- direct `/login` with no pending intent는 로그인 성공 뒤 홈(`/`)으로 이동한다.
+- explicit 로그인으로 `/login`에 진입한 경우에는 로그인 성공 뒤 직전 browse/detail 맥락으로 복귀한다.
 - 로그아웃 후에는 browse/detail이 anonymous 상태로 유지되고, write 진입만 다시 로그인 안내를 거친다.
 - 이름 입력은 단일 input field 하나로 받는다.
 - 이름 input은 비울 수 없다.
@@ -116,6 +120,8 @@
 - OTP 확인 중 새로고침하거나 네트워크가 hang되어도 무한히 `verifying`에 머물지 않는다.
 - 로그인 성공 시 세션이 생성되고 재접속 시 복구된다.
 - anonymous browse/detail은 세션이 없어도 유지되고, write intent만 로그인 전환을 요구한다.
+- `/login` direct entry는 pending intent가 없을 때 로그인 성공 뒤 홈(`/`)으로 이동한다.
+- explicit 로그인은 `/login`을 거쳐도 로그인 성공 뒤 기존 browse/detail 맥락으로 복귀한다.
 - 환경변수로 지정된 bypass 이메일은 OTP 입력 없이도 로그인된다.
 - non-local runtime에서도 exact allowlist 이메일은 bypass가 아니라 일반 OTP 경로로 인증할 수 있다.
 - 로그인 성공 후 이름이 비어 있으면 이름 입력 화면으로 이동한다.
